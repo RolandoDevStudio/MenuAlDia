@@ -1,0 +1,21 @@
+{
+  "bucket": "dish-photos",
+  "cors": [
+    {
+      "allowedOrigins": [
+        "http://localhost:3000",
+        "https://menualdia.app",
+        "https://*.vercel.app"
+      ],
+      "allowedMethods": ["GET", "HEAD", "PUT", "POST", "DELETE"],
+      "allowedHeaders": ["Authorization", "Content-Type", "x-client-info", "apikey", "x-upsert"],
+      "exposeHeaders": ["Content-Range", "Range"],
+      "maxAgeSeconds": 3600
+    }
+  ],
+  "_howToApply": [
+    "Dashboard: Supabase → Storage → Configuration → CORS (pegar allowedOrigins).",
+    "CLI/API: usar este JSON con la Management API o el panel de Storage.",
+    "Necesario para que html-to-image pueda leer fotos del bucket al generar el flyer (CORS)."
+  ]
+}
