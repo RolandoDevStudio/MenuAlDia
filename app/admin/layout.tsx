@@ -1,5 +1,6 @@
 import { AdminShell } from "@/components/admin/admin-shell";
 import { getSessionRestaurant } from "@/lib/restaurant";
+import type { PlanType } from "@/lib/plans";
 
 export default async function AdminLayout({
   children,
@@ -13,6 +14,13 @@ export default async function AdminLayout({
   }
 
   return (
-    <AdminShell restaurantName={session.restaurant.name}>{children}</AdminShell>
+    <AdminShell
+      restaurantName={session.restaurant.name}
+      planType={(session.restaurant.plan_type as PlanType) || "catalog"}
+      isActive={session.restaurant.is_active !== false}
+      subscriptionEndDate={session.restaurant.subscription_end_date}
+    >
+      {children}
+    </AdminShell>
   );
 }

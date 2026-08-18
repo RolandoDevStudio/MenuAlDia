@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import type { Category, Dish } from "@/lib/types";
+import type { Category, Dish, PlanType } from "@/lib/types";
+import { dishLimit } from "@/lib/plans";
 import { dishFormSchema, fieldErrorsFromZod } from "@/lib/validations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,9 +18,18 @@ type Props = {
   categories: Category[];
   dish?: Dish | null;
   publicSlug: string;
+  planType?: PlanType | string;
+  currentDishCount?: number;
 };
 
-export function DishForm({ restaurantId, categories, dish, publicSlug }: Props) {
+export function DishForm({
+  restaurantId,
+  categories,
+  dish,
+  publicSlug,
+  planType = "catalog",
+  currentDishCount = 0,
+}: Props) {
   const router = useRouter();
   const [name, setName] = useState(dish?.name ?? "");
   const [description, setDescription] = useState(dish?.description ?? "");
@@ -33,10 +43,21 @@ export function DishForm({ restaurantId, categories, dish, publicSlug }: Props) 
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  const limit = dishLimit(planType);
+  const atLimit = !dish && limit != null && currentDishCount >= limit;
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
     setFieldErrors({});
+
+    if (atLimit) {
+      setFormError(
+        `Tu plan Catálogo permite máximo ${limit} productos. Mejora a Menú al Día o Pro.`,
+      );
+      return;
+    }
+
     const parsed = dishFormSchema.safeParse({
       name,
       description,
@@ -111,6 +132,26 @@ export function DishForm({ restaurantId, categories, dish, publicSlug }: Props) 
     });
     router.push("/admin/catalog");
     router.refresh();
+  }
+
+  if (atLimit) {
+    return (
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-6 text-center">
+        <p className="font-semibold text-brand-dark">Límite del plan Catálogo</p>
+        <p className="mt-2 text-sm text-muted">
+          Ya tienes {currentDishCount}/{limit} productos. Mejora a Menú al Día o
+          Pro para agregar más.
+        </p>
+        <Button
+          type="button"
+          className="mt-4"
+          variant="secondary"
+          onClick={() => router.push("/admin/catalog")}
+        >
+          Volver al catálogo
+        </Button>
+      </div>
+    );
   }
 
   return (

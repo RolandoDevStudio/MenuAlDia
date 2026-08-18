@@ -18,6 +18,11 @@ export default async function DishEditPage({ params }: Props) {
     .eq("restaurant_id", session.restaurant.id)
     .order("sort_order");
 
+  const { count } = await supabase
+    .from("dishes")
+    .select("*", { count: "exact", head: true })
+    .eq("restaurant_id", session.restaurant.id);
+
   let dish: Dish | null = null;
   if (dishId !== "new") {
     const { data } = await supabase
@@ -40,6 +45,8 @@ export default async function DishEditPage({ params }: Props) {
         categories={(categories ?? []) as Category[]}
         dish={dish}
         publicSlug={session.restaurant.slug}
+        planType={session.restaurant.plan_type}
+        currentDishCount={count ?? 0}
       />
     </div>
   );

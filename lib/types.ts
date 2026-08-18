@@ -1,8 +1,13 @@
-/** Database & domain types for Menú al Día (aligned with supabase/migrations/001_init.sql) */
+/** Database & domain types for Menú al Día */
 
-export type MemberRole = "owner" | "staff";
+import type { ThemeConfig } from "@/lib/theme";
+import type { PlanType } from "@/lib/plans";
+
+export type MemberRole = "owner" | "staff" | "super_admin";
 
 export type PaymentMethod = "cash" | "transfer";
+
+export type { PlanType, ThemeConfig };
 
 export interface Restaurant {
   id: string;
@@ -17,6 +22,10 @@ export interface Restaurant {
   shipping_cost: number;
   free_shipping: boolean;
   created_at: string;
+  plan_type: PlanType;
+  is_active: boolean;
+  subscription_end_date: string;
+  theme_config: ThemeConfig | Record<string, unknown>;
 }
 
 export interface RestaurantMember {
@@ -72,12 +81,34 @@ export interface OrderLog {
   created_at: string;
 }
 
+export interface Customer {
+  id: string;
+  restaurant_id: string;
+  name: string;
+  phone: string | null;
+  address: string;
+  orders_count: number;
+  last_order_at: string | null;
+  created_at: string;
+}
+
+export interface Order {
+  id: string;
+  restaurant_id: string;
+  customer_id: string | null;
+  payload: OrderLogPayload;
+  total: number;
+  status: string;
+  created_at: string;
+}
+
 export interface OrderLogPayload {
   customer_name: string;
   address: string;
   references: string;
   payment_method: PaymentMethod;
   cash_amount?: number | null;
+  phone?: string | null;
   items: CartItem[];
   subtotal: number;
   shipping: number;
@@ -85,16 +116,13 @@ export interface OrderLogPayload {
   wa_message?: string;
 }
 
-/** Cart line item (client-side + order payload) */
 export interface CartItem {
   dishId: string;
   name: string;
   unitPrice: number;
   quantity: number;
-  /** Guarniciones elegidas (solo menú del día) */
   sideIds?: string[];
   sideNames?: string[];
-  /** true si es paquete del menú del día */
   isDailyMenu?: boolean;
 }
 
@@ -104,9 +132,9 @@ export interface CheckoutFormValues {
   references: string;
   paymentMethod: PaymentMethod;
   cashAmount?: number | null;
+  phone?: string | null;
 }
 
-/** Public page aggregate */
 export interface PublicRestaurantMenu {
   restaurant: Restaurant;
   categories: Category[];
@@ -116,7 +144,6 @@ export interface PublicRestaurantMenu {
   dailySides: Dish[];
 }
 
-/** Admin dashboard aggregate */
 export interface AdminDailyMenuState {
   restaurant: Restaurant;
   selection: DailyMenuSelection;
@@ -126,7 +153,6 @@ export interface AdminDailyMenuState {
   selectedSideIds: string[];
 }
 
-/** JSON-compatible values (order payloads, etc.) */
 export type Json =
   | string
   | number

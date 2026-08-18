@@ -2,16 +2,20 @@
 
 import { useState } from "react";
 import type { Dish } from "@/lib/types";
+import type { PhotoFrame } from "@/lib/theme";
+import { photoFrameClass } from "@/lib/theme";
 import { formatMxn } from "@/lib/money";
 import { useCartStore } from "@/stores/cart-store";
 import { SideChecklist } from "@/components/public/side-checklist";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 type Props = {
   dishes: Dish[];
   sides: Dish[];
   packagePrice: number;
   maxSides: number;
+  photoFrame?: PhotoFrame;
 };
 
 export function DailyMenuHero({
@@ -19,6 +23,7 @@ export function DailyMenuHero({
   sides,
   packagePrice,
   maxSides,
+  photoFrame = "rounded_modern",
 }: Props) {
   const addItem = useCartStore((s) => s.addItem);
   const [selectedSides, setSelectedSides] = useState<string[]>([]);
@@ -59,7 +64,12 @@ export function DailyMenuHero({
 
   return (
     <section className="mx-auto max-w-lg px-4 py-6">
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#c45c26] to-[#8b3a14] p-5 text-white shadow-lg">
+      <div
+        className="relative overflow-hidden rounded-3xl p-5 text-white shadow-lg"
+        style={{
+          background: `linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 72%, black))`,
+        }}
+      >
         <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/15" />
         <div className="relative">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/80">
@@ -69,7 +79,7 @@ export function DailyMenuHero({
             <h2 className="font-[family-name:var(--font-display)] text-4xl leading-none">
               {active.name}
             </h2>
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#f6e7c1] text-center font-[family-name:var(--font-display)] text-xl leading-none text-brand-dark shadow">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--color-card)_92%,var(--color-primary))] text-center font-[family-name:var(--font-display)] text-xl leading-none text-brand-dark shadow">
               {formatMxn(packagePrice).replace("MX$", "$")}
             </div>
           </div>
@@ -84,10 +94,15 @@ export function DailyMenuHero({
         <img
           src={active.photo_url}
           alt={active.name}
-          className="mt-4 h-48 w-full rounded-2xl object-cover"
+          className={cn("mt-4 h-48 w-full", photoFrameClass(photoFrame))}
         />
       ) : (
-        <div className="mt-4 flex h-36 items-center justify-center rounded-2xl bg-gradient-to-br from-[#f0d4b8] to-[#e8a05a]/40 font-[family-name:var(--font-display)] text-5xl text-brand-dark/40">
+        <div
+          className={cn(
+            "mt-4 flex h-36 items-center justify-center bg-gradient-to-br from-[color-mix(in_srgb,var(--color-primary)_25%,transparent)] to-[color-mix(in_srgb,var(--color-primary)_40%,transparent)] font-[family-name:var(--font-display)] text-5xl text-brand-dark/40",
+            photoFrameClass(photoFrame).replace("object-cover", ""),
+          )}
+        >
           {active.name.slice(0, 1)}
         </div>
       )}

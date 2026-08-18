@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionRestaurant } from "@/lib/restaurant";
+import { dishLimit } from "@/lib/plans";
 import { formatMxn } from "@/lib/money";
 import { Button } from "@/components/ui/button";
 import type { Dish } from "@/lib/types";
@@ -19,21 +20,39 @@ export default async function CatalogPage() {
     .order("sort_order");
 
   const list = (dishes ?? []) as Dish[];
+  const limit = dishLimit(session.restaurant.plan_type);
+  const atLimit = limit != null && list.length >= limit;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">Catálogo</h1>
-          <p className="text-sm text-muted">Platillos y guarniciones.</p>
+          <p className="text-sm text-muted">
+            Platillos y guarniciones
+            {limit != null ? ` · ${list.length}/${limit}` : ` · ${list.length}`}.
+          </p>
         </div>
-        <Button asChild size="sm" className="min-h-11">
-          <Link href="/admin/catalog/new">
-            <Plus className="h-4 w-4" />
-            Nuevo
-          </Link>
-        </Button>
+        {atLimit ? (
+          <Button size="sm" className="min-h-11" disabled>
+            Límite
+          </Button>
+        ) : (
+          <Button asChild size="sm" className="min-h-11">
+            <Link href="/admin/catalog/new">
+              <Plus className="h-4 w-4" />
+              Nuevo
+            </Link>
+          </Button>
+        )}
       </div>
+
+      {atLimit ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-brand-dark">
+          Alcanzaste el máximo de {limit} productos del plan Catálogo. Mejora a
+          Menú al Día o Pro para agregar más.
+        </div>
+      ) : null}
 
       {list.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-black/10 px-4 py-10 text-center">

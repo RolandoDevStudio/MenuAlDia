@@ -32,17 +32,36 @@ export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isAdmin = path.startsWith("/admin");
   const isLogin = path.startsWith("/admin/login");
+  const isSuperAdmin = path.startsWith("/super-admin");
 
-  if (isAdmin && !isLogin && !user) {
+  if ((isAdmin && !isLogin && !user) || (isSuperAdmin && !user)) {
     const url = request.nextUrl.clone();
     url.pathname = "/admin/login";
+    url.searchParams.set("next", path);
     return NextResponse.redirect(url);
   }
 
   if (isLogin && user) {
     const url = request.nextUrl.clone();
-    url.pathname = "/admin";
+    const next = request.nextUrl.searchParams.get("next");
+    url.pathname = next?.startsWith("/") ? next : "/admin";
+    url.search = "";
     return NextResponse.redirect(url);
+  }
+
+  if (isSuperAdmin && user) {
+    const { data } = await supabase
+      .from("restaurant_members")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("role", "super_admin")
+      .limit(1)
+      .maybeSingle();
+    if (!data) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/admin";
+      return NextResponse.redirect(url);
+    }
   }
 
   return supabaseResponse;

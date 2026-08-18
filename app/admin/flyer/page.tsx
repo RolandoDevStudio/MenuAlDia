@@ -3,11 +3,22 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionRestaurant } from "@/lib/restaurant";
 import { FlyerPreview } from "@/components/flyer/flyer-preview";
 import { FlyerExportButton } from "@/components/flyer/flyer-export-button";
+import { PlanGate } from "@/components/admin/plan-gate";
+import { can } from "@/lib/plans";
 import type { Dish } from "@/lib/types";
 
 export default async function FlyerPage() {
   const session = await getSessionRestaurant();
   if (!session) redirect("/admin/login");
+
+  const plan = session.restaurant.plan_type || "catalog";
+  if (!can(plan, "flyer")) {
+    return (
+      <PlanGate plan={plan} feature="flyer" title="Generador de flyers no incluido">
+        {null}
+      </PlanGate>
+    );
+  }
 
   const supabase = await createClient();
   const { data: selection } = await supabase

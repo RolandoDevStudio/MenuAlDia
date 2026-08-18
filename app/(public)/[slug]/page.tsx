@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getPublicMenuBySlug } from "@/lib/restaurant";
+import { parseThemeConfig } from "@/lib/theme";
 import { RestaurantHeader } from "@/components/public/restaurant-header";
 import { DailyMenuHero } from "@/components/public/daily-menu-hero";
 import { CatalogSection } from "@/components/public/catalog-section";
@@ -29,6 +30,7 @@ export default async function PublicMenuPage({ params }: Props) {
 
   const packagePrice = Number(data.dailyMenu?.package_price ?? 0);
   const maxSides = data.dailyMenu?.max_sides ?? 2;
+  const theme = parseThemeConfig(data.restaurant.theme_config);
 
   return (
     <main className="relative min-h-full overflow-x-hidden bg-background">
@@ -36,8 +38,7 @@ export default async function PublicMenuPage({ params }: Props) {
         className="pointer-events-none absolute inset-0 -z-10 opacity-90"
         aria-hidden
         style={{
-          background:
-            "radial-gradient(ellipse 90% 50% at 10% 0%, #f0d4b8 0%, transparent 55%), radial-gradient(ellipse 70% 40% at 100% 10%, #e8c49a 0%, transparent 50%), linear-gradient(180deg, #faf6f1 0%, #f3e8dc 100%)",
+          background: `radial-gradient(ellipse 90% 50% at 10% 0%, color-mix(in srgb, ${theme.colors.primary} 28%, transparent) 0%, transparent 55%), radial-gradient(ellipse 70% 40% at 100% 10%, color-mix(in srgb, ${theme.colors.primary} 18%, transparent) 0%, transparent 50%), linear-gradient(180deg, var(--color-bg) 0%, color-mix(in srgb, var(--color-bg) 85%, ${theme.colors.primary}) 100%)`,
         }}
       />
       <RestaurantHeader restaurant={data.restaurant} />
@@ -46,8 +47,13 @@ export default async function PublicMenuPage({ params }: Props) {
         sides={data.dailySides}
         packagePrice={packagePrice}
         maxSides={maxSides}
+        photoFrame={theme.photoFrame}
       />
-      <CatalogSection categories={data.categories} dishes={data.dishes} />
+      <CatalogSection
+        categories={data.categories}
+        dishes={data.dishes}
+        photoFrame={theme.photoFrame}
+      />
       <CartBottomSpacer />
       <FloatingCart restaurant={data.restaurant} />
     </main>

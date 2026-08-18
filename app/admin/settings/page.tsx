@@ -8,15 +8,19 @@ import {
   fieldErrorsFromZod,
   restaurantSettingsSchema,
 } from "@/lib/validations";
+import { parseThemeConfig, type ThemeConfig } from "@/lib/theme";
+import { ThemeEditor } from "@/components/admin/theme-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { PLAN_LABELS } from "@/lib/plans";
 
 export default function SettingsPage() {
   const router = useRouter();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [freeShipping, setFreeShipping] = useState(false);
+  const [theme, setTheme] = useState<ThemeConfig | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -39,12 +43,25 @@ export default function SettingsPage() {
       .from("restaurant_members")
       .select("restaurant_id")
       .eq("user_id", user.id)
+      .neq("role", "super_admin")
       .limit(1)
       .maybeSingle();
-    if (memError || !membership) {
+
+    let restaurantId = membership?.restaurant_id;
+    if (!restaurantId) {
+      const { data: anyMem } = await supabase
+        .from("restaurant_members")
+        .select("restaurant_id")
+        .eq("user_id", user.id)
+        .limit(1)
+        .maybeSingle();
+      restaurantId = anyMem?.restaurant_id;
+    }
+
+    if (memError || !restaurantId) {
       setLoadError(
         memError?.message ??
-          "Tu usuario no está vinculado a un restaurante. Agrega un registro en restaurant_members.",
+          "Tu usuario no está vinculado a un restaurante.",
       );
       setLoading(false);
       return;
@@ -52,7 +69,7 @@ export default function SettingsPage() {
     const { data, error: restError } = await supabase
       .from("restaurants")
       .select("*")
-      .eq("id", membership.restaurant_id)
+      .eq("id", restaurantId)
       .single();
     if (restError || !data) {
       setLoadError(restError?.message ?? "No se pudo cargar el restaurante");
@@ -62,6 +79,7 @@ export default function SettingsPage() {
     const r = data as Restaurant;
     setRestaurant(r);
     setFreeShipping(r.free_shipping);
+    setTheme(parseThemeConfig(r.theme_config));
     setLoading(false);
   }, [router]);
 
@@ -73,7 +91,7 @@ export default function SettingsPage() {
     return <p className="text-sm text-muted">Cargando ajustes…</p>;
   }
 
-  if (loadError || !restaurant) {
+  if (loadError || !restaurant || !theme) {
     return (
       <div className="space-y-3 rounded-xl border border-red-200 bg-red-50 p-4">
         <p className="text-sm text-red-700">
@@ -88,7 +106,7 @@ export default function SettingsPage() {
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!restaurant) return;
+    if (!restaurant || !theme) return;
     setSaving(true);
     setError(null);
     setMessage(null);
@@ -126,6 +144,7 @@ export default function SettingsPage() {
         ...parsed.data,
         maps_url: parsed.data.maps_url || null,
         logo_url: parsed.data.logo_url || null,
+        theme_config: theme,
       })
       .eq("id", restaurant.id);
     setSaving(false);
@@ -153,11 +172,17 @@ export default function SettingsPage() {
   ] as const;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div>
         <h1 className="text-lg font-semibold">Ajustes</h1>
-        <p className="text-sm text-muted">Slug público: /{restaurant.slug}</p>
+        <p className="text-sm text-muted">
+          /{restaurant.slug} · Plan{" "}
+          {PLAN_LABELS[restaurant.plan_type || "catalog"]}
+        </p>
       </div>
+
+      <ThemeEditor value={theme} onChange={setTheme} />
+
       <form onSubmit={onSubmit} className="space-y-4">
         {fields.map(([id, label, value]) => (
           <div key={id} className="space-y-1.5">

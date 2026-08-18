@@ -26,6 +26,20 @@ export function FlyerExportButton({ slug, targetId = "flyer-canvas" }: Props) {
     const node = document.getElementById(targetId);
     if (!node) throw new Error("No se encontró el flyer");
     await document.fonts.ready;
+    const imgs = Array.from(node.querySelectorAll("img"));
+    await Promise.all(
+      imgs.map(
+        (img) =>
+          new Promise<void>((resolve) => {
+            if (img.complete) {
+              resolve();
+              return;
+            }
+            img.onload = () => resolve();
+            img.onerror = () => resolve();
+          }),
+      ),
+    );
     return toPng(node, {
       cacheBust: true,
       pixelRatio: 2,

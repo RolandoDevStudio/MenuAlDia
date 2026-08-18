@@ -3,12 +3,24 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionRestaurant } from "@/lib/restaurant";
 import { DailyMenuToggles } from "@/components/admin/daily-menu-toggles";
+import { PlanGate } from "@/components/admin/plan-gate";
 import { Button } from "@/components/ui/button";
+import { can } from "@/lib/plans";
 import type { Dish } from "@/lib/types";
 
 export default async function AdminDashboardPage() {
   const session = await getSessionRestaurant();
   if (!session) redirect("/admin/login");
+
+  const plan = session.restaurant.plan_type || "catalog";
+
+  if (!can(plan, "daily_menu")) {
+    return (
+      <PlanGate plan={plan} feature="daily_menu" title="Menú del día no incluido">
+        {null}
+      </PlanGate>
+    );
+  }
 
   const supabase = await createClient();
   const restaurantId = session.restaurant.id;
@@ -65,9 +77,11 @@ export default async function AdminDashboardPage() {
           <h1 className="text-lg font-semibold">Menú del día</h1>
           <p className="text-sm text-muted">Activa platillos en un toque.</p>
         </div>
-        <Button asChild variant="secondary" size="sm">
-          <Link href="/admin/flyer">Generar Flyer</Link>
-        </Button>
+        {can(plan, "flyer") ? (
+          <Button asChild variant="secondary" size="sm">
+            <Link href="/admin/flyer">Generar Flyer</Link>
+          </Button>
+        ) : null}
       </div>
       <DailyMenuToggles
         restaurantId={restaurantId}

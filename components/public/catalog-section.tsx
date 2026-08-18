@@ -1,17 +1,25 @@
 "use client";
 
 import type { Category, Dish } from "@/lib/types";
+import type { PhotoFrame } from "@/lib/theme";
+import { photoFrameClass } from "@/lib/theme";
 import { formatMxn } from "@/lib/money";
 import { useCartStore } from "@/stores/cart-store";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type Props = {
   categories: Category[];
   dishes: Dish[];
+  photoFrame?: PhotoFrame;
 };
 
-export function CatalogSection({ categories, dishes }: Props) {
+export function CatalogSection({
+  categories,
+  dishes,
+  photoFrame = "rounded_modern",
+}: Props) {
   const addItem = useCartStore((s) => s.addItem);
   const fixed = categories.filter((c) => c.is_fixed_catalog);
   const catalogItems = fixed.flatMap((category) =>
@@ -57,10 +65,15 @@ export function CatalogSection({ categories, dishes }: Props) {
                     <img
                       src={dish.photo_url}
                       alt={dish.name}
-                      className="h-20 w-20 rounded-xl object-cover"
+                      className={cn("h-20 w-20", photoFrameClass(photoFrame))}
                     />
                   ) : (
-                    <div className="flex h-20 w-20 items-center justify-center rounded-xl bg-gradient-to-br from-[#f0d4b8] to-[#e8a05a]/30 font-[family-name:var(--font-display)] text-2xl text-brand-dark/50">
+                    <div
+                      className={cn(
+                        "flex h-20 w-20 items-center justify-center bg-gradient-to-br from-[color-mix(in_srgb,var(--color-primary)_22%,transparent)] to-[color-mix(in_srgb,var(--color-primary)_35%,transparent)] font-[family-name:var(--font-display)] text-2xl text-brand-dark/50",
+                        photoFrameClass(photoFrame).replace("object-cover", ""),
+                      )}
+                    >
                       {dish.name.slice(0, 1)}
                     </div>
                   )}
