@@ -1,8 +1,30 @@
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createPublicClient } from "@/lib/supabase/public";
-import type { Dish, MemberRole, Restaurant } from "@/lib/types";
+import type {
+  Combo,
+  ComboItem,
+  ComboWithItems,
+  Dish,
+  DishAddon,
+  MemberRole,
+  PublicRestaurantMenu,
+  Restaurant,
+} from "@/lib/types";
 import { parseThemeConfig } from "@/lib/theme";
+import { normalizeBusinessType } from "@/lib/business-labels";
+
+function normalizeRestaurant(raw: Restaurant): Restaurant {
+  const r = { ...raw };
+  r.theme_config = parseThemeConfig(r.theme_config);
+  r.plan_type = (r.plan_type as Restaurant["plan_type"]) || "catalog";
+  r.business_type = normalizeBusinessType(r.business_type);
+  r.owner_name = r.owner_name ?? "";
+  r.city = r.city ?? "";
+  r.state = r.state ?? "";
+  return r;
+}
 
 export async function getSessionRestaurant(): Promise<{
   restaurant: Restaurant;
@@ -23,7 +45,6 @@ export async function getSessionRestaurant(): Promise<{
     .limit(1)
     .maybeSingle();
 
-  // Prefer tenant membership; fall back to any membership (incl. super_admin attached to a seed)
   let row = membership;
   if (!row) {
     const { data: anyMem } = await supabase
@@ -44,14 +65,8 @@ export async function getSessionRestaurant(): Promise<{
     .single();
 
   if (!restaurant) return null;
-  const r = restaurant as Restaurant;
-  r.theme_config = parseThemeConfig(r.theme_config);
-  r.plan_type = (r.plan_type as Restaurant["plan_type"]) || "catalog";
-  r.business_type =
-    (r.business_type as Restaurant["business_type"]) || "restaurante";
-  r.owner_name = r.owner_name ?? "";
   return {
-    restaurant: r,
+    restaurant: normalizeRestaurant(restaurant as Restaurant),
     userId: user.id,
     role: (row.role as MemberRole) || "owner",
   };
@@ -73,8 +88,9 @@ export async function isCurrentUserSuperAdmin(): Promise<boolean> {
   return Boolean(data);
 }
 
-/** Deduped per-request (metadata + page share one fetch). */
-export const getPublicMenuBySlug = cache(async (slug: string) => {
+async function fetchPublicMenuBySlug(
+  slug: string,
+): Promise<PublicRestaurantMenu | null> {
   const supabase = createPublicClient();
 
   const { data: restaurant, error: restaurantError } = await supabase
@@ -89,14 +105,13 @@ export const getPublicMenuBySlug = cache(async (slug: string) => {
   }
   if (!restaurant) return null;
 
-  const r = restaurant as Restaurant;
-  r.theme_config = parseThemeConfig(r.theme_config);
-  r.plan_type = (r.plan_type as Restaurant["plan_type"]) || "catalog";
+  const r = normalizeRestaurant(restaurant as Restaurant);
 
   const [
-    { data: categories, error: catError },
-    { data: dishes, error: dishError },
-    { data: selection, error: selError },
+    { data: categories },
+    { data: dishes },
+    { data: selection },
+    { data: combosRows },
   ] = await Promise.all([
     supabase
       .from("categories")
@@ -108,21 +123,67 @@ export const getPublicMenuBySlug = cache(async (slug: string) => {
       .select("*")
       .eq("restaurant_id", r.id)
       .eq("is_active", true)
+      .is("archived_at", null)
       .order("sort_order"),
     supabase
       .from("daily_menu_selections")
       .select("*")
       .eq("restaurant_id", r.id)
       .maybeSingle(),
+    supabase
+      .from("combos")
+      .select("*")
+      .eq("restaurant_id", r.id)
+      .eq("is_active", true)
+      .is("archived_at", null)
+      .order("sort_order"),
   ]);
 
-  if (catError || dishError || selError) {
-    console.error("[getPublicMenuBySlug] related", {
-      catError: catError?.message,
-      dishError: dishError?.message,
-      selError: selError?.message,
-    });
+  const dishList = (dishes ?? []) as Dish[];
+  const dishIds = dishList.map((d) => d.id);
+
+  let addons: DishAddon[] = [];
+  if (dishIds.length > 0) {
+    const { data: addonRows } = await supabase
+      .from("dish_addons")
+      .select("*")
+      .in("dish_id", dishIds)
+      .eq("is_active", true)
+      .is("archived_at", null)
+      .order("sort_order");
+    addons = (addonRows ?? []) as DishAddon[];
   }
+
+  const addonsByDishId: Record<string, DishAddon[]> = {};
+  for (const a of addons) {
+    (addonsByDishId[a.dish_id] ??= []).push(a);
+  }
+
+  const comboList = (combosRows ?? []) as Combo[];
+  const comboIds = comboList.map((c) => c.id);
+  let comboItems: ComboItem[] = [];
+  if (comboIds.length > 0) {
+    const { data: itemRows } = await supabase
+      .from("combo_items")
+      .select("*")
+      .in("combo_id", comboIds)
+      .order("sort_order");
+    comboItems = (itemRows ?? []) as ComboItem[];
+  }
+
+  const dishMap = new Map(dishList.map((d) => [d.id, d]));
+  const combos: ComboWithItems[] = comboList.map((c) => ({
+    ...c,
+    items: comboItems
+      .filter((i) => i.combo_id === c.id)
+      .map((i) => {
+        const dish = dishMap.get(i.dish_id);
+        return dish
+          ? { ...i, dish }
+          : null;
+      })
+      .filter(Boolean) as ComboWithItems["items"],
+  })).filter((c) => c.items.length >= 2);
 
   let dailyDishes: Dish[] = [];
   let dailySides: Dish[] = [];
@@ -139,7 +200,6 @@ export const getPublicMenuBySlug = cache(async (slug: string) => {
         .eq("daily_menu_id", selection.id),
     ]);
 
-    const dishMap = new Map((dishes ?? []).map((d) => [d.id, d as Dish]));
     dailyDishes = (mainLinks ?? [])
       .map((l) => dishMap.get(l.dish_id))
       .filter(Boolean) as Dish[];
@@ -151,9 +211,29 @@ export const getPublicMenuBySlug = cache(async (slug: string) => {
   return {
     restaurant: r,
     categories: categories ?? [],
-    dishes: (dishes ?? []) as Dish[],
+    dishes: dishList,
+    addonsByDishId,
+    combos,
     dailyMenu: selection,
     dailyDishes,
     dailySides,
   };
+}
+
+export function menuCacheTag(slug: string) {
+  return `menu-${slug}`;
+}
+
+/** Cached public menu; invalidate via revalidateTag(menuCacheTag(slug), 'max'). */
+export function getCachedPublicMenuBySlug(slug: string) {
+  return unstable_cache(
+    () => fetchPublicMenuBySlug(slug),
+    ["public-menu", slug],
+    { tags: [menuCacheTag(slug)], revalidate: 3600 },
+  )();
+}
+
+/** Deduped per-request (metadata + page share one fetch). */
+export const getPublicMenuBySlug = cache(async (slug: string) => {
+  return getCachedPublicMenuBySlug(slug);
 });

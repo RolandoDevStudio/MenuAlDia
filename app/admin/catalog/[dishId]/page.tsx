@@ -1,6 +1,6 @@
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getSessionRestaurant } from "@/lib/restaurant";
+import { requireTenantSession } from "@/lib/admin-session";
 import { label } from "@/lib/business-labels";
 import { DishForm } from "@/components/admin/dish-form";
 import type { Category, Dish } from "@/lib/types";
@@ -9,8 +9,7 @@ type Props = { params: Promise<{ dishId: string }> };
 
 export default async function DishEditPage({ params }: Props) {
   const { dishId } = await params;
-  const session = await getSessionRestaurant();
-  if (!session) redirect("/admin/login");
+  const session = await requireTenantSession();
 
   const businessType = session.restaurant.business_type;
   const dishLabel = label(businessType, "dish");
@@ -25,7 +24,8 @@ export default async function DishEditPage({ params }: Props) {
   const { count } = await supabase
     .from("dishes")
     .select("*", { count: "exact", head: true })
-    .eq("restaurant_id", session.restaurant.id);
+    .eq("restaurant_id", session.restaurant.id)
+    .is("archived_at", null);
 
   let dish: Dish | null = null;
   if (dishId !== "new") {

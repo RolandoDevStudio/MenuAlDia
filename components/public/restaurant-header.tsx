@@ -6,12 +6,21 @@ import { formatMxn } from "@/lib/money";
 import { MapPin, Clock, Truck, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export function RestaurantHeader({ restaurant }: { restaurant: Restaurant }) {
+export function RestaurantHeader({
+  restaurant,
+  placeLine,
+}: {
+  restaurant: Restaurant;
+  placeLine?: string;
+}) {
   const [open, setOpen] = useState(false);
   const shippingLabel =
     restaurant.free_shipping || Number(restaurant.shipping_cost) === 0
       ? "Envío gratis"
       : `Envío ${formatMxn(Number(restaurant.shipping_cost))}`;
+  const place =
+    placeLine ||
+    [restaurant.city, restaurant.state].filter(Boolean).join(", ");
 
   return (
     <header className="border-b border-black/5 bg-surface/80 px-4 py-5 backdrop-blur">
@@ -35,6 +44,12 @@ export function RestaurantHeader({ restaurant }: { restaurant: Restaurant }) {
           <p className="mt-1 text-sm font-medium text-brand-dark">
             {restaurant.slogan || "Sabor casero"}
           </p>
+          {place ? (
+            <p className="mt-1 flex items-center gap-1 text-xs text-muted">
+              <MapPin className="h-3.5 w-3.5 shrink-0" />
+              {place}
+            </p>
+          ) : null}
           <button
             type="button"
             className="mt-2 inline-flex min-h-11 items-center gap-1 text-xs font-semibold text-muted"

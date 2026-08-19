@@ -23,6 +23,7 @@ export default function TenantsPage() {
   const [q, setQ] = useState("");
   const [planFilter, setPlanFilter] = useState<string>("all");
   const [giroFilter, setGiroFilter] = useState<string>("all");
+  const [cityFilter, setCityFilter] = useState("");
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -55,6 +56,13 @@ export default function TenantsPage() {
     return rows.filter((r) => {
       if (planFilter !== "all" && r.plan_type !== planFilter) return false;
       if (giroFilter !== "all" && r.business_type !== giroFilter) return false;
+      if (
+        cityFilter.trim() &&
+        !(r.city ?? "").toLowerCase().includes(cityFilter.toLowerCase()) &&
+        !(r.state ?? "").toLowerCase().includes(cityFilter.toLowerCase())
+      ) {
+        return false;
+      }
       if (activeFilter === "active" && r.is_active === false) return false;
       if (activeFilter === "inactive" && r.is_active !== false) return false;
       if (!q.trim()) return true;
@@ -67,7 +75,7 @@ export default function TenantsPage() {
         (owners[r.id]?.email ?? "").toLowerCase().includes(s)
       );
     });
-  }, [rows, q, planFilter, giroFilter, activeFilter, owners]);
+  }, [rows, q, planFilter, giroFilter, cityFilter, activeFilter, owners]);
 
   function handleSaved(updated?: Restaurant) {
     if (updated) {
@@ -134,6 +142,12 @@ export default function TenantsPage() {
           <option value="active">Solo activos</option>
           <option value="inactive">Solo inactivos</option>
         </select>
+        <Input
+          placeholder="Ciudad / estado…"
+          value={cityFilter}
+          onChange={(e) => setCityFilter(e.target.value)}
+          className="w-full min-w-0 sm:max-w-[10rem]"
+        />
       </div>
 
       {error ? <p className="text-sm text-red-600">{error}</p> : null}

@@ -9,15 +9,29 @@ type CartState = {
   items: CartItem[];
   setSlug: (slug: string) => void;
   addItem: (item: CartItem) => void;
+  addItems: (items: CartItem[]) => void;
   removeItem: (dishId: string, sideKey?: string) => void;
   updateQty: (dishId: string, quantity: number, sideKey?: string) => void;
   clear: () => void;
   subtotal: () => number;
 };
 
-function itemKey(item: Pick<CartItem, "dishId" | "sideIds">) {
-  const sides = [...(item.sideIds ?? [])].sort().join(",");
-  return `${item.dishId}::${sides}`;
+function addonKey(item: Pick<CartItem, "addons" | "sideIds">) {
+  if (item.addons && item.addons.length > 0) {
+    return [...item.addons.map((a) => a.id)].sort().join(",");
+  }
+  return [...(item.sideIds ?? [])].sort().join(",");
+}
+
+function itemKey(item: Pick<CartItem, "dishId" | "sideIds" | "addons" | "comboId">) {
+  return `${item.comboId ?? ""}::${item.dishId}::${addonKey(item)}`;
+}
+
+function matchKey(item: CartItem, dishId: string, sideKey: string) {
+  return (
+    item.dishId === dishId &&
+    addonKey(item) === sideKey
+  );
 }
 
 export const useCartStore = create<CartState>()(
@@ -48,9 +62,12 @@ export const useCartStore = create<CartState>()(
           set({ items: [...get().items, item] });
         }
       },
+      addItems: (items) => {
+        for (const item of items) get().addItem(item);
+      },
       removeItem: (dishId, sideKey = "") => {
         set({
-          items: get().items.filter((i) => itemKey(i) !== `${dishId}::${sideKey}`),
+          items: get().items.filter((i) => !matchKey(i, dishId, sideKey)),
         });
       },
       updateQty: (dishId, quantity, sideKey = "") => {
@@ -60,13 +77,16 @@ export const useCartStore = create<CartState>()(
         }
         set({
           items: get().items.map((i) =>
-            itemKey(i) === `${dishId}::${sideKey}` ? { ...i, quantity } : i,
+            matchKey(i, dishId, sideKey) ? { ...i, quantity } : i,
           ),
         });
       },
       clear: () => set({ items: [] }),
       subtotal: () =>
-        get().items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0),
+        get().items.reduce((sum, i) => {
+          const addons = (i.addons ?? []).reduce((s, a) => s + a.priceDelta, 0);
+          return sum + (i.unitPrice + addons) * i.quantity;
+        }, 0),
     }),
     { name: "menualdia-cart" },
   ),

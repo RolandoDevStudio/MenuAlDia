@@ -11,16 +11,19 @@ import {
   type PhotoFrame,
   type ThemeConfig,
 } from "@/lib/theme";
+import { DishPhotoUpload } from "@/components/admin/dish-photo-upload";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 
 type Props = {
   value: ThemeConfig | Record<string, unknown> | null | undefined;
   onChange: (theme: ThemeConfig) => void;
+  restaurantId?: string;
 };
 
-export function ThemeEditor({ value, onChange }: Props) {
+export function ThemeEditor({ value, onChange, restaurantId }: Props) {
   const [theme, setTheme] = useState<ThemeConfig>(() => parseThemeConfig(value));
 
   function apply(next: ThemeConfig) {
@@ -30,7 +33,14 @@ export function ThemeEditor({ value, onChange }: Props) {
 
   function selectPreset(key: string) {
     const preset = THEME_PRESETS[key];
-    if (preset) apply({ ...preset });
+    if (preset) {
+      apply({
+        ...preset,
+        bannerUrl: theme.bannerUrl,
+        backgroundImageUrl: theme.backgroundImageUrl,
+        useBackgroundImage: theme.useBackgroundImage,
+      });
+    }
   }
 
   const vars = themeToCssVars(theme);
@@ -51,7 +61,7 @@ export function ThemeEditor({ value, onChange }: Props) {
             type="button"
             onClick={() => selectPreset(key)}
             className={cn(
-              "rounded-xl border px-3 py-3 text-left text-sm font-medium",
+              "min-h-11 rounded-xl border px-3 py-3 text-left text-sm font-medium",
               theme.preset === key
                 ? "border-brand bg-brand/5 text-brand-dark"
                 : "border-black/10 bg-surface",
@@ -87,10 +97,36 @@ export function ThemeEditor({ value, onChange }: Props) {
         </div>
       </div>
 
-      <div
-        className="rounded-2xl border border-black/10 p-4"
-        style={vars}
-      >
+      {restaurantId ? (
+        <div className="space-y-4 rounded-2xl border border-black/5 bg-surface p-4">
+          <DishPhotoUpload
+            restaurantId={restaurantId}
+            value={theme.bannerUrl ?? null}
+            onChange={(url) => apply({ ...theme, bannerUrl: url })}
+            label="Banner superior"
+            kind="banner"
+          />
+          <DishPhotoUpload
+            restaurantId={restaurantId}
+            value={theme.backgroundImageUrl ?? null}
+            onChange={(url) => apply({ ...theme, backgroundImageUrl: url })}
+            label="Imagen de fondo"
+            kind="banner"
+          />
+          <div className="flex min-h-11 items-center justify-between">
+            <Label htmlFor="useBg">Usar imagen de fondo</Label>
+            <Switch
+              id="useBg"
+              checked={Boolean(theme.useBackgroundImage)}
+              onCheckedChange={(v) =>
+                apply({ ...theme, useBackgroundImage: v })
+              }
+            />
+          </div>
+        </div>
+      ) : null}
+
+      <div className="rounded-2xl border border-black/10 p-4" style={vars}>
         <p className="text-xs font-semibold uppercase tracking-wide opacity-70">
           Vista previa
         </p>

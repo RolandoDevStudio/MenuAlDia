@@ -20,6 +20,9 @@ export interface ThemeConfig {
   colors: ThemeColors;
   font: ThemeFont;
   photoFrame: PhotoFrame;
+  bannerUrl?: string | null;
+  backgroundImageUrl?: string | null;
+  useBackgroundImage?: boolean;
 }
 
 export const DEFAULT_THEME: ThemeConfig = {
@@ -32,10 +35,14 @@ export const DEFAULT_THEME: ThemeConfig = {
   },
   font: "display_bebas",
   photoFrame: "rounded_modern",
+  bannerUrl: null,
+  backgroundImageUrl: null,
+  useBackgroundImage: false,
 };
 
 export const THEME_PRESETS: Record<string, ThemeConfig> = {
   fonda_calida: {
+    ...DEFAULT_THEME,
     preset: "fonda_calida",
     colors: {
       primary: "#c45c26",
@@ -47,6 +54,7 @@ export const THEME_PRESETS: Record<string, ThemeConfig> = {
     photoFrame: "rounded_modern",
   },
   estetica_suave: {
+    ...DEFAULT_THEME,
     preset: "estetica_suave",
     colors: {
       primary: "#8b5a6b",
@@ -58,6 +66,7 @@ export const THEME_PRESETS: Record<string, ThemeConfig> = {
     photoFrame: "circle_avatar",
   },
   moderno_verde: {
+    ...DEFAULT_THEME,
     preset: "moderno_verde",
     colors: {
       primary: "#2f6b4f",
@@ -69,6 +78,7 @@ export const THEME_PRESETS: Record<string, ThemeConfig> = {
     photoFrame: "floating_shadow",
   },
   rustico_cafe: {
+    ...DEFAULT_THEME,
     preset: "rustico_cafe",
     colors: {
       primary: "#6b3e26",
@@ -82,7 +92,7 @@ export const THEME_PRESETS: Record<string, ThemeConfig> = {
 };
 
 export const PRESET_LABELS: Record<string, string> = {
-  fonda_calida: "Fonda cálida",
+  fonda_calida: "Restaurante cálido",
   estetica_suave: "Estética suave",
   moderno_verde: "Moderno verde",
   rustico_cafe: "Rústico café",
@@ -107,6 +117,9 @@ export function parseThemeConfig(raw: unknown): ThemeConfig {
     colors,
     font: (o.font as ThemeFont) ?? DEFAULT_THEME.font,
     photoFrame: (o.photoFrame as PhotoFrame) ?? DEFAULT_THEME.photoFrame,
+    bannerUrl: o.bannerUrl ?? null,
+    backgroundImageUrl: o.backgroundImageUrl ?? null,
+    useBackgroundImage: Boolean(o.useBackgroundImage),
   };
 }
 

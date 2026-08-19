@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { compressImage, type CompressKind } from "@/lib/compress-image";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 
@@ -9,9 +10,19 @@ type Props = {
   restaurantId: string;
   value: string | null;
   onChange: (url: string | null) => void;
+  label?: string;
+  kind?: CompressKind;
+  folder?: string;
 };
 
-export function DishPhotoUpload({ restaurantId, value, onChange }: Props) {
+export function DishPhotoUpload({
+  restaurantId,
+  value,
+  onChange,
+  label = "Foto",
+  kind = "product",
+  folder = "dish-photos",
+}: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,32 +31,39 @@ export function DishPhotoUpload({ restaurantId, value, onChange }: Props) {
     if (!file) return;
     setUploading(true);
     setError(null);
-    const supabase = createClient();
-    const ext = file.name.split(".").pop() || "jpg";
-    const path = `${restaurantId}/${crypto.randomUUID()}.${ext}`;
-    const { error: uploadError } = await supabase.storage
-      .from("dish-photos")
-      .upload(path, file, { upsert: true, contentType: file.type });
+    try {
+      const compressed = await compressImage(file, kind);
+      const supabase = createClient();
+      const path = `${restaurantId}/${crypto.randomUUID()}.webp`;
+      const { error: uploadError } = await supabase.storage
+        .from(folder)
+        .upload(path, compressed, {
+          upsert: true,
+          contentType: "image/webp",
+        });
 
-    if (uploadError) {
-      setError(uploadError.message);
-      setUploading(false);
-      return;
+      if (uploadError) {
+        setError(uploadError.message);
+        setUploading(false);
+        return;
+      }
+
+      const { data } = supabase.storage.from(folder).getPublicUrl(path);
+      onChange(data.publicUrl);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error al comprimir");
     }
-
-    const { data } = supabase.storage.from("dish-photos").getPublicUrl(path);
-    onChange(data.publicUrl);
     setUploading(false);
   }
 
   return (
     <div className="space-y-2">
-      <Label>Foto</Label>
+      <Label>{label}</Label>
       {value ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={value}
-          alt="Platillo"
+          alt=""
           className="h-36 w-full rounded-xl object-cover"
         />
       ) : (
@@ -56,7 +74,7 @@ export function DishPhotoUpload({ restaurantId, value, onChange }: Props) {
       <input
         ref={inputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp"
+        accept="image/jpeg,image/png,image/webp,image/heic"
         disabled={uploading}
         className="sr-only"
         onChange={(e) => onFile(e.target.files?.[0] ?? null)}
@@ -68,7 +86,7 @@ export function DishPhotoUpload({ restaurantId, value, onChange }: Props) {
         disabled={uploading}
         onClick={() => inputRef.current?.click()}
       >
-        {uploading ? "Subiendo…" : "Elegir foto"}
+        {uploading ? "Comprimiendo y subiendo…" : "Elegir foto"}
       </Button>
       {value ? (
         <Button

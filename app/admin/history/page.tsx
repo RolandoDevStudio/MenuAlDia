@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getSessionRestaurant } from "@/lib/restaurant";
+import { requireTenantSession } from "@/lib/admin-session";
 import { formatMxn } from "@/lib/money";
 import { PLAN_LABELS } from "@/lib/plans";
 import type { AuditLog, PlanType, TenantPayment } from "@/lib/types";
@@ -13,8 +12,7 @@ const METHOD_LABELS: Record<TenantPayment["method"], string> = {
 };
 
 export default async function HistoryPage() {
-  const session = await getSessionRestaurant();
-  if (!session) redirect("/admin/login");
+  const session = await requireTenantSession();
 
   const restaurantId = session.restaurant.id;
   const supabase = await createClient();

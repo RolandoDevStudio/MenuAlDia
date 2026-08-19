@@ -11,9 +11,10 @@ import {
   type PlanType,
 } from "@/lib/plans";
 import { formatMxn } from "@/lib/money";
-import { buildWaMeUrl } from "@/lib/whatsapp";
+import { buildWaMeUrl, SALES_WHATSAPP } from "@/lib/whatsapp";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { LandingNav } from "@/components/marketing/landing-nav";
+import { LandingWhatsAppFab } from "@/components/marketing/landing-whatsapp-fab";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,7 +30,7 @@ const FEATURES: Record<PlanType, string[]> = {
   daily: [
     "Todo lo del Catálogo",
     "Menú del día en 1 toque",
-    "Guarniciones del día",
+    "Combos Express con link viral",
     "Flyer PNG para WhatsApp",
   ],
   pro: [
@@ -66,7 +67,7 @@ export default function HomePage() {
   const [note, setNote] = useState("");
 
   const salesPhone =
-    process.env.NEXT_PUBLIC_SALES_WHATSAPP || "5215512345678";
+    process.env.NEXT_PUBLIC_SALES_WHATSAPP || SALES_WHATSAPP;
 
   const plans = useMemo(
     () => (["catalog", "daily", "pro"] as PlanType[]),
@@ -125,7 +126,7 @@ export default function HomePage() {
           className="mt-3 max-w-lg text-muted motion-safe:animate-[rise_0.7s_ease-out]"
           style={{ animationDelay: "120ms", animationFillMode: "both" }}
         >
-          Hecho para restaurantes, fondas y negocios locales que viven de
+          Hecho para restaurantes y negocios locales que viven de
           listas de difusión — no de apps de delivery.
         </p>
         <div
@@ -133,7 +134,7 @@ export default function HomePage() {
           style={{ animationDelay: "180ms", animationFillMode: "both" }}
         >
           <Link
-            href="/demo-fonda"
+            href="/demo-restaurante"
             className="rounded-lg bg-brand px-5 py-3.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-dark"
           >
             Ver demo restaurante
@@ -186,22 +187,22 @@ export default function HomePage() {
           Pruébalo en vivo
         </h2>
         <p className="mt-1 text-sm text-muted">
-          Dos demos reales: restaurante y estética. Mismo producto, vocabulario
-          distinto según el giro.
+          Tres demos: restaurante, servicios y productos. Mismo producto,
+          vocabulario distinto según el giro.
         </p>
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        <div className="mt-6 grid gap-4 sm:grid-cols-3">
           <Link
-            href="/demo-fonda"
+            href="/demo-restaurante"
             className="group rounded-2xl border border-brand/20 bg-white p-5 transition hover:border-brand hover:shadow-md"
           >
             <p className="text-[10px] font-bold uppercase tracking-wider text-brand">
               Restaurante
             </p>
             <p className="mt-2 font-[family-name:var(--font-display)] text-3xl text-brand-dark group-hover:text-brand">
-              Demo fonda
+              Demo restaurante
             </p>
             <p className="mt-1 text-sm text-muted">
-              Menú del día, guarniciones y pedidos por WhatsApp.
+              Menú del día, combos y pedidos por WhatsApp.
             </p>
           </Link>
           <Link
@@ -209,13 +210,27 @@ export default function HomePage() {
             className="group rounded-2xl border border-black/10 bg-surface/90 p-5 transition hover:border-brand/40 hover:shadow-md"
           >
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted">
-              Estética
+              Servicios
             </p>
             <p className="mt-2 font-[family-name:var(--font-display)] text-3xl text-brand-dark group-hover:text-brand">
               Demo estética
             </p>
             <p className="mt-1 text-sm text-muted">
-              Servicios y paquetes con la misma experiencia de menú digital.
+              Servicios y opciones con menú digital.
+            </p>
+          </Link>
+          <Link
+            href="/demo-productos"
+            className="group rounded-2xl border border-black/10 bg-surface/90 p-5 transition hover:border-brand/40 hover:shadow-md"
+          >
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted">
+              Productos
+            </p>
+            <p className="mt-2 font-[family-name:var(--font-display)] text-3xl text-brand-dark group-hover:text-brand">
+              Demo abarrotes
+            </p>
+            <p className="mt-1 text-sm text-muted">
+              Catálogo retail y colecciones express.
             </p>
           </Link>
         </div>
@@ -353,17 +368,24 @@ export default function HomePage() {
           <Link href="/admin/login" className="hover:text-brand">
             Entrar al admin
           </Link>
-          <Link href="/super-admin" className="hover:text-brand">
-            Super admin
+          <Link href="/privacidad" className="hover:text-brand">
+            Privacidad
           </Link>
-          <Link href="/demo-fonda" className="hover:text-brand">
+          <Link href="/terminos" className="hover:text-brand">
+            Términos
+          </Link>
+          <Link href="/demo-restaurante" className="hover:text-brand">
             Demo restaurante
           </Link>
           <Link href="/demo-estetica" className="hover:text-brand">
             Demo estética
           </Link>
+          <Link href="/demo-productos" className="hover:text-brand">
+            Demo productos
+          </Link>
         </div>
       </footer>
+      <LandingWhatsAppFab />
     </main>
   );
 }

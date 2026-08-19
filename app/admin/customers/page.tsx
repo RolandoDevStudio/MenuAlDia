@@ -1,13 +1,11 @@
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getSessionRestaurant } from "@/lib/restaurant";
+import { requireTenantSession } from "@/lib/admin-session";
 import { PlanGate } from "@/components/admin/plan-gate";
 import { can } from "@/lib/plans";
 import type { Customer } from "@/lib/types";
 
 export default async function CustomersPage() {
-  const session = await getSessionRestaurant();
-  if (!session) redirect("/admin/login");
+  const session = await requireTenantSession();
   const plan = session.restaurant.plan_type || "catalog";
   if (!can(plan, "crm")) {
     return (

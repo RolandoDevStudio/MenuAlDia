@@ -7,6 +7,8 @@ type Props = {
   sides: Dish[];
   packagePrice: number;
   id?: string;
+  headline?: string;
+  sidesTitle?: string;
 };
 
 /** Fixed 1080×1350 canvas for WhatsApp flyers (4:5). */
@@ -16,6 +18,8 @@ export function FlyerCanvas({
   sides,
   packagePrice,
   id = "flyer-canvas",
+  headline = "MENÚ DEL DÍA",
+  sidesTitle = "Incluye guarniciones",
 }: Props) {
   return (
     <div
@@ -49,7 +53,7 @@ export function FlyerCanvas({
             className="mt-6 text-[56px] leading-none text-[#1c1410]"
             style={{ fontFamily: "var(--font-display), sans-serif" }}
           >
-            MENÚ DEL DÍA
+            {headline}
           </p>
         </div>
 
@@ -82,7 +86,7 @@ export function FlyerCanvas({
         {sides.length > 0 ? (
           <div className="mt-8 rounded-3xl bg-white/80 px-8 py-5">
             <p className="text-xl font-bold uppercase tracking-wide text-[#8b3a14]">
-              Incluye guarniciones
+              {sidesTitle}
             </p>
             <p className="mt-2 text-2xl leading-snug">
               {sides.map((s) => s.name).join(" · ")}

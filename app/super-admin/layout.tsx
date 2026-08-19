@@ -31,6 +31,12 @@ export default async function SuperAdminLayout({
           >
             Plantillas
           </Link>
+          <Link
+            href="/super-admin/settings"
+            className="text-muted hover:text-brand"
+          >
+            CMS
+          </Link>
           <Link href="/admin" className="text-muted hover:text-brand">
             Admin
           </Link>

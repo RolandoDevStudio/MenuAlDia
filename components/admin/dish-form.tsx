@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import type { BusinessType, Category, Dish, PlanType } from "@/lib/types";
+import type { BusinessType, Category, Dish, DishAddon, PlanType } from "@/lib/types";
 import { dishLimit } from "@/lib/plans";
 import { label } from "@/lib/business-labels";
 import { dishFormSchema, fieldErrorsFromZod } from "@/lib/validations";
@@ -47,9 +47,36 @@ export function DishForm({
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [addons, setAddons] = useState<DishAddon[]>([]);
+  const [addonName, setAddonName] = useState("");
+  const [addonPrice, setAddonPrice] = useState("0");
 
   const limit = dishLimit(planType);
   const atLimit = !dish && limit != null && currentDishCount >= limit;
+
+  const loadAddons = useCallback(async () => {
+    if (!dish) return;
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("dish_addons")
+      .select("*")
+      .eq("dish_id", dish.id)
+      .is("archived_at", null)
+      .order("sort_order");
+    setAddons((data ?? []) as DishAddon[]);
+  }, [dish]);
+
+  useEffect(() => {
+    void loadAddons();
+  }, [loadAddons]);
+
+  async function revalidate() {
+    await fetch("/api/revalidate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug: publicSlug }),
+    });
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -99,9 +126,14 @@ export function DishForm({
       photo_url: parsed.data.photo_url || null,
     };
 
-    const { error: dbError } = dish
-      ? await supabase.from("dishes").update(payload).eq("id", dish.id)
-      : await supabase.from("dishes").insert(payload);
+    const { data: saved, error: dbError } = dish
+      ? await supabase
+          .from("dishes")
+          .update(payload)
+          .eq("id", dish.id)
+          .select("id")
+          .single()
+      : await supabase.from("dishes").insert(payload).select("id").single();
 
     setSaving(false);
     if (dbError) {
@@ -109,34 +141,68 @@ export function DishForm({
       return;
     }
 
-    await fetch("/api/revalidate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ slug: publicSlug }),
-    });
-    router.push("/admin/catalog");
-    router.refresh();
+    await revalidate();
+    if (dish) {
+      router.refresh();
+      setFormError(null);
+    } else if (saved?.id) {
+      router.push(`/admin/catalog/${saved.id}`);
+      router.refresh();
+    } else {
+      router.push("/admin/catalog");
+      router.refresh();
+    }
   }
 
-  async function onDelete() {
+  async function onArchive() {
     if (!dish) return;
-    if (!confirm(`¿Eliminar este ${dishLabel.toLowerCase()}?`)) return;
+    if (!confirm(`¿Archivar este ${dishLabel.toLowerCase()}? No se borrará el historial.`))
+      return;
     setDeleting(true);
     setFormError(null);
     const supabase = createClient();
-    const { error } = await supabase.from("dishes").delete().eq("id", dish.id);
+    const { error } = await supabase
+      .from("dishes")
+      .update({ archived_at: new Date().toISOString(), is_active: false })
+      .eq("id", dish.id);
     if (error) {
       setFormError(error.message);
       setDeleting(false);
       return;
     }
-    await fetch("/api/revalidate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ slug: publicSlug }),
-    });
+    await revalidate();
     router.push("/admin/catalog");
     router.refresh();
+  }
+
+  async function addAddon() {
+    if (!dish || !addonName.trim()) return;
+    const supabase = createClient();
+    const { error } = await supabase.from("dish_addons").insert({
+      dish_id: dish.id,
+      name: addonName.trim(),
+      price_delta: Number(addonPrice) || 0,
+      sort_order: addons.length,
+      is_active: true,
+    });
+    if (error) {
+      setFormError(error.message);
+      return;
+    }
+    setAddonName("");
+    setAddonPrice("0");
+    await loadAddons();
+    await revalidate();
+  }
+
+  async function archiveAddon(id: string) {
+    const supabase = createClient();
+    await supabase
+      .from("dish_addons")
+      .update({ archived_at: new Date().toISOString(), is_active: false })
+      .eq("id", id);
+    await loadAddons();
+    await revalidate();
   }
 
   if (atLimit) {
@@ -216,27 +282,89 @@ export function DishForm({
         </select>
       </div>
       <div className="flex min-h-14 items-center justify-between rounded-xl border border-black/5 bg-surface px-3 py-3">
-        <Label htmlFor="isSide">Es {sideLabel}</Label>
+        <Label htmlFor="isSide">Es {sideLabel} (legacy)</Label>
         <Switch id="isSide" checked={isSide} onCheckedChange={setIsSide} />
       </div>
       <div className="flex min-h-14 items-center justify-between rounded-xl border border-black/5 bg-surface px-3 py-3">
         <Label htmlFor="isActive">Activo en catálogo</Label>
         <Switch id="isActive" checked={isActive} onCheckedChange={setIsActive} />
       </div>
+
+      {dish ? (
+        <div className="space-y-3 rounded-2xl border border-black/5 bg-surface p-4">
+          <h2 className="text-sm font-semibold">{sideLabel}s / adicionales</h2>
+          <p className="text-xs text-muted">
+            Opciones propias de este {dishLabel.toLowerCase()}. Guarda el
+            producto primero si es nuevo.
+          </p>
+          <ul className="space-y-2">
+            {addons.map((a) => (
+              <li
+                key={a.id}
+                className="flex min-h-11 items-center justify-between gap-2 rounded-lg bg-background/70 px-3 py-2 text-sm"
+              >
+                <span>
+                  {a.name}
+                  {Number(a.price_delta) > 0
+                    ? ` (+$${Number(a.price_delta)})`
+                    : ""}
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => void archiveAddon(a.id)}
+                >
+                  Archivar
+                </Button>
+              </li>
+            ))}
+          </ul>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Input
+              placeholder="Nombre"
+              value={addonName}
+              onChange={(e) => setAddonName(e.target.value)}
+              className="min-h-11"
+            />
+            <Input
+              placeholder="+$"
+              inputMode="decimal"
+              value={addonPrice}
+              onChange={(e) => setAddonPrice(e.target.value)}
+              className="min-h-11 sm:w-24"
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              className="min-h-11"
+              onClick={() => void addAddon()}
+            >
+              Agregar
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <p className="text-xs text-muted">
+          Después de crear el {dishLabel.toLowerCase()} podrás agregar
+          adicionales.
+        </p>
+      )}
+
       {formError ? <p className="text-sm text-red-600">{formError}</p> : null}
       <div className="sticky bottom-0 space-y-2 bg-background/95 py-3 backdrop-blur">
-        <Button type="submit" className="w-full" disabled={saving || deleting}>
+        <Button type="submit" className="w-full min-h-11" disabled={saving || deleting}>
           {saving ? "Guardando…" : "Guardar"}
         </Button>
         {dish ? (
           <Button
             type="button"
             variant="destructive"
-            className="w-full"
-            onClick={onDelete}
+            className="w-full min-h-11"
+            onClick={onArchive}
             disabled={saving || deleting}
           >
-            {deleting ? "Eliminando…" : "Eliminar"}
+            {deleting ? "Archivando…" : "Archivar"}
           </Button>
         ) : null}
       </div>

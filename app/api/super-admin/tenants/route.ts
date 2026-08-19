@@ -66,6 +66,8 @@ const RESTAURANT_FIELDS = [
   "is_active",
   "subscription_end_date",
   "business_type",
+  "city",
+  "state",
 ] as const;
 
 export async function PATCH(request: Request) {
@@ -83,6 +85,8 @@ export async function PATCH(request: Request) {
     is_active?: boolean;
     subscription_end_date?: string | null;
     business_type?: string;
+    city?: string;
+    state?: string;
     owner_email?: string;
     owner_password?: string;
   };
@@ -118,6 +122,8 @@ export async function PATCH(request: Request) {
   if (typeof body.is_active === "boolean") updates.is_active = body.is_active;
   if (typeof body.business_type === "string")
     updates.business_type = body.business_type;
+  if (typeof body.city === "string") updates.city = body.city.trim();
+  if (typeof body.state === "string") updates.state = body.state.trim();
   if (body.subscription_end_date !== undefined) {
     updates.subscription_end_date = body.subscription_end_date;
   }

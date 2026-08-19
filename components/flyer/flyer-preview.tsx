@@ -9,6 +9,8 @@ type Props = {
   dishes: Dish[];
   sides: Dish[];
   packagePrice: number;
+  headline?: string;
+  sidesTitle?: string;
 };
 
 export function FlyerPreview({
@@ -16,6 +18,8 @@ export function FlyerPreview({
   dishes,
   sides,
   packagePrice,
+  headline,
+  sidesTitle,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.3);
@@ -37,7 +41,6 @@ export function FlyerPreview({
 
   return (
     <>
-      {/* Off-screen real-size node for html-to-image (no CSS transform) */}
       <div
         className="pointer-events-none fixed left-[-10000px] top-0"
         aria-hidden
@@ -47,6 +50,8 @@ export function FlyerPreview({
           dishes={dishes}
           sides={sides}
           packagePrice={packagePrice}
+          headline={headline}
+          sidesTitle={sidesTitle}
         />
       </div>
 
@@ -62,12 +67,13 @@ export function FlyerPreview({
               transform: `scale(${scale})`,
             }}
           >
-            {/* Preview-only duplicate without conflicting id — capture uses off-screen */}
             <FlyerCanvas
               restaurant={restaurant}
               dishes={dishes}
               sides={sides}
               packagePrice={packagePrice}
+              headline={headline}
+              sidesTitle={sidesTitle}
               id="flyer-preview"
             />
           </div>

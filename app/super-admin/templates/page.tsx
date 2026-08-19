@@ -222,7 +222,7 @@ export default function TemplatesPage() {
                               },
                             }))
                           }
-                          placeholder="demo-fonda"
+                          placeholder="demo-restaurante"
                         />
                         <Button
                           type="button"

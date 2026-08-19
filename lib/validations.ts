@@ -61,6 +61,8 @@ export const restaurantSettingsSchema = z.object({
     .url("Enlace de Maps inválido")
     .optional()
     .or(z.literal("")),
+  city: z.string().optional().default(""),
+  state: z.string().optional().default(""),
   schedule_text: z.string().min(1, "Escribe el horario"),
   shipping_cost: z.coerce.number().min(0, "El envío no puede ser negativo"),
   free_shipping: z.boolean(),

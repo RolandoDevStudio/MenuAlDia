@@ -29,7 +29,7 @@ Completa `NEXT_PUBLIC_SUPABASE_*`, `SUPABASE_SERVICE_ROLE_KEY` (super-admin: clo
 - Dashboard → Storage → Configuration → CORS
 - Usa los orígenes de [`supabase/storage-cors.json`](supabase/storage-cors.json) (`localhost:3000`, `menualdia.app`, `*.vercel.app`)
 
-4. Vincula un owner al demo fonda:
+4. Vincula un owner al demo restaurante:
 
 ```sql
 insert into public.restaurant_members (user_id, restaurant_id, role)
@@ -60,16 +60,17 @@ npm run dev
 | Ruta | Uso |
 |------|-----|
 | `/` | Landing CRO + pricing |
-| `/demo-fonda` | Demo fonda |
-| `/demo-estetica` | Demo estética |
-| `/demo` | Redirect → `/demo-fonda` |
+| `/demo-restaurante` | Demo restaurante |
+| `/demo-estetica` | Demo servicios |
+| `/demo-productos` | Demo productos / retail |
+| `/demo` | Redirect → `/demo-restaurante` |
 | `/admin/login` | Admin tenant |
 | `/super-admin` | Plataforma (rol `super_admin`) |
 | `/super-admin/tenants` | Tabla CRUD suscriptores |
 | `/super-admin/templates` | Plantillas giro × plan |
 | `/admin/history` | Historial de cambios y pagos (tenant) |
 
-Giros (`business_type`): `restaurante`, `estetica`, `tienda`, `servicios` — cambian el vocabulario de la UI (platillos vs servicios, etc.).
+Giros (`business_type`): `restaurante`, `servicios`, `productos` — cambian el vocabulario de la UI.
 
 ## Feature gates por plan
 
@@ -89,7 +90,7 @@ Cobro: manual vía super-admin (`plan_type`, `subscription_end_date`, `is_active
 - [ ] Env en Vercel (`NEXT_PUBLIC_*`)
 - [ ] Smoke RLS: anon no ve tenants con `is_active=false` o suscripción vencida
 - [ ] Usuario `super_admin` creado
-- [ ] Demos `/demo-fonda` y `/demo-estetica` en móvil
+- [ ] Demos `/demo-restaurante` y `/demo-estetica` en móvil
 - [ ] Flyer export con fotos del bucket (CORS)
 
 ## Estructura

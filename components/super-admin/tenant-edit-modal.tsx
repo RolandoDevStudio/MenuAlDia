@@ -54,6 +54,8 @@ export function TenantEditModal({
   const [planType, setPlanType] = useState<PlanType>("catalog");
   const [businessType, setBusinessType] =
     useState<BusinessType>("restaurante");
+  const [city, setCity] = useState("");
+  const [stateMx, setStateMx] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [endDate, setEndDate] = useState("");
   const [email, setEmail] = useState("");
@@ -87,6 +89,8 @@ export function TenantEditModal({
     setBusinessType(
       (restaurant.business_type || "restaurante") as BusinessType,
     );
+    setCity(restaurant.city ?? "");
+    setStateMx(restaurant.state ?? "");
     setIsActive(restaurant.is_active !== false);
     setEndDate(restaurant.subscription_end_date?.slice(0, 10) ?? "");
     setEmail(ownerEmail ?? "");
@@ -152,6 +156,8 @@ export function TenantEditModal({
       phone_whatsapp: phone,
       plan_type: planType,
       business_type: businessType,
+      city,
+      state: stateMx,
       is_active: isActive,
       subscription_end_date: endDate
         ? new Date(endDate + "T23:59:59").toISOString()
@@ -313,6 +319,23 @@ export function TenantEditModal({
                     </option>
                   ))}
                 </select>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Ciudad</Label>
+                <Input
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Estado</Label>
+                <Input
+                  value={stateMx}
+                  onChange={(e) => setStateMx(e.target.value)}
+                />
               </div>
             </div>
 

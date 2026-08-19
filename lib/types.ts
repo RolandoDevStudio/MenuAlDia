@@ -7,7 +7,7 @@ export type MemberRole = "owner" | "staff" | "super_admin";
 
 export type PaymentMethod = "cash" | "transfer";
 
-export type BusinessType = "restaurante" | "estetica" | "tienda" | "servicios";
+export type BusinessType = "restaurante" | "servicios" | "productos";
 
 export type { PlanType, ThemeConfig };
 
@@ -20,6 +20,8 @@ export interface Restaurant {
   phone_whatsapp: string;
   address: string;
   maps_url: string | null;
+  city: string;
+  state: string;
   schedule_text: string;
   shipping_cost: number;
   free_shipping: boolean;
@@ -97,6 +99,43 @@ export interface Dish {
   is_side: boolean;
   is_active: boolean;
   sort_order: number;
+  archived_at?: string | null;
+}
+
+export interface DishAddon {
+  id: string;
+  dish_id: string;
+  name: string;
+  price_delta: number;
+  sort_order: number;
+  is_active: boolean;
+  archived_at?: string | null;
+  created_at?: string;
+}
+
+export interface Combo {
+  id: string;
+  restaurant_id: string;
+  slug: string;
+  title: string;
+  description: string;
+  photo_url: string | null;
+  fixed_price: number | null;
+  is_active: boolean;
+  sort_order: number;
+  archived_at?: string | null;
+  created_at?: string;
+}
+
+export interface ComboItem {
+  combo_id: string;
+  dish_id: string;
+  quantity: number;
+  sort_order: number;
+}
+
+export interface ComboWithItems extends Combo {
+  items: Array<ComboItem & { dish: Dish }>;
 }
 
 export interface DailyMenuSelection {
@@ -165,14 +204,25 @@ export interface OrderLogPayload {
   paymentMethod?: PaymentMethod;
 }
 
+export interface CartAddon {
+  id: string;
+  name: string;
+  priceDelta: number;
+}
+
 export interface CartItem {
   dishId: string;
   name: string;
   unitPrice: number;
   quantity: number;
+  /** @deprecated use addons */
   sideIds?: string[];
+  /** @deprecated use addons */
   sideNames?: string[];
+  addons?: CartAddon[];
   isDailyMenu?: boolean;
+  comboId?: string;
+  comboTitle?: string;
 }
 
 export interface CheckoutFormValues {
@@ -189,6 +239,8 @@ export interface PublicRestaurantMenu {
   restaurant: Restaurant;
   categories: Category[];
   dishes: Dish[];
+  addonsByDishId: Record<string, DishAddon[]>;
+  combos: ComboWithItems[];
   dailyMenu: DailyMenuSelection | null;
   dailyDishes: Dish[];
   dailySides: Dish[];

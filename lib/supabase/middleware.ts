@@ -1,6 +1,25 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+function copyCookies(from: NextResponse, to: NextResponse) {
+  from.cookies.getAll().forEach((cookie) => {
+    to.cookies.set(cookie.name, cookie.value);
+  });
+}
+
+function redirectPreservingSession(
+  request: NextRequest,
+  pathname: string,
+  sessionResponse: NextResponse,
+) {
+  const url = request.nextUrl.clone();
+  url.pathname = pathname;
+  url.search = "";
+  const redirectResponse = NextResponse.redirect(url);
+  copyCookies(sessionResponse, redirectResponse);
+  return redirectResponse;
+}
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
@@ -31,22 +50,41 @@ export async function updateSession(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
   const isAdmin = path.startsWith("/admin");
-  const isLogin = path.startsWith("/admin/login");
+  const isLogin = path === "/admin/login" || path.startsWith("/admin/login/");
+  const isNoTenant =
+    path === "/admin/sin-negocio" || path.startsWith("/admin/sin-negocio/");
   const isSuperAdmin = path.startsWith("/super-admin");
 
-  if ((isAdmin && !isLogin && !user) || (isSuperAdmin && !user)) {
+  if ((isAdmin && !isLogin && !isNoTenant && !user) || (isSuperAdmin && !user)) {
     const url = request.nextUrl.clone();
     url.pathname = "/admin/login";
     url.searchParams.set("next", path);
-    return NextResponse.redirect(url);
+    const redirectResponse = NextResponse.redirect(url);
+    copyCookies(supabaseResponse, redirectResponse);
+    return redirectResponse;
   }
 
   if (isLogin && user) {
-    const url = request.nextUrl.clone();
     const next = request.nextUrl.searchParams.get("next");
-    url.pathname = next?.startsWith("/") ? next : "/admin";
-    url.search = "";
-    return NextResponse.redirect(url);
+    let dest =
+      next && next.startsWith("/") && !next.startsWith("//") ? next : null;
+
+    if (
+      !dest ||
+      dest.startsWith("/admin/login") ||
+      dest.startsWith("/admin/sin-negocio")
+    ) {
+      const { data: sa } = await supabase
+        .from("restaurant_members")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "super_admin")
+        .limit(1)
+        .maybeSingle();
+      dest = sa ? "/super-admin" : "/admin";
+    }
+
+    return redirectPreservingSession(request, dest, supabaseResponse);
   }
 
   if (isSuperAdmin && user) {
@@ -58,9 +96,7 @@ export async function updateSession(request: NextRequest) {
       .limit(1)
       .maybeSingle();
     if (!data) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/admin";
-      return NextResponse.redirect(url);
+      return redirectPreservingSession(request, "/admin", supabaseResponse);
     }
   }
 

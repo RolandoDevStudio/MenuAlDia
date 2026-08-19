@@ -1,8 +1,7 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { getSessionRestaurant } from "@/lib/restaurant";
+import { requireTenantSession } from "@/lib/admin-session";
 import { dishLimit } from "@/lib/plans";
 import { formatMxn } from "@/lib/money";
 import { label, labelsFor } from "@/lib/business-labels";
@@ -10,8 +9,7 @@ import { Button } from "@/components/ui/button";
 import type { Dish } from "@/lib/types";
 
 export default async function CatalogPage() {
-  const session = await getSessionRestaurant();
-  if (!session) redirect("/admin/login");
+  const session = await requireTenantSession();
 
   const businessType = session.restaurant.business_type;
   const labels = labelsFor(businessType);
@@ -21,6 +19,7 @@ export default async function CatalogPage() {
     .from("dishes")
     .select("*")
     .eq("restaurant_id", session.restaurant.id)
+    .is("archived_at", null)
     .order("sort_order");
 
   const list = (dishes ?? []) as Dish[];

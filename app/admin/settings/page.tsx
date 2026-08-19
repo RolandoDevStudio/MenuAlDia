@@ -118,6 +118,8 @@ export default function SettingsPage() {
       phone_whatsapp: fd.get("phone_whatsapp"),
       address: fd.get("address"),
       maps_url: fd.get("maps_url") || "",
+      city: fd.get("city") || "",
+      state: fd.get("state") || "",
       schedule_text: fd.get("schedule_text"),
       shipping_cost: fd.get("shipping_cost"),
       free_shipping: freeShipping,
@@ -181,7 +183,11 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <ThemeEditor value={theme} onChange={setTheme} />
+      <ThemeEditor
+        value={theme}
+        onChange={setTheme}
+        restaurantId={restaurant.id}
+      />
 
       <form onSubmit={onSubmit} className="space-y-4">
         {fields.map(([id, label, value]) => (
@@ -199,6 +205,26 @@ export default function SettingsPage() {
             ) : null}
           </div>
         ))}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="city">Ciudad</Label>
+            <Input
+              id="city"
+              name="city"
+              defaultValue={restaurant.city ?? ""}
+              className="min-h-11"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="state">Estado</Label>
+            <Input
+              id="state"
+              name="state"
+              defaultValue={restaurant.state ?? ""}
+              className="min-h-11"
+            />
+          </div>
+        </div>
         <div className="flex min-h-14 items-center justify-between rounded-xl border border-black/5 bg-surface px-3 py-3">
           <Label htmlFor="free_shipping">Envío gratis</Label>
           <Switch

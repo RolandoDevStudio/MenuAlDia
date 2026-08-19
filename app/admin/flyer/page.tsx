@@ -1,15 +1,16 @@
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getSessionRestaurant } from "@/lib/restaurant";
+import { requireTenantSession } from "@/lib/admin-session";
 import { FlyerPreview } from "@/components/flyer/flyer-preview";
 import { FlyerExportButton } from "@/components/flyer/flyer-export-button";
 import { PlanGate } from "@/components/admin/plan-gate";
 import { can } from "@/lib/plans";
 import type { Dish } from "@/lib/types";
 
-export default async function FlyerPage() {
-  const session = await getSessionRestaurant();
-  if (!session) redirect("/admin/login");
+type Props = { searchParams: Promise<{ combo?: string }> };
+
+export default async function FlyerPage({ searchParams }: Props) {
+  const session = await requireTenantSession();
+  const sp = await searchParams;
 
   const plan = session.restaurant.plan_type || "catalog";
   if (!can(plan, "flyer")) {
@@ -21,6 +22,66 @@ export default async function FlyerPage() {
   }
 
   const supabase = await createClient();
+
+  if (sp.combo) {
+    const { data: combo } = await supabase
+      .from("combos")
+      .select("*")
+      .eq("id", sp.combo)
+      .eq("restaurant_id", session.restaurant.id)
+      .is("archived_at", null)
+      .maybeSingle();
+
+    if (!combo) {
+      return (
+        <p className="text-sm text-muted">
+          Combo no encontrado. Vuelve a Combos y elige “Usar en Flyer”.
+        </p>
+      );
+    }
+
+    const { data: links } = await supabase
+      .from("combo_items")
+      .select("dish_id, quantity")
+      .eq("combo_id", combo.id)
+      .order("sort_order");
+
+    const dishIds = (links ?? []).map((l) => l.dish_id);
+    const { data: dishes } = dishIds.length
+      ? await supabase.from("dishes").select("*").in("id", dishIds)
+      : { data: [] as Dish[] };
+
+    const map = new Map(((dishes ?? []) as Dish[]).map((d) => [d.id, d]));
+    const comboDishes = (links ?? [])
+      .map((l) => map.get(l.dish_id))
+      .filter(Boolean) as Dish[];
+
+    const price =
+      combo.fixed_price != null
+        ? Number(combo.fixed_price)
+        : comboDishes.reduce((s, d) => s + Number(d.price), 0);
+
+    return (
+      <div className="space-y-4">
+        <div>
+          <h1 className="text-lg font-semibold">Flyer — {combo.title}</h1>
+          <p className="text-sm text-muted">
+            Promo del combo. Descarga y difunde en WhatsApp.
+          </p>
+        </div>
+        <FlyerExportButton slug={session.restaurant.slug} />
+        <FlyerPreview
+          restaurant={session.restaurant}
+          dishes={comboDishes}
+          sides={[]}
+          packagePrice={price}
+          headline={combo.title.toUpperCase()}
+          sidesTitle="Incluye"
+        />
+      </div>
+    );
+  }
+
   const { data: selection } = await supabase
     .from("daily_menu_selections")
     .select("*")
@@ -30,7 +91,8 @@ export default async function FlyerPage() {
   if (!selection) {
     return (
       <p className="text-sm text-muted">
-        Primero configura el menú del día en el panel principal.
+        Primero configura el menú del día en el panel principal, o crea un combo
+        y elige “Usar en Flyer”.
       </p>
     );
   }
@@ -48,7 +110,8 @@ export default async function FlyerPage() {
       supabase
         .from("dishes")
         .select("*")
-        .eq("restaurant_id", session.restaurant.id),
+        .eq("restaurant_id", session.restaurant.id)
+        .is("archived_at", null),
     ]);
 
   const map = new Map(((dishes ?? []) as Dish[]).map((d) => [d.id, d]));

@@ -189,35 +189,58 @@ export async function POST(request: Request) {
 
   const restaurantId = created!.id as string;
 
+  let ownerUserId: string | null = null;
+
   const { data: authUser, error: authErr } = await admin.auth.admin.createUser({
     email: ownerEmail,
     password: ownerPassword,
     email_confirm: true,
   });
 
-  if (authErr || !authUser.user) {
-    return NextResponse.json(
-      {
-        error: `Tenant creado pero falló el usuario: ${authErr?.message ?? "unknown"}`,
-        slug: created!.slug,
-        id: restaurantId,
-      },
-      { status: 500 },
+  if (authUser?.user) {
+    ownerUserId = authUser.user.id;
+  } else {
+    // Email ya existe: localizar y vincular (y actualizar password)
+    const { data: listed } = await admin.auth.admin.listUsers({
+      page: 1,
+      perPage: 200,
+    });
+    const existing = listed?.users?.find(
+      (u) => u.email?.toLowerCase() === ownerEmail,
     );
+    if (!existing) {
+      return NextResponse.json(
+        {
+          error: `Tenant creado pero falló el usuario: ${authErr?.message ?? "unknown"}`,
+          slug: created!.slug,
+          id: restaurantId,
+        },
+        { status: 500 },
+      );
+    }
+    ownerUserId = existing.id;
+    await admin.auth.admin.updateUserById(existing.id, {
+      password: ownerPassword,
+      email_confirm: true,
+    });
   }
 
-  const { error: memErr } = await admin.from("restaurant_members").insert({
-    user_id: authUser.user.id,
-    restaurant_id: restaurantId,
-    role: "owner",
-  });
+  const { error: memErr } = await admin.from("restaurant_members").upsert(
+    {
+      user_id: ownerUserId,
+      restaurant_id: restaurantId,
+      role: "owner",
+    },
+    { onConflict: "user_id,restaurant_id" },
+  );
 
   if (memErr) {
     return NextResponse.json(
       {
-        error: `Usuario creado pero no se vinculó: ${memErr.message}`,
+        error: `Usuario listo pero no se vinculó al negocio: ${memErr.message}`,
         slug: created!.slug,
         id: restaurantId,
+        owner_user_id: ownerUserId,
       },
       { status: 500 },
     );

@@ -8,6 +8,7 @@ import {
   ImageIcon,
   LayoutGrid,
   LogOut,
+  Package,
   Settings,
   ShoppingBag,
   Users,
@@ -26,7 +27,7 @@ type NavItem = {
   href: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  feature?: "daily_menu" | "flyer" | "crm" | "analytics";
+  feature?: "daily_menu" | "flyer" | "combos" | "crm" | "analytics";
 };
 
 export function AdminShell({
@@ -64,6 +65,12 @@ export function AdminShell({
       feature: "daily_menu",
     },
     { href: "/admin/catalog", label: catalogLabel, icon: LayoutGrid },
+    {
+      href: "/admin/combos",
+      label: label(businessType, "combos"),
+      icon: Package,
+      feature: "combos",
+    },
     { href: "/admin/flyer", label: "Flyer", icon: ImageIcon, feature: "flyer" },
     { href: "/admin/orders", label: "Pedidos", icon: ShoppingBag, feature: "crm" },
     { href: "/admin/customers", label: "Clientes", icon: Users, feature: "crm" },

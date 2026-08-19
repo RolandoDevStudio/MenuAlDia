@@ -212,7 +212,7 @@ export function CreateAdminModal({
                 list="create-admin-slugs"
                 value={sourceSlug}
                 onChange={(e) => setSourceSlug(e.target.value)}
-                placeholder="demo-fonda"
+                placeholder="demo-restaurante"
               />
               <datalist id="create-admin-slugs">
                 {existingSlugs.map((slug) => (
@@ -228,7 +228,7 @@ export function CreateAdminModal({
               <Input
                 value={newSlug}
                 onChange={(e) => setNewSlug(e.target.value)}
-                placeholder="mi-fonda"
+                placeholder="mi-restaurante"
               />
             </div>
             <div className="space-y-1.5">
@@ -236,7 +236,7 @@ export function CreateAdminModal({
               <Input
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                placeholder="Mi Fonda"
+                placeholder="Mi Restaurante"
               />
             </div>
           </div>

@@ -26,8 +26,23 @@ type Props = {
   shipping: number;
 };
 
-function sideKeyOf(sideIds?: string[]) {
-  return [...(sideIds ?? [])].sort().join(",");
+function addonKeyOf(item: {
+  addons?: { id: string }[];
+  sideIds?: string[];
+}) {
+  if (item.addons?.length) {
+    return [...item.addons.map((a) => a.id)].sort().join(",");
+  }
+  return [...(item.sideIds ?? [])].sort().join(",");
+}
+
+function lineTotal(item: {
+  unitPrice: number;
+  quantity: number;
+  addons?: { priceDelta: number }[];
+}) {
+  const extras = (item.addons ?? []).reduce((s, a) => s + a.priceDelta, 0);
+  return (item.unitPrice + extras) * item.quantity;
 }
 
 export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
@@ -149,29 +164,36 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
 
             <ul className="space-y-3">
               {items.map((item) => {
-                const sideKey = sideKeyOf(item.sideIds);
+                const sideKey = addonKeyOf(item);
+                const names =
+                  item.addons?.map((a) => a.name) ?? item.sideNames ?? [];
                 return (
                   <li
-                    key={`${item.dishId}::${sideKey}`}
+                    key={`${item.comboId ?? ""}::${item.dishId}::${sideKey}`}
                     className="rounded-xl border border-black/5 bg-background/60 p-3"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
+                        {item.comboTitle ? (
+                          <p className="text-[10px] font-bold uppercase tracking-wide text-brand">
+                            {item.comboTitle}
+                          </p>
+                        ) : null}
                         <p className="font-medium leading-snug">{item.name}</p>
-                        {item.sideNames?.length ? (
+                        {names.length ? (
                           <p className="mt-0.5 text-xs text-muted">
-                            + {item.sideNames.join(", ")}
+                            + {names.join(", ")}
                           </p>
                         ) : null}
                         <p className="mt-1 text-sm text-brand">
-                          {formatMxn(item.unitPrice * item.quantity)}
+                          {formatMxn(lineTotal(item))}
                         </p>
                       </div>
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="shrink-0 text-red-600"
+                        className="min-h-11 min-w-11 shrink-0 text-red-600"
                         aria-label="Quitar"
                         onClick={() => removeItem(item.dishId, sideKey)}
                       >

@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getSessionRestaurant } from "@/lib/restaurant";
+import { requireTenantSession } from "@/lib/admin-session";
 import { DailyMenuToggles } from "@/components/admin/daily-menu-toggles";
 import { PlanGate } from "@/components/admin/plan-gate";
 import { Button } from "@/components/ui/button";
@@ -10,8 +9,7 @@ import { labelsFor } from "@/lib/business-labels";
 import type { Dish } from "@/lib/types";
 
 export default async function AdminDashboardPage() {
-  const session = await getSessionRestaurant();
-  if (!session) redirect("/admin/login");
+  const session = await requireTenantSession();
 
   const plan = session.restaurant.plan_type || "catalog";
   const businessType = session.restaurant.business_type;

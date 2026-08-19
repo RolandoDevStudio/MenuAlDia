@@ -1,13 +1,16 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireSuperAdmin } from "@/lib/super-admin";
-import { PLAN_PRICES_MXN, type PlanType } from "@/lib/plans";
+import { getPlanPrices, type PlanType } from "@/lib/plans";
 import { formatMxn } from "@/lib/money";
 import type { Restaurant } from "@/lib/types";
 
 export default async function SuperAdminHomePage() {
   await requireSuperAdmin();
   const supabase = await createClient();
-  const { data } = await supabase.from("restaurants").select("*");
+  const [{ data }, planPrices] = await Promise.all([
+    supabase.from("restaurants").select("*"),
+    getPlanPrices(),
+  ]);
   const restaurants = (data ?? []) as Restaurant[];
 
   const now = Date.now();
@@ -17,10 +20,10 @@ export default async function SuperAdminHomePage() {
       r.is_active !== false &&
       new Date(r.subscription_end_date).getTime() > now,
   );
-  const mrr = active.reduce(
-    (sum, r) => sum + (PLAN_PRICES_MXN[(r.plan_type as PlanType) || "catalog"] ?? 0),
-    0,
-  );
+  const mrr = active.reduce((sum, r) => {
+    const plan = (r.plan_type as PlanType) || "catalog";
+    return sum + (planPrices[plan]?.monthly ?? 0);
+  }, 0);
   const expiring = restaurants.filter((r) => {
     const t = new Date(r.subscription_end_date).getTime();
     return t > now && t <= in7;
