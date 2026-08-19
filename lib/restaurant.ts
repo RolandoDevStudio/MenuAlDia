@@ -95,7 +95,9 @@ async function fetchPublicMenuBySlug(
 
   const { data: restaurant, error: restaurantError } = await supabase
     .from("restaurants")
-    .select("*")
+    .select(
+      "id, slug, name, slogan, logo_url, phone_whatsapp, address, maps_url, city, state, schedule_text, shipping_cost, free_shipping, created_at, plan_type, is_active, subscription_end_date, theme_config, business_type, owner_name",
+    )
     .eq("slug", slug)
     .maybeSingle();
 
@@ -115,24 +117,30 @@ async function fetchPublicMenuBySlug(
   ] = await Promise.all([
     supabase
       .from("categories")
-      .select("*")
+      .select("id, restaurant_id, name, sort_order, is_fixed_catalog")
       .eq("restaurant_id", r.id)
       .order("sort_order"),
     supabase
       .from("dishes")
-      .select("*")
+      .select(
+        "id, restaurant_id, category_id, name, description, photo_url, price, is_side, is_active, sort_order",
+      )
       .eq("restaurant_id", r.id)
       .eq("is_active", true)
       .is("archived_at", null)
       .order("sort_order"),
     supabase
       .from("daily_menu_selections")
-      .select("*")
+      .select(
+        "id, restaurant_id, package_price, max_sides, menu_date, updated_at",
+      )
       .eq("restaurant_id", r.id)
       .maybeSingle(),
     supabase
       .from("combos")
-      .select("*")
+      .select(
+        "id, restaurant_id, slug, title, description, photo_url, fixed_price, is_active, sort_order",
+      )
       .eq("restaurant_id", r.id)
       .eq("is_active", true)
       .is("archived_at", null)
@@ -146,7 +154,7 @@ async function fetchPublicMenuBySlug(
   if (dishIds.length > 0) {
     const { data: addonRows } = await supabase
       .from("dish_addons")
-      .select("*")
+      .select("id, dish_id, name, price_delta, sort_order, is_active")
       .in("dish_id", dishIds)
       .eq("is_active", true)
       .is("archived_at", null)
@@ -165,7 +173,7 @@ async function fetchPublicMenuBySlug(
   if (comboIds.length > 0) {
     const { data: itemRows } = await supabase
       .from("combo_items")
-      .select("*")
+      .select("combo_id, dish_id, quantity, sort_order")
       .in("combo_id", comboIds)
       .order("sort_order");
     comboItems = (itemRows ?? []) as ComboItem[];

@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { compressImage, type CompressKind } from "@/lib/compress-image";
+import { deleteStoragePublicUrl } from "@/lib/storage-cleanup";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 
@@ -31,6 +32,7 @@ export function DishPhotoUpload({
     if (!file) return;
     setUploading(true);
     setError(null);
+    const previousUrl = value;
     try {
       const compressed = await compressImage(file, kind);
       const supabase = createClient();
@@ -40,6 +42,7 @@ export function DishPhotoUpload({
         .upload(path, compressed, {
           upsert: true,
           contentType: "image/webp",
+          cacheControl: "31536000",
         });
 
       if (uploadError) {
@@ -50,10 +53,20 @@ export function DishPhotoUpload({
 
       const { data } = supabase.storage.from(folder).getPublicUrl(path);
       onChange(data.publicUrl);
+      void deleteStoragePublicUrl(supabase, previousUrl);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error al comprimir");
     }
     setUploading(false);
+  }
+
+  function clearPhoto() {
+    const previousUrl = value;
+    onChange(null);
+    void (async () => {
+      const supabase = createClient();
+      await deleteStoragePublicUrl(supabase, previousUrl);
+    })();
   }
 
   return (
@@ -74,7 +87,7 @@ export function DishPhotoUpload({
       <input
         ref={inputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/heic"
+        accept="image/jpeg,image/png,image/webp"
         disabled={uploading}
         className="sr-only"
         onChange={(e) => onFile(e.target.files?.[0] ?? null)}
@@ -93,7 +106,7 @@ export function DishPhotoUpload({
           type="button"
           variant="ghost"
           size="sm"
-          onClick={() => onChange(null)}
+          onClick={clearPhoto}
           disabled={uploading}
         >
           Quitar foto

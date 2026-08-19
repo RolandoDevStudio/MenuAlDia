@@ -48,7 +48,12 @@ export default async function FlyerPage({ searchParams }: Props) {
 
     const dishIds = (links ?? []).map((l) => l.dish_id);
     const { data: dishes } = dishIds.length
-      ? await supabase.from("dishes").select("*").in("id", dishIds)
+      ? await supabase
+          .from("dishes")
+          .select(
+            "id, restaurant_id, category_id, name, description, photo_url, price, is_side, is_active, sort_order",
+          )
+          .in("id", dishIds)
       : { data: [] as Dish[] };
 
     const map = new Map(((dishes ?? []) as Dish[]).map((d) => [d.id, d]));
@@ -97,22 +102,33 @@ export default async function FlyerPage({ searchParams }: Props) {
     );
   }
 
-  const [{ data: mainLinks }, { data: sideLinks }, { data: dishes }] =
-    await Promise.all([
-      supabase
-        .from("daily_menu_dishes")
-        .select("dish_id")
-        .eq("daily_menu_id", selection.id),
-      supabase
-        .from("daily_menu_sides")
-        .select("dish_id")
-        .eq("daily_menu_id", selection.id),
-      supabase
-        .from("dishes")
-        .select("*")
-        .eq("restaurant_id", session.restaurant.id)
-        .is("archived_at", null),
-    ]);
+  const [{ data: mainLinks }, { data: sideLinks }] = await Promise.all([
+    supabase
+      .from("daily_menu_dishes")
+      .select("dish_id")
+      .eq("daily_menu_id", selection.id),
+    supabase
+      .from("daily_menu_sides")
+      .select("dish_id")
+      .eq("daily_menu_id", selection.id),
+  ]);
+
+  const selectedIds = [
+    ...new Set([
+      ...(mainLinks ?? []).map((l) => l.dish_id),
+      ...(sideLinks ?? []).map((l) => l.dish_id),
+    ]),
+  ];
+
+  const { data: dishes } =
+    selectedIds.length > 0
+      ? await supabase
+          .from("dishes")
+          .select(
+            "id, restaurant_id, category_id, name, description, photo_url, price, is_side, is_active, sort_order",
+          )
+          .in("id", selectedIds)
+      : { data: [] as Dish[] };
 
   const map = new Map(((dishes ?? []) as Dish[]).map((d) => [d.id, d]));
   const dailyDishes = (mainLinks ?? [])

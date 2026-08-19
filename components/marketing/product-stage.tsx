@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import {
   ExternalLink,
@@ -19,6 +18,7 @@ import {
 import type { LandingDemoPosters } from "@/lib/landing-content";
 import { buildWaMeUrl, SALES_WHATSAPP } from "@/lib/whatsapp";
 import { Button } from "@/components/ui/button";
+import { StorageImage } from "@/components/ui/storage-image";
 import {
   Dialog,
   DialogContent,
@@ -189,13 +189,11 @@ export function ProductStage({ className, demoPosters = {} }: Props) {
 
           {posterUrl ? (
             <div className="relative mx-auto aspect-[4/3] w-full max-w-[220px] shrink-0 overflow-hidden rounded-xl border border-black/10 bg-white shadow-sm sm:mx-0 sm:w-[200px]">
-              <Image
+              <StorageImage
                 src={posterUrl}
                 alt={`Captura demo ${demo.label}`}
                 fill
-                className="object-cover"
                 sizes="220px"
-                unoptimized
               />
             </div>
           ) : null}

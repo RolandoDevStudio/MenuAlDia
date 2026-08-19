@@ -1,16 +1,16 @@
 /**
  * Client-side image compression → WebP before Supabase Storage upload.
- * Caps: product 600px, banner/combo 1200px; target < 200KB.
+ * Caps: product 800px, banner 1200px; target ≤ 140KB.
  */
 
 export type CompressKind = "product" | "banner";
 
 const MAX_EDGE: Record<CompressKind, number> = {
-  product: 600,
+  product: 800,
   banner: 1200,
 };
 
-const TARGET_BYTES = 200 * 1024;
+const TARGET_BYTES = 140 * 1024;
 
 function loadImage(file: Blob): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -62,7 +62,7 @@ export async function compressImage(
   if (!ctx) throw new Error("Canvas no disponible");
   ctx.drawImage(img, 0, 0, width, height);
 
-  let quality = 0.82;
+  let quality = 0.8;
   let blob = await canvasToWebp(canvas, quality);
   while (blob.size > TARGET_BYTES && quality > 0.45) {
     quality -= 0.08;

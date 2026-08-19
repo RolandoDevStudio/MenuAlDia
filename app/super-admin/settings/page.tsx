@@ -14,6 +14,7 @@ import {
   type LandingTestimonial,
 } from "@/lib/landing-content";
 import type { CanonicalDemoId } from "@/lib/canonical-demos";
+import { compressImage } from "@/lib/compress-image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -166,25 +167,49 @@ export default function SuperAdminSettingsPage() {
     if (!file) return;
     setUploadingGiro(giro);
     setError(null);
-    const form = new FormData();
-    form.set("giro", giro);
-    form.set("file", file);
-    const res = await fetch("/api/super-admin/marketing-upload", {
-      method: "POST",
-      body: form,
-    });
-    setUploadingGiro(null);
-    if (!res.ok) {
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
-      setError(data.error ?? "No se pudo subir la captura");
-      return;
+    try {
+      const compressed = await compressImage(file, "banner");
+      const previousUrl = landing.demoPosters[giro] ?? "";
+      const form = new FormData();
+      form.set("giro", giro);
+      form.set("file", compressed);
+      if (previousUrl) form.set("previousUrl", previousUrl);
+      const res = await fetch("/api/super-admin/marketing-upload", {
+        method: "POST",
+        body: form,
+      });
+      setUploadingGiro(null);
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        setError(data.error ?? "No se pudo subir la captura");
+        return;
+      }
+      const data = (await res.json()) as { url: string };
+      setLanding((prev) => ({
+        ...prev,
+        demoPosters: { ...prev.demoPosters, [giro]: data.url },
+      }));
+      setMessage(`Captura ${giro} subida — recuerda Guardar`);
+    } catch (e) {
+      setUploadingGiro(null);
+      setError(e instanceof Error ? e.message : "Error al comprimir");
     }
-    const data = (await res.json()) as { url: string };
-    setLanding((prev) => ({
-      ...prev,
-      demoPosters: { ...prev.demoPosters, [giro]: data.url },
+  }
+
+  function clearPoster(giro: CanonicalDemoId) {
+    const previousUrl = landing.demoPosters[giro];
+    setLanding((p) => ({
+      ...p,
+      demoPosters: { ...p.demoPosters, [giro]: "" },
     }));
-    setMessage(`Captura ${giro} subida — recuerda Guardar`);
+    if (previousUrl) {
+      void fetch("/api/super-admin/marketing-upload", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: previousUrl }),
+      });
+    }
+    setMessage(`Captura ${giro} quitada — recuerda Guardar`);
   }
 
   return (
@@ -429,12 +454,7 @@ export default function SuperAdminSettingsPage() {
                   type="button"
                   variant="ghost"
                   className="min-h-11"
-                  onClick={() =>
-                    setLanding((p) => ({
-                      ...p,
-                      demoPosters: { ...p.demoPosters, [id]: "" },
-                    }))
-                  }
+                  onClick={() => clearPoster(id)}
                 >
                   Quitar
                 </Button>

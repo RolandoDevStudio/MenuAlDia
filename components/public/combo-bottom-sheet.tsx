@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { StorageImage } from "@/components/ui/storage-image";
 import { cn } from "@/lib/utils";
 import { Share2 } from "lucide-react";
 
@@ -126,12 +127,14 @@ export function ComboBottomSheet({
         {combo ? (
           <div className="space-y-4 px-5 pt-5">
             {combo.photo_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={combo.photo_url}
-                alt={combo.title}
-                className="h-40 w-full rounded-2xl object-cover"
-              />
+              <div className="relative h-40 w-full overflow-hidden rounded-2xl">
+                <StorageImage
+                  src={combo.photo_url}
+                  alt={combo.title}
+                  fill
+                  sizes="(max-width: 640px) 100vw, 512px"
+                />
+              </div>
             ) : null}
             <DialogHeader>
               <DialogTitle className="pr-8 text-xl">🔥 {combo.title}</DialogTitle>

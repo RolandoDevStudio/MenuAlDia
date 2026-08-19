@@ -6,6 +6,7 @@ import { photoFrameClass } from "@/lib/theme";
 import { formatMxn } from "@/lib/money";
 import { useCartStore } from "@/stores/cart-store";
 import { Button } from "@/components/ui/button";
+import { StorageImage } from "@/components/ui/storage-image";
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -61,10 +62,12 @@ export function CatalogSection({
                   className="flex gap-3 rounded-2xl border border-black/5 bg-surface p-3"
                 >
                   {dish.photo_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <StorageImage
                       src={dish.photo_url}
                       alt={dish.name}
+                      width={80}
+                      height={80}
+                      sizes="80px"
                       className={cn("h-20 w-20", photoFrameClass(photoFrame))}
                     />
                   ) : (

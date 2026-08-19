@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { StorageImage } from "@/components/ui/storage-image";
 import { cn } from "@/lib/utils";
 import { Share2 } from "lucide-react";
 
@@ -102,12 +103,14 @@ export function ProductBottomSheet({
         {dish ? (
           <>
             {dish.photo_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={dish.photo_url}
-                alt={dish.name}
-                className="h-48 w-full object-cover"
-              />
+              <div className="relative h-48 w-full overflow-hidden">
+                <StorageImage
+                  src={dish.photo_url}
+                  alt={dish.name}
+                  fill
+                  sizes="(max-width: 640px) 100vw, 512px"
+                />
+              </div>
             ) : (
               <div
                 className={cn(

@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { Restaurant } from "@/lib/types";
 import { formatMxn } from "@/lib/money";
 import { MapPin, Clock, Truck, ChevronDown } from "lucide-react";
+import { StorageImage } from "@/components/ui/storage-image";
 import { cn } from "@/lib/utils";
 
 export function RestaurantHeader({
@@ -26,11 +27,13 @@ export function RestaurantHeader({
     <header className="border-b border-black/5 bg-surface/80 px-4 py-5 backdrop-blur">
       <div className="mx-auto flex max-w-lg items-start gap-3">
         {restaurant.logo_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <StorageImage
             src={restaurant.logo_url}
             alt={restaurant.name}
-            className="h-14 w-14 rounded-full object-cover"
+            width={56}
+            height={56}
+            sizes="56px"
+            className="h-14 w-14 rounded-full"
           />
         ) : (
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-brand/10 font-[family-name:var(--font-display)] text-xl text-brand">

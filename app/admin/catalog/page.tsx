@@ -17,7 +17,7 @@ export default async function CatalogPage() {
   const supabase = await createClient();
   const { data: dishes } = await supabase
     .from("dishes")
-    .select("*")
+    .select("id, name, photo_url, price, is_side, is_active, sort_order")
     .eq("restaurant_id", session.restaurant.id)
     .is("archived_at", null)
     .order("sort_order");

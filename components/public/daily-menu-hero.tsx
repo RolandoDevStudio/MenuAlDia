@@ -8,6 +8,7 @@ import { formatMxn } from "@/lib/money";
 import { useCartStore } from "@/stores/cart-store";
 import { SideChecklist } from "@/components/public/side-checklist";
 import { Button } from "@/components/ui/button";
+import { StorageImage } from "@/components/ui/storage-image";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -96,12 +97,19 @@ export function DailyMenuHero({
       </div>
 
       {active.photo_url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={active.photo_url}
-          alt={active.name}
-          className={cn("mt-4 h-48 w-full", photoFrameClass(photoFrame))}
-        />
+        <div
+          className={cn(
+            "relative mt-4 h-48 w-full overflow-hidden",
+            photoFrameClass(photoFrame).replace("object-cover", ""),
+          )}
+        >
+          <StorageImage
+            src={active.photo_url}
+            alt={active.name}
+            fill
+            sizes="(max-width: 640px) 100vw, 512px"
+          />
+        </div>
       ) : (
         <div
           className={cn(

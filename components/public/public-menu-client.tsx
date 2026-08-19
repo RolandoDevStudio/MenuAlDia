@@ -15,6 +15,7 @@ import { formatMxn } from "@/lib/money";
 import { comboDisplayPrice } from "@/lib/combo";
 import { ProductBottomSheet } from "@/components/public/product-bottom-sheet";
 import { ComboBottomSheet } from "@/components/public/combo-bottom-sheet";
+import { StorageImage } from "@/components/ui/storage-image";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -109,10 +110,12 @@ export function PublicMenuClient({
                   className="flex min-h-11 w-full gap-3 rounded-2xl border border-brand/20 bg-surface p-3 text-left transition active:scale-[0.99]"
                 >
                   {c.photo_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <StorageImage
                       src={c.photo_url}
                       alt=""
+                      width={80}
+                      height={80}
+                      sizes="80px"
                       className={cn("h-20 w-20", photoFrameClass(photoFrame))}
                     />
                   ) : (
@@ -198,10 +201,12 @@ export function PublicMenuClient({
                             className="flex min-h-11 w-full gap-3 rounded-2xl border border-black/5 bg-surface p-3 text-left transition active:scale-[0.99]"
                           >
                             {dish.photo_url ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
+                              <StorageImage
                                 src={dish.photo_url}
                                 alt=""
+                                width={80}
+                                height={80}
+                                sizes="80px"
                                 className={cn(
                                   "h-20 w-20",
                                   photoFrameClass(photoFrame),
