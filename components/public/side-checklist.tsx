@@ -9,9 +9,16 @@ type Props = {
   maxSides: number;
   value: string[];
   onChange: (ids: string[]) => void;
+  sidesLabel?: string;
 };
 
-export function SideChecklist({ sides, maxSides, value, onChange }: Props) {
+export function SideChecklist({
+  sides,
+  maxSides,
+  value,
+  onChange,
+  sidesLabel = "Guarniciones",
+}: Props) {
   const atMax = value.length >= maxSides;
 
   function toggle(id: string, on: boolean) {
@@ -26,7 +33,7 @@ export function SideChecklist({ sides, maxSides, value, onChange }: Props) {
   return (
     <div>
       <p className="text-sm font-semibold">
-        Guarniciones{" "}
+        {sidesLabel}{" "}
         <span className="font-normal text-muted">
           (elige hasta {maxSides}
           {value.length > 0 ? ` · ${value.length}/${maxSides}` : ""})
@@ -34,10 +41,12 @@ export function SideChecklist({ sides, maxSides, value, onChange }: Props) {
       </p>
       {atMax ? (
         <p className="mt-1 text-xs text-brand-dark" role="status">
-          Máximo {maxSides} guarniciones. Desmarca una para cambiar.
+          Máximo {maxSides} {sidesLabel.toLowerCase()}. Desmarca una para cambiar.
         </p>
       ) : (
-        <p className="mt-1 text-xs text-muted">Opcional — puedes elegir hasta {maxSides}.</p>
+        <p className="mt-1 text-xs text-muted">
+          Opcional — puedes elegir hasta {maxSides}.
+        </p>
       )}
       <ul className="mt-2 space-y-2">
         {sides.map((side) => {

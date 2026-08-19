@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import type { Category, Dish, PlanType } from "@/lib/types";
+import type { BusinessType, Category, Dish, PlanType } from "@/lib/types";
 import { dishLimit } from "@/lib/plans";
+import { label } from "@/lib/business-labels";
 import { dishFormSchema, fieldErrorsFromZod } from "@/lib/validations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,7 @@ type Props = {
   publicSlug: string;
   planType?: PlanType | string;
   currentDishCount?: number;
+  businessType?: BusinessType | string | null;
 };
 
 export function DishForm({
@@ -29,8 +31,11 @@ export function DishForm({
   publicSlug,
   planType = "catalog",
   currentDishCount = 0,
+  businessType = "restaurante",
 }: Props) {
   const router = useRouter();
+  const dishLabel = label(businessType, "dish");
+  const sideLabel = label(businessType, "side");
   const [name, setName] = useState(dish?.name ?? "");
   const [description, setDescription] = useState(dish?.description ?? "");
   const [price, setPrice] = useState(String(dish?.price ?? 0));
@@ -115,7 +120,7 @@ export function DishForm({
 
   async function onDelete() {
     if (!dish) return;
-    if (!confirm("¿Eliminar este platillo?")) return;
+    if (!confirm(`¿Eliminar este ${dishLabel.toLowerCase()}?`)) return;
     setDeleting(true);
     setFormError(null);
     const supabase = createClient();
@@ -211,7 +216,7 @@ export function DishForm({
         </select>
       </div>
       <div className="flex min-h-14 items-center justify-between rounded-xl border border-black/5 bg-surface px-3 py-3">
-        <Label htmlFor="isSide">Es guarnición</Label>
+        <Label htmlFor="isSide">Es {sideLabel}</Label>
         <Switch id="isSide" checked={isSide} onCheckedChange={setIsSide} />
       </div>
       <div className="flex min-h-14 items-center justify-between rounded-xl border border-black/5 bg-surface px-3 py-3">

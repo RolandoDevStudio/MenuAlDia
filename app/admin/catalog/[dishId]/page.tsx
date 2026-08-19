@@ -1,6 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionRestaurant } from "@/lib/restaurant";
+import { label } from "@/lib/business-labels";
 import { DishForm } from "@/components/admin/dish-form";
 import type { Category, Dish } from "@/lib/types";
 
@@ -10,6 +11,9 @@ export default async function DishEditPage({ params }: Props) {
   const { dishId } = await params;
   const session = await getSessionRestaurant();
   if (!session) redirect("/admin/login");
+
+  const businessType = session.restaurant.business_type;
+  const dishLabel = label(businessType, "dish");
 
   const supabase = await createClient();
   const { data: categories } = await supabase
@@ -38,7 +42,7 @@ export default async function DishEditPage({ params }: Props) {
   return (
     <div className="space-y-4">
       <h1 className="text-lg font-semibold">
-        {dish ? "Editar platillo" : "Nuevo platillo"}
+        {dish ? `Editar ${dishLabel.toLowerCase()}` : `Nuevo ${dishLabel.toLowerCase()}`}
       </h1>
       <DishForm
         restaurantId={session.restaurant.id}
@@ -47,6 +51,7 @@ export default async function DishEditPage({ params }: Props) {
         publicSlug={session.restaurant.slug}
         planType={session.restaurant.plan_type}
         currentDishCount={count ?? 0}
+        businessType={businessType}
       />
     </div>
   );

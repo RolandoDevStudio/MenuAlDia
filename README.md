@@ -22,6 +22,7 @@ Completa `NEXT_PUBLIC_SUPABASE_*`, `SUPABASE_SERVICE_ROLE_KEY` (super-admin: clo
 
 - [`supabase/migrations/001_init.sql`](supabase/migrations/001_init.sql)
 - [`supabase/migrations/002_saas_plans_theme_crm.sql`](supabase/migrations/002_saas_plans_theme_crm.sql)
+- [`supabase/migrations/003_superadmin_audit_verticals.sql`](supabase/migrations/003_superadmin_audit_verticals.sql)
 
 3. CORS del bucket `dish-photos` (necesario para el flyer):
 
@@ -64,6 +65,11 @@ npm run dev
 | `/demo` | Redirect → `/demo-fonda` |
 | `/admin/login` | Admin tenant |
 | `/super-admin` | Plataforma (rol `super_admin`) |
+| `/super-admin/tenants` | Tabla CRUD suscriptores |
+| `/super-admin/templates` | Plantillas giro × plan |
+| `/admin/history` | Historial de cambios y pagos (tenant) |
+
+Giros (`business_type`): `restaurante`, `estetica`, `tienda`, `servicios` — cambian el vocabulario de la UI (platillos vs servicios, etc.).
 
 ## Feature gates por plan
 

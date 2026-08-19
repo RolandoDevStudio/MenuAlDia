@@ -16,6 +16,9 @@ type Props = {
   packagePrice: number;
   maxSides: number;
   photoFrame?: PhotoFrame;
+  dailyMenuLabel?: string;
+  sidesLabel?: string;
+  dishesLabel?: string;
 };
 
 export function DailyMenuHero({
@@ -24,6 +27,9 @@ export function DailyMenuHero({
   packagePrice,
   maxSides,
   photoFrame = "rounded_modern",
+  dailyMenuLabel = "Menú del día",
+  sidesLabel = "Guarniciones",
+  dishesLabel = "Platillos",
 }: Props) {
   const addItem = useCartStore((s) => s.addItem);
   const [selectedSides, setSelectedSides] = useState<string[]>([]);
@@ -34,11 +40,11 @@ export function DailyMenuHero({
       <section className="mx-auto max-w-lg px-4 py-8">
         <div className="rounded-3xl border border-dashed border-brand/25 bg-surface/70 px-5 py-8 text-center">
           <p className="font-[family-name:var(--font-display)] text-3xl text-brand">
-            Hoy no hay menú del día
+            Hoy no hay {dailyMenuLabel.toLowerCase()}
           </p>
           <p className="mt-2 text-sm text-muted">
-            El restaurante aún no activó platillos para hoy. Revisa el catálogo
-            o vuelve más tarde.
+            Aún no se activaron {dishesLabel.toLowerCase()} para hoy. Revisa el
+            catálogo o vuelve más tarde.
           </p>
         </div>
       </section>
@@ -53,7 +59,7 @@ export function DailyMenuHero({
       .map((s) => s.name);
     addItem({
       dishId: active.id,
-      name: `Menú: ${active.name}`,
+      name: `${dailyMenuLabel}: ${active.name}`,
       unitPrice: packagePrice,
       quantity: 1,
       sideIds: selectedSides,
@@ -73,7 +79,7 @@ export function DailyMenuHero({
         <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/15" />
         <div className="relative">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/80">
-            Menú del día
+            {dailyMenuLabel}
           </p>
           <div className="mt-3 flex items-start justify-between gap-3">
             <h2 className="font-[family-name:var(--font-display)] text-4xl leading-none">
@@ -133,12 +139,13 @@ export function DailyMenuHero({
             maxSides={maxSides}
             value={selectedSides}
             onChange={setSelectedSides}
+            sidesLabel={sidesLabel}
           />
         </div>
       ) : null}
 
       <Button className="mt-5 w-full" size="lg" onClick={addToCart}>
-        Agregar menú del día
+        Agregar {dailyMenuLabel.toLowerCase()}
       </Button>
     </section>
   );

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { isCurrentUserSuperAdmin } from "@/lib/restaurant";
+import { writeAuditLog, logFieldChanges } from "@/lib/audit";
+import { normalizeSlug } from "@/lib/plan-templates";
 
 /** List tenants with owner login email (service role for auth lookup). */
 export async function GET() {
@@ -55,6 +57,17 @@ export async function GET() {
   return NextResponse.json({ restaurants: restaurants ?? [], owners });
 }
 
+const RESTAURANT_FIELDS = [
+  "name",
+  "owner_name",
+  "slug",
+  "phone_whatsapp",
+  "plan_type",
+  "is_active",
+  "subscription_end_date",
+  "business_type",
+] as const;
+
 export async function PATCH(request: Request) {
   if (!(await isCurrentUserSuperAdmin())) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
@@ -62,7 +75,14 @@ export async function PATCH(request: Request) {
 
   const body = (await request.json()) as {
     id?: string;
+    name?: string;
+    owner_name?: string;
+    slug?: string;
     phone_whatsapp?: string;
+    plan_type?: string;
+    is_active?: boolean;
+    subscription_end_date?: string | null;
+    business_type?: string;
     owner_email?: string;
     owner_password?: string;
   };
@@ -71,36 +91,107 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "missing id" }, { status: 400 });
   }
 
-  let admin;
-  try {
-    admin = createServiceClient();
-  } catch (e) {
+  const supabase = await createClient();
+  const {
+    data: { user: actor },
+  } = await supabase.auth.getUser();
+
+  const { data: before, error: loadErr } = await supabase
+    .from("restaurants")
+    .select("*")
+    .eq("id", body.id)
+    .maybeSingle();
+
+  if (loadErr || !before) {
     return NextResponse.json(
-      {
-        error:
-          e instanceof Error
-            ? e.message
-            : "Configura SUPABASE_SERVICE_ROLE_KEY",
-      },
-      { status: 500 },
+      { error: loadErr?.message ?? "restaurant not found" },
+      { status: loadErr ? 500 : 404 },
     );
   }
 
+  const updates: Record<string, unknown> = {};
+
+  if (typeof body.name === "string") updates.name = body.name.trim();
+  if (typeof body.owner_name === "string")
+    updates.owner_name = body.owner_name.trim();
+  if (typeof body.plan_type === "string") updates.plan_type = body.plan_type;
+  if (typeof body.is_active === "boolean") updates.is_active = body.is_active;
+  if (typeof body.business_type === "string")
+    updates.business_type = body.business_type;
+  if (body.subscription_end_date !== undefined) {
+    updates.subscription_end_date = body.subscription_end_date;
+  }
   if (typeof body.phone_whatsapp === "string") {
-    const phone = body.phone_whatsapp.replace(/\D/g, "");
-    const { error } = await admin
-      .from("restaurants")
-      .update({ phone_whatsapp: phone })
-      .eq("id", body.id);
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    updates.phone_whatsapp = body.phone_whatsapp.replace(/\D/g, "");
+  }
+  if (typeof body.slug === "string") {
+    const slug = normalizeSlug(body.slug);
+    if (!slug) {
+      return NextResponse.json({ error: "slug inválido" }, { status: 400 });
     }
+    if (slug !== before.slug) {
+      const { data: clash } = await supabase
+        .from("restaurants")
+        .select("id")
+        .eq("slug", slug)
+        .neq("id", body.id)
+        .maybeSingle();
+      if (clash) {
+        return NextResponse.json(
+          { error: "El slug ya está en uso" },
+          { status: 409 },
+        );
+      }
+      updates.slug = slug;
+    }
+  }
+
+  let after = before;
+  if (Object.keys(updates).length > 0) {
+    const { data: updated, error: updErr } = await supabase
+      .from("restaurants")
+      .update(updates)
+      .eq("id", body.id)
+      .select("*")
+      .single();
+
+    if (updErr || !updated) {
+      return NextResponse.json(
+        { error: updErr?.message ?? "update failed" },
+        { status: 500 },
+      );
+    }
+    after = updated;
+
+    await logFieldChanges({
+      restaurantId: body.id,
+      actorUserId: actor?.id,
+      actorLabel: actor?.email ?? "super_admin",
+      before: before as Record<string, unknown>,
+      after: after as Record<string, unknown>,
+      fields: [...RESTAURANT_FIELDS],
+    });
   }
 
   const password = body.owner_password?.trim();
   const email = body.owner_email?.trim().toLowerCase();
 
   if (password || email) {
+    let admin;
+    try {
+      admin = createServiceClient();
+    } catch (e) {
+      return NextResponse.json(
+        {
+          error:
+            e instanceof Error
+              ? e.message
+              : "Configura SUPABASE_SERVICE_ROLE_KEY",
+        },
+        { status: 500 },
+      );
+    }
+
     const { data: members } = await admin
       .from("restaurant_members")
       .select("user_id, role")
@@ -111,7 +202,7 @@ export async function PATCH(request: Request) {
       members?.find((m) => m.role === "owner") ?? members?.[0] ?? null;
 
     if (owner) {
-      const updates: { password?: string; email?: string } = {};
+      const authUpdates: { password?: string; email?: string } = {};
       if (password) {
         if (password.length < 6) {
           return NextResponse.json(
@@ -119,15 +210,49 @@ export async function PATCH(request: Request) {
             { status: 400 },
           );
         }
-        updates.password = password;
+        authUpdates.password = password;
       }
-      if (email) updates.email = email;
+      if (email) authUpdates.email = email;
+
+      let previousEmail: string | null = null;
+      if (email) {
+        const { data: existing } = await admin.auth.admin.getUserById(
+          owner.user_id,
+        );
+        previousEmail = existing.user?.email ?? null;
+      }
+
       const { error: updErr } = await admin.auth.admin.updateUserById(
         owner.user_id,
-        updates,
+        authUpdates,
       );
       if (updErr) {
         return NextResponse.json({ error: updErr.message }, { status: 500 });
+      }
+
+      if (password) {
+        await writeAuditLog({
+          restaurantId: body.id,
+          actorUserId: actor?.id,
+          actorLabel: actor?.email ?? "super_admin",
+          action: "password_reset",
+          fieldName: "owner_password",
+          oldValue: null,
+          newValue: null,
+          summary: "Restableció contraseña del owner",
+        });
+      }
+      if (email && email !== (previousEmail ?? "").toLowerCase()) {
+        await writeAuditLog({
+          restaurantId: body.id,
+          actorUserId: actor?.id,
+          actorLabel: actor?.email ?? "super_admin",
+          action: "update",
+          fieldName: "owner_email",
+          oldValue: previousEmail,
+          newValue: email,
+          summary: "Actualizó email del owner",
+        });
       }
     } else if (email && password) {
       if (password.length < 6) {
@@ -156,6 +281,16 @@ export async function PATCH(request: Request) {
       if (memErr) {
         return NextResponse.json({ error: memErr.message }, { status: 500 });
       }
+      await writeAuditLog({
+        restaurantId: body.id,
+        actorUserId: actor?.id,
+        actorLabel: actor?.email ?? "super_admin",
+        action: "create",
+        fieldName: "owner",
+        oldValue: null,
+        newValue: email,
+        summary: "Creó owner y acceso",
+      });
     } else {
       return NextResponse.json(
         {
@@ -167,5 +302,5 @@ export async function PATCH(request: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, restaurant: after });
 }

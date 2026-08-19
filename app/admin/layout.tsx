@@ -19,6 +19,7 @@ export default async function AdminLayout({
       planType={(session.restaurant.plan_type as PlanType) || "catalog"}
       isActive={session.restaurant.is_active !== false}
       subscriptionEndDate={session.restaurant.subscription_end_date}
+      businessType={session.restaurant.business_type}
     >
       {children}
     </AdminShell>

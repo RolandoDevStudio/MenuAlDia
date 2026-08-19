@@ -7,6 +7,8 @@ export type MemberRole = "owner" | "staff" | "super_admin";
 
 export type PaymentMethod = "cash" | "transfer";
 
+export type BusinessType = "restaurante" | "estetica" | "tienda" | "servicios";
+
 export type { PlanType, ThemeConfig };
 
 export interface Restaurant {
@@ -26,6 +28,48 @@ export interface Restaurant {
   is_active: boolean;
   subscription_end_date: string;
   theme_config: ThemeConfig | Record<string, unknown>;
+  business_type: BusinessType;
+  owner_name: string;
+}
+
+export interface TenantPayment {
+  id: string;
+  restaurant_id: string;
+  amount: number;
+  currency: string;
+  paid_at: string;
+  method: "transfer" | "cash" | "card" | "other";
+  plan_type: PlanType;
+  period_days: number;
+  reference: string;
+  notes: string;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface AuditLog {
+  id: string;
+  restaurant_id: string;
+  actor_user_id: string | null;
+  actor_label: string;
+  action: string;
+  field_name: string | null;
+  old_value: string | null;
+  new_value: string | null;
+  summary: string;
+  created_at: string;
+}
+
+export interface PlanTemplate {
+  id: string;
+  business_type: BusinessType;
+  plan_type: PlanType;
+  slug_key: string;
+  name: string;
+  theme_config: ThemeConfig | Record<string, unknown>;
+  snapshot: Record<string, unknown>;
+  is_active: boolean;
+  updated_at: string;
 }
 
 export interface RestaurantMember {

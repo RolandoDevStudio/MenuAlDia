@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   BarChart3,
+  History,
   ImageIcon,
   LayoutGrid,
   LogOut,
@@ -17,6 +18,8 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import type { PlanType } from "@/lib/plans";
 import { can, PLAN_LABELS, isSubscriptionActive } from "@/lib/plans";
+import { label } from "@/lib/business-labels";
+import type { BusinessType } from "@/lib/types";
 
 type NavItem = {
   href: string;
@@ -25,27 +28,19 @@ type NavItem = {
   feature?: "daily_menu" | "flyer" | "crm" | "analytics";
 };
 
-const links: NavItem[] = [
-  { href: "/admin", label: "Hoy", icon: UtensilsCrossed, feature: "daily_menu" },
-  { href: "/admin/catalog", label: "Catálogo", icon: LayoutGrid },
-  { href: "/admin/flyer", label: "Flyer", icon: ImageIcon, feature: "flyer" },
-  { href: "/admin/orders", label: "Pedidos", icon: ShoppingBag, feature: "crm" },
-  { href: "/admin/customers", label: "Clientes", icon: Users, feature: "crm" },
-  { href: "/admin/analytics", label: "Métricas", icon: BarChart3, feature: "analytics" },
-  { href: "/admin/settings", label: "Ajustes", icon: Settings },
-];
-
 export function AdminShell({
   restaurantName,
   planType,
   isActive,
   subscriptionEndDate,
+  businessType = "restaurante",
   children,
 }: {
   restaurantName: string;
   planType: PlanType;
   isActive: boolean;
   subscriptionEndDate: string;
+  businessType?: BusinessType | string | null;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -54,6 +49,32 @@ export function AdminShell({
     is_active: isActive,
     subscription_end_date: subscriptionEndDate,
   });
+
+  const dailyMenuLabel = label(businessType, "dailyMenu");
+  const catalogLabel = label(businessType, "catalog");
+  // Bottom nav needs a short label; full dailyMenu strings are too long.
+  const todayNavLabel = dailyMenuLabel.length <= 8 ? dailyMenuLabel : "Hoy";
+
+  const links: NavItem[] = [
+    {
+      href: "/admin",
+      label: todayNavLabel,
+      icon: UtensilsCrossed,
+      feature: "daily_menu",
+    },
+    { href: "/admin/catalog", label: catalogLabel, icon: LayoutGrid },
+    { href: "/admin/flyer", label: "Flyer", icon: ImageIcon, feature: "flyer" },
+    { href: "/admin/orders", label: "Pedidos", icon: ShoppingBag, feature: "crm" },
+    { href: "/admin/customers", label: "Clientes", icon: Users, feature: "crm" },
+    {
+      href: "/admin/analytics",
+      label: "Métricas",
+      icon: BarChart3,
+      feature: "analytics",
+    },
+    { href: "/admin/history", label: "Historial", icon: History },
+    { href: "/admin/settings", label: "Ajustes", icon: Settings },
+  ];
 
   const visible = links.filter(
     (l) => !l.feature || can(planType, l.feature),
@@ -100,7 +121,7 @@ export function AdminShell({
         style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
       >
         <div className="mx-auto flex max-w-lg justify-around overflow-x-auto px-1 pt-2">
-          {visible.map(({ href, label, icon: Icon }) => {
+          {visible.map(({ href, label: navLabel, icon: Icon }) => {
             const active =
               href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
             return (
@@ -113,7 +134,7 @@ export function AdminShell({
                 )}
               >
                 <Icon className="h-5 w-5" />
-                {label}
+                {navLabel}
               </Link>
             );
           })}

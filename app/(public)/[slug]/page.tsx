@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getPublicMenuBySlug } from "@/lib/restaurant";
 import { parseThemeConfig } from "@/lib/theme";
+import { labelsFor } from "@/lib/business-labels";
 import { RestaurantHeader } from "@/components/public/restaurant-header";
 import { DailyMenuHero } from "@/components/public/daily-menu-hero";
 import { CatalogSection } from "@/components/public/catalog-section";
@@ -31,6 +32,7 @@ export default async function PublicMenuPage({ params }: Props) {
   const packagePrice = Number(data.dailyMenu?.package_price ?? 0);
   const maxSides = data.dailyMenu?.max_sides ?? 2;
   const theme = parseThemeConfig(data.restaurant.theme_config);
+  const labels = labelsFor(data.restaurant.business_type);
 
   return (
     <main className="relative min-h-full overflow-x-hidden bg-background">
@@ -48,6 +50,9 @@ export default async function PublicMenuPage({ params }: Props) {
         packagePrice={packagePrice}
         maxSides={maxSides}
         photoFrame={theme.photoFrame}
+        dailyMenuLabel={labels.dailyMenu}
+        sidesLabel={labels.sides}
+        dishesLabel={labels.dishes}
       />
       <CatalogSection
         categories={data.categories}

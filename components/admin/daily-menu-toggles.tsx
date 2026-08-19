@@ -4,8 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import type { Dish } from "@/lib/types";
+import type { BusinessType, Dish } from "@/lib/types";
 import { formatMxn } from "@/lib/money";
+import { labelsFor } from "@/lib/business-labels";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +23,7 @@ type Props = {
   selectedMainIds: string[];
   selectedSideIds: string[];
   publicSlug: string;
+  businessType?: BusinessType | string | null;
 };
 
 export function DailyMenuToggles({
@@ -34,8 +36,10 @@ export function DailyMenuToggles({
   selectedMainIds: initialMains,
   selectedSideIds: initialSides,
   publicSlug,
+  businessType = "restaurante",
 }: Props) {
   const router = useRouter();
+  const labels = labelsFor(businessType);
   const [mainIds, setMainIds] = useState(new Set(initialMains));
   const [sideIds, setSideIds] = useState(new Set(initialSides));
   const [packagePrice, setPackagePrice] = useState(String(initialPrice));
@@ -144,7 +148,7 @@ export function DailyMenuToggles({
       return;
     }
     await revalidate();
-    setSuccess("Precio del menú actualizado");
+    setSuccess(`Precio del ${labels.dailyMenu.toLowerCase()} actualizado`);
     router.refresh();
   }
 
@@ -174,7 +178,7 @@ export function DailyMenuToggles({
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="maxSides">Máx. guarniciones</Label>
+            <Label htmlFor="maxSides">Máx. {labels.sides.toLowerCase()}</Label>
             <Input
               id="maxSides"
               inputMode="numeric"
@@ -189,12 +193,14 @@ export function DailyMenuToggles({
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold">Platillos del día</h2>
+        <h2 className="text-sm font-semibold">{labels.dishes} del día</h2>
         {mains.length === 0 ? (
           <div className="rounded-xl border border-dashed border-black/10 px-4 py-6 text-center">
-            <p className="text-sm text-muted">No hay platillos en el catálogo.</p>
+            <p className="text-sm text-muted">
+              No hay {labels.dishes.toLowerCase()} en el {labels.catalog.toLowerCase()}.
+            </p>
             <Button asChild variant="secondary" size="sm" className="mt-3">
-              <Link href="/admin/catalog/new">Crear platillo</Link>
+              <Link href="/admin/catalog/new">Crear {labels.dish.toLowerCase()}</Link>
             </Button>
           </div>
         ) : (
@@ -225,14 +231,15 @@ export function DailyMenuToggles({
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold">Guarniciones disponibles</h2>
+        <h2 className="text-sm font-semibold">{labels.sides} disponibles</h2>
         {sides.length === 0 ? (
           <div className="rounded-xl border border-dashed border-black/10 px-4 py-6 text-center">
             <p className="text-sm text-muted">
-              Marca platillos como guarnición en el catálogo.
+              Marca {labels.dishes.toLowerCase()} como{" "}
+              {labels.side.toLowerCase()} en el {labels.catalog.toLowerCase()}.
             </p>
             <Button asChild variant="secondary" size="sm" className="mt-3">
-              <Link href="/admin/catalog/new">Ir al catálogo</Link>
+              <Link href="/admin/catalog/new">Ir al {labels.catalog.toLowerCase()}</Link>
             </Button>
           </div>
         ) : (

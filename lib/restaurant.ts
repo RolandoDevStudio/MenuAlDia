@@ -47,6 +47,9 @@ export async function getSessionRestaurant(): Promise<{
   const r = restaurant as Restaurant;
   r.theme_config = parseThemeConfig(r.theme_config);
   r.plan_type = (r.plan_type as Restaurant["plan_type"]) || "catalog";
+  r.business_type =
+    (r.business_type as Restaurant["business_type"]) || "restaurante";
+  r.owner_name = r.owner_name ?? "";
   return {
     restaurant: r,
     userId: user.id,

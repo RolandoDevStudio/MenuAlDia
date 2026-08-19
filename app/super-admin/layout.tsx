@@ -9,7 +9,7 @@ export default async function SuperAdminLayout({
   await requireSuperAdmin();
 
   return (
-    <div className="mx-auto min-h-full max-w-3xl px-4 py-6">
+    <div className="mx-auto min-h-full max-w-6xl px-4 py-6">
       <header className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-black/10 pb-4">
         <div>
           <p className="font-[family-name:var(--font-display)] text-3xl text-brand">
@@ -17,12 +17,18 @@ export default async function SuperAdminLayout({
           </p>
           <p className="text-xs text-muted">Control global menualdia.app</p>
         </div>
-        <nav className="flex gap-3 text-sm font-semibold">
+        <nav className="flex flex-wrap gap-3 text-sm font-semibold">
           <Link href="/super-admin" className="text-brand">
             Resumen
           </Link>
           <Link href="/super-admin/tenants" className="text-muted hover:text-brand">
             Tenants
+          </Link>
+          <Link
+            href="/super-admin/templates"
+            className="text-muted hover:text-brand"
+          >
+            Plantillas
           </Link>
           <Link href="/admin" className="text-muted hover:text-brand">
             Admin

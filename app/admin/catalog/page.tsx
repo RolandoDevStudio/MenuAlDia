@@ -5,12 +5,16 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionRestaurant } from "@/lib/restaurant";
 import { dishLimit } from "@/lib/plans";
 import { formatMxn } from "@/lib/money";
+import { label, labelsFor } from "@/lib/business-labels";
 import { Button } from "@/components/ui/button";
 import type { Dish } from "@/lib/types";
 
 export default async function CatalogPage() {
   const session = await getSessionRestaurant();
   if (!session) redirect("/admin/login");
+
+  const businessType = session.restaurant.business_type;
+  const labels = labelsFor(businessType);
 
   const supabase = await createClient();
   const { data: dishes } = await supabase
@@ -27,9 +31,9 @@ export default async function CatalogPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold">Catálogo</h1>
+          <h1 className="text-lg font-semibold">{labels.catalog}</h1>
           <p className="text-sm text-muted">
-            Platillos y guarniciones
+            {labels.dishes} y {labels.sides.toLowerCase()}
             {limit != null ? ` · ${list.length}/${limit}` : ` · ${list.length}`}.
           </p>
         </div>
@@ -56,12 +60,15 @@ export default async function CatalogPage() {
 
       {list.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-black/10 px-4 py-10 text-center">
-          <p className="font-semibold text-brand-dark">Sin platillos todavía</p>
+          <p className="font-semibold text-brand-dark">
+            Sin {labels.dishes.toLowerCase()} todavía
+          </p>
           <p className="mt-1 text-sm text-muted">
-            Crea el primero para armar el menú del día y el flyer.
+            Crea el primero para armar el {labels.dailyMenu.toLowerCase()} y el
+            flyer.
           </p>
           <Button asChild className="mt-4">
-            <Link href="/admin/catalog/new">Nuevo platillo</Link>
+            <Link href="/admin/catalog/new">Nuevo {labels.dish.toLowerCase()}</Link>
           </Button>
         </div>
       ) : (
@@ -87,7 +94,7 @@ export default async function CatalogPage() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{dish.name}</p>
                   <p className="text-xs text-muted">
-                    {dish.is_side ? "Guarnición · " : ""}
+                    {dish.is_side ? `${label(businessType, "side")} · ` : ""}
                     {formatMxn(Number(dish.price))}
                     {!dish.is_active ? " · Inactivo" : ""}
                   </p>

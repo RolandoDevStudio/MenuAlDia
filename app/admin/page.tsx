@@ -6,6 +6,7 @@ import { DailyMenuToggles } from "@/components/admin/daily-menu-toggles";
 import { PlanGate } from "@/components/admin/plan-gate";
 import { Button } from "@/components/ui/button";
 import { can } from "@/lib/plans";
+import { labelsFor } from "@/lib/business-labels";
 import type { Dish } from "@/lib/types";
 
 export default async function AdminDashboardPage() {
@@ -13,10 +14,16 @@ export default async function AdminDashboardPage() {
   if (!session) redirect("/admin/login");
 
   const plan = session.restaurant.plan_type || "catalog";
+  const businessType = session.restaurant.business_type;
+  const labels = labelsFor(businessType);
 
   if (!can(plan, "daily_menu")) {
     return (
-      <PlanGate plan={plan} feature="daily_menu" title="Menú del día no incluido">
+      <PlanGate
+        plan={plan}
+        feature="daily_menu"
+        title={`${labels.dailyMenu} no incluido`}
+      >
         {null}
       </PlanGate>
     );
@@ -45,7 +52,11 @@ export default async function AdminDashboardPage() {
   }
 
   if (!selection) {
-    return <p className="text-sm text-red-600">No se pudo crear el menú del día.</p>;
+    return (
+      <p className="text-sm text-red-600">
+        No se pudo crear el {labels.dailyMenu.toLowerCase()}.
+      </p>
+    );
   }
 
   const [{ data: dishes }, { data: mainLinks }, { data: sideLinks }] =
@@ -74,8 +85,10 @@ export default async function AdminDashboardPage() {
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold">Menú del día</h1>
-          <p className="text-sm text-muted">Activa platillos en un toque.</p>
+          <h1 className="text-lg font-semibold">{labels.dailyMenu}</h1>
+          <p className="text-sm text-muted">
+            Activa {labels.dishes.toLowerCase()} en un toque.
+          </p>
         </div>
         {can(plan, "flyer") ? (
           <Button asChild variant="secondary" size="sm">
@@ -93,6 +106,7 @@ export default async function AdminDashboardPage() {
         selectedMainIds={(mainLinks ?? []).map((l) => l.dish_id)}
         selectedSideIds={(sideLinks ?? []).map((l) => l.dish_id)}
         publicSlug={session.restaurant.slug}
+        businessType={businessType}
       />
     </div>
   );
