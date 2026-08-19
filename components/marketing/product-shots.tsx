@@ -5,40 +5,44 @@ const SHOTS = [
   {
     icon: Smartphone,
     title: "Menú público con tu marca",
-    body: "Colores, logo y catálogo listos para compartir en Status y listas de difusión.",
+    body: "Colores, logo y catálogo listos para compartir.",
   },
   {
     icon: ImageIcon,
     title: "Panel del día en el celular",
-    body: "Activa platillos, combos y precio del paquete en segundos, sin diseñador.",
+    body: "Activa platillos y combos en segundos.",
   },
   {
     icon: MessageCircle,
-    title: "Pedido estructurado a WhatsApp",
-    body: "El cliente arma el carrito; tú recibes el mensaje claro con totales y datos.",
+    title: "Pedido a WhatsApp",
+    body: "El cliente arma el carrito; tú recibes el mensaje claro.",
   },
 ] as const;
 
 export function ProductShots() {
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <Reveal>
-        <h2 className="font-[family-name:var(--font-display)] text-3xl text-brand-dark">
-          El producto, no solo la promesa
-        </h2>
+        <p className="text-xs font-semibold uppercase tracking-wide text-brand">
+          El producto
+        </p>
         <p className="mt-1 text-sm text-muted">
           Tres piezas que usan tus clientes y tu equipo todos los días.
         </p>
       </Reveal>
-      <ul className="grid gap-4 sm:grid-cols-3">
+      <ul className="grid gap-3 sm:grid-cols-3">
         {SHOTS.map(({ icon: Icon, title, body }, i) => (
-          <Reveal key={title} as="li" delayMs={i * 80}>
-            <div className="landing-card flex h-full flex-col rounded-2xl border border-black/10 bg-white p-4 shadow-sm">
-              <div className="mb-3 flex h-28 items-center justify-center rounded-xl bg-gradient-to-br from-[#f0d4b8]/80 to-[#d4e8dc]/60">
-                <Icon className="h-10 w-10 text-brand" aria-hidden />
+          <Reveal key={title} as="li" delayMs={i * 70}>
+            <div className="landing-card flex h-full gap-3 rounded-xl border border-black/5 bg-white/90 px-3 py-3 shadow-sm">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand/10">
+                <Icon className="h-5 w-5 text-brand" aria-hidden />
               </div>
-              <p className="text-sm font-semibold text-foreground">{title}</p>
-              <p className="mt-1 text-xs leading-relaxed text-muted">{body}</p>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground">{title}</p>
+                <p className="mt-0.5 text-xs leading-relaxed text-muted">
+                  {body}
+                </p>
+              </div>
             </div>
           </Reveal>
         ))}

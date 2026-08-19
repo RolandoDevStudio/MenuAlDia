@@ -13,7 +13,11 @@ import {
 } from "@/lib/plans";
 import { formatMxn } from "@/lib/money";
 import { buildWaMeUrl, SALES_WHATSAPP } from "@/lib/whatsapp";
-import { CANONICAL_DEMOS, OFFICIAL_DOMAIN } from "@/lib/canonical-demos";
+import {
+  CANONICAL_DEMOS,
+  OFFICIAL_DOMAIN,
+  type CanonicalDemoId,
+} from "@/lib/canonical-demos";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { LandingNav } from "@/components/marketing/landing-nav";
 import { LandingWhatsAppFab } from "@/components/marketing/landing-whatsapp-fab";
@@ -26,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 const FEATURES: Record<PlanType, string[]> = {
   catalog: [
@@ -65,6 +70,42 @@ const BENEFITS = [
     body: "El cliente pide y el mensaje llega a tu WhatsApp. Tú cobras.",
   },
 ] as const;
+
+const GIRO_ACCENT: Record<CanonicalDemoId, string> = {
+  restaurante: "border-t-brand",
+  servicios: "border-t-accent",
+  tienda: "border-t-amber-600",
+};
+
+function SectionShell({
+  children,
+  className,
+  id,
+  tone = "plain",
+}: {
+  children: React.ReactNode;
+  className?: string;
+  id?: string;
+  tone?: "plain" | "surface" | "brand" | "white";
+}) {
+  const toneClass =
+    tone === "surface"
+      ? "bg-white/75"
+      : tone === "brand"
+        ? "bg-brand/[0.06]"
+        : tone === "white"
+          ? "bg-white/90"
+          : "";
+
+  return (
+    <section
+      id={id}
+      className={cn("scroll-mt-20", toneClass, className)}
+    >
+      <div className="mx-auto max-w-3xl px-6 py-12 sm:py-14">{children}</div>
+    </section>
+  );
+}
 
 export default function HomePage() {
   const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
@@ -132,7 +173,7 @@ export default function HomePage() {
 
       <LandingNav onContactClick={scrollToContact} />
 
-      <section className="mx-auto max-w-3xl px-6 pb-8 pt-10 sm:pt-14">
+      <section className="mx-auto max-w-3xl px-6 pb-6 pt-10 sm:pt-14">
         <div
           className="motion-safe:animate-[rise_0.7s_ease-out]"
           style={{ animationFillMode: "both" }}
@@ -170,30 +211,33 @@ export default function HomePage() {
             Ver precios
           </button>
         </p>
+        <p
+          className="mt-2 text-xs text-muted motion-safe:animate-[rise_0.7s_ease-out]"
+          style={{ animationDelay: "240ms", animationFillMode: "both" }}
+        >
+          Hecho para locales en México · activación el mismo día
+        </p>
       </section>
 
-      <section className="mx-auto max-w-3xl px-6 pb-12">
+      <section className="mx-auto max-w-3xl px-6 pb-12 pt-2">
         <Reveal>
           <ProductStage />
         </Reveal>
       </section>
 
-      <section
-        id="beneficios"
-        className="mx-auto max-w-3xl scroll-mt-20 px-6 py-10"
-      >
+      <SectionShell id="beneficios" tone="surface">
         <Reveal>
-          <h2 className="font-[family-name:var(--font-display)] text-3xl text-brand-dark">
+          <h2 className="font-[family-name:var(--font-display)] text-4xl tracking-wide text-brand-dark sm:text-5xl">
             Por qué te conviene
           </h2>
-          <p className="mt-1 text-sm text-muted">
-            Simple, eficiente y pensado para el ritmo de un negocio local.
+          <p className="mt-2 max-w-md text-sm text-muted">
+            Simple y pensado para el ritmo de un negocio local.
           </p>
         </Reveal>
-        <ul className="mt-6 grid gap-4 sm:grid-cols-3">
+        <ul className="mt-8 grid gap-4 sm:grid-cols-3">
           {BENEFITS.map(({ icon: Icon, title, body }, i) => (
             <Reveal key={title} as="li" delayMs={i * 90}>
-              <div className="landing-card h-full rounded-2xl bg-surface/80 px-4 py-4 shadow-sm shadow-transparent hover:shadow-md">
+              <div className="landing-card h-full rounded-2xl bg-white px-4 py-4 shadow-sm">
                 <Icon className="h-6 w-6 text-brand" aria-hidden />
                 <p className="mt-3 text-sm font-semibold text-foreground">
                   {title}
@@ -206,26 +250,28 @@ export default function HomePage() {
         <div className="mt-10">
           <ProductShots />
         </div>
-      </section>
+      </SectionShell>
 
-      <section id="demos" className="mx-auto max-w-3xl scroll-mt-20 px-6 py-10">
+      <SectionShell id="demos" tone="plain">
         <Reveal>
-          <h2 className="font-[family-name:var(--font-display)] text-3xl text-brand-dark">
+          <h2 className="font-[family-name:var(--font-display)] text-4xl tracking-wide text-brand-dark sm:text-5xl">
             Tres giros, un producto
           </h2>
-          <p className="mt-1 text-sm text-muted">
-            Elige el que se parece a tu negocio. Mismo panel; vocabulario y
-            demos distintos.
+          <p className="mt-2 max-w-md text-sm text-muted">
+            Elige el que se parece a tu negocio.
           </p>
         </Reveal>
-        <div className="mt-6 grid gap-4 sm:grid-cols-3">
+        <div className="mt-8 grid gap-4 sm:grid-cols-3">
           {CANONICAL_DEMOS.map((d, i) => (
             <Reveal key={d.slug} delayMs={i * 90}>
               <Link
                 href={`/${d.slug}`}
-                className="landing-card group block rounded-2xl border border-black/10 bg-white p-5 hover:border-brand hover:shadow-md"
+                className={cn(
+                  "landing-card group block rounded-2xl border border-black/10 border-t-4 bg-white p-5 hover:shadow-md",
+                  GIRO_ACCENT[d.id],
+                )}
               >
-                <p className="text-[10px] font-bold uppercase tracking-wider text-brand">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted">
                   {d.label}
                 </p>
                 <p className="mt-2 font-[family-name:var(--font-display)] text-3xl text-brand-dark transition-colors group-hover:text-brand">
@@ -238,23 +284,20 @@ export default function HomePage() {
             </Reveal>
           ))}
         </div>
-      </section>
+      </SectionShell>
 
-      <section className="mx-auto max-w-3xl px-6 py-6">
+      <SectionShell tone="brand">
         <TrustStrip />
-      </section>
+      </SectionShell>
 
-      <section
-        id="precios"
-        className="mx-auto max-w-3xl scroll-mt-20 px-6 py-10"
-      >
+      <SectionShell id="precios" tone="white">
         <Reveal>
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h2 className="font-[family-name:var(--font-display)] text-3xl text-brand-dark">
+              <h2 className="font-[family-name:var(--font-display)] text-4xl tracking-wide text-brand-dark sm:text-5xl">
                 Planes claros
               </h2>
-              <p className="mt-1 text-sm text-muted">
+              <p className="mt-2 text-sm text-muted">
                 Desde {formatMxn(dailyValue(fromDaily))} al día.
               </p>
             </div>
@@ -277,7 +320,7 @@ export default function HomePage() {
           </div>
         </Reveal>
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-3">
+        <div className="mt-8 grid items-stretch gap-4 sm:grid-cols-3">
           {plans.map((plan, i) => {
             const monthly =
               planPrices[plan]?.monthly ?? FALLBACK_PLAN_PRICES[plan].monthly;
@@ -288,7 +331,12 @@ export default function HomePage() {
             return (
               <Reveal key={plan} delayMs={i * 90}>
                 <div
-                  className={`landing-card h-full rounded-2xl border p-4 ${highlight ? "border-brand bg-white shadow-md" : "border-black/10 bg-surface/90 hover:border-brand/30 hover:shadow-md"}`}
+                  className={cn(
+                    "landing-card h-full rounded-2xl border p-4",
+                    highlight
+                      ? "border-brand bg-white shadow-lg sm:scale-[1.03] sm:z-10"
+                      : "border-black/10 bg-surface/90 hover:border-brand/30 hover:shadow-md",
+                  )}
                 >
                   {highlight ? (
                     <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-brand">
@@ -323,96 +371,102 @@ export default function HomePage() {
           })}
         </div>
 
-        <Reveal className="mt-8" delayMs={80}>
-          <RoiCalculator />
+        <Reveal className="mt-10" delayMs={80}>
+          <div className="rounded-2xl border border-brand/15 bg-brand/[0.05] p-1 sm:p-2">
+            <RoiCalculator />
+          </div>
         </Reveal>
-      </section>
+      </SectionShell>
 
-      <section
-        id="contacto"
-        className="mx-auto max-w-lg scroll-mt-20 px-6 py-10"
-      >
-        <Reveal>
-          <h2 className="font-[family-name:var(--font-display)] text-3xl text-brand-dark">
-            Habla con nosotros
-          </h2>
-          <p className="mt-1 text-sm text-muted">
-            Te respondemos por WhatsApp y te activamos en el mismo día.
+      <SectionShell id="contacto" tone="plain" className="!py-0">
+        <div className="mx-auto max-w-lg py-12 sm:py-14">
+          <Reveal>
+            <h2 className="font-[family-name:var(--font-display)] text-4xl tracking-wide text-brand-dark sm:text-5xl">
+              Habla con nosotros
+            </h2>
+            <p className="mt-2 text-sm text-muted">
+              Te respondemos por WhatsApp y te activamos en el mismo día.
+            </p>
+          </Reveal>
+          <Reveal delayMs={100} className="mt-5 space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="name">Tu nombre</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="business">Nombre del negocio</Label>
+              <Input
+                id="business"
+                value={business}
+                onChange={(e) => setBusiness(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="city">Ciudad</Label>
+              <Input
+                id="city"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="note">¿Qué necesitas?</Label>
+              <Textarea
+                id="note"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+              />
+            </div>
+            <Button
+              className="landing-cta w-full"
+              size="lg"
+              onClick={() => contactSales()}
+            >
+              Escribir por WhatsApp
+            </Button>
+          </Reveal>
+        </div>
+      </SectionShell>
+
+      <footer className="border-t border-black/5 bg-surface/95">
+        <div className="mx-auto max-w-3xl px-6 py-12 text-xs text-muted">
+          <BrandLogo variant="lockup" size="sm" href={null} />
+          <p className="mt-3">
+            {OFFICIAL_DOMAIN} · SaaS para negocios locales
           </p>
-        </Reveal>
-        <Reveal delayMs={100} className="mt-4 space-y-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="name">Tu nombre</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="business">Nombre del negocio</Label>
-            <Input
-              id="business"
-              value={business}
-              onChange={(e) => setBusiness(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="city">Ciudad</Label>
-            <Input
-              id="city"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="note">¿Qué necesitas?</Label>
-            <Textarea
-              id="note"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-            />
-          </div>
-          <Button
-            className="landing-cta w-full"
-            size="lg"
-            onClick={() => contactSales()}
-          >
-            Escribir por WhatsApp
-          </Button>
-        </Reveal>
-      </section>
-
-      <footer className="mx-auto max-w-3xl border-t border-black/5 px-6 py-8 text-xs text-muted">
-        <BrandLogo variant="lockup" size="sm" href={null} />
-        <p className="mt-2">
-          {OFFICIAL_DOMAIN} · SaaS para negocios locales
-        </p>
-        <div className="mt-4 flex flex-wrap gap-4">
-          <Link
-            href="/admin/login"
-            className="transition-colors hover:text-brand"
-          >
-            Entrar al admin
-          </Link>
-          <Link
-            href="/privacidad"
-            className="transition-colors hover:text-brand"
-          >
-            Privacidad
-          </Link>
-          <Link href="/terminos" className="transition-colors hover:text-brand">
-            Términos
-          </Link>
-          {CANONICAL_DEMOS.map((d) => (
+          <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2">
             <Link
-              key={d.slug}
-              href={`/${d.slug}`}
+              href="/admin/login"
               className="transition-colors hover:text-brand"
             >
-              Demo {d.label.toLowerCase()}
+              Entrar al admin
             </Link>
-          ))}
+            <Link
+              href="/privacidad"
+              className="transition-colors hover:text-brand"
+            >
+              Privacidad
+            </Link>
+            <Link
+              href="/terminos"
+              className="transition-colors hover:text-brand"
+            >
+              Términos
+            </Link>
+            {CANONICAL_DEMOS.map((d) => (
+              <Link
+                key={d.slug}
+                href={`/${d.slug}`}
+                className="transition-colors hover:text-brand"
+              >
+                Demo {d.label.toLowerCase()}
+              </Link>
+            ))}
+          </div>
         </div>
       </footer>
       <LandingWhatsAppFab />
