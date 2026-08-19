@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { BusinessType, PlanTemplate } from "@/lib/types";
-import type { PlanType } from "@/lib/plans";
-import { PLAN_LABELS, PLAN_PRICES_MXN } from "@/lib/plans";
+import type { PlanPricesMap, PlanType } from "@/lib/plans";
+import { FALLBACK_PLAN_PRICES, PLAN_LABELS } from "@/lib/plans";
 import {
   BUSINESS_TYPE_LABELS,
   BUSINESS_TYPES,
@@ -38,6 +38,8 @@ export function CreateAdminModal({
   const [businessType, setBusinessType] =
     useState<BusinessType>("restaurante");
   const [planType, setPlanType] = useState<PlanType>("catalog");
+  const [planPrices, setPlanPrices] =
+    useState<PlanPricesMap>(FALLBACK_PLAN_PRICES);
   const [templates, setTemplates] = useState<PlanTemplate[]>([]);
   const [templateId, setTemplateId] = useState("");
   const [sourceSlug, setSourceSlug] = useState("");
@@ -54,12 +56,23 @@ export function CreateAdminModal({
     if (!open) return;
     setError(null);
     void (async () => {
-      const res = await fetch("/api/super-admin/templates");
-      const json = (await res.json()) as {
+      const [templatesRes, pricesRes] = await Promise.all([
+        fetch("/api/super-admin/templates"),
+        fetch("/api/plan-prices"),
+      ]);
+      const templatesJson = (await templatesRes.json()) as {
         templates?: PlanTemplate[];
         error?: string;
       };
-      if (res.ok) setTemplates(json.templates ?? []);
+      if (templatesRes.ok) setTemplates(templatesJson.templates ?? []);
+      if (pricesRes.ok) {
+        const prices = (await pricesRes.json()) as PlanPricesMap;
+        setPlanPrices({
+          catalog: prices.catalog ?? FALLBACK_PLAN_PRICES.catalog,
+          daily: prices.daily ?? FALLBACK_PLAN_PRICES.daily,
+          pro: prices.pro ?? FALLBACK_PLAN_PRICES.pro,
+        });
+      }
     })();
   }, [open]);
 
@@ -177,7 +190,9 @@ export function CreateAdminModal({
               >
                 {(Object.keys(PLAN_LABELS) as PlanType[]).map((p) => (
                   <option key={p} value={p}>
-                    {PLAN_LABELS[p]} ({PLAN_PRICES_MXN[p]} MXN)
+                    {PLAN_LABELS[p]} (
+                    {planPrices[p]?.monthly ?? FALLBACK_PLAN_PRICES[p].monthly}{" "}
+                    MXN)
                   </option>
                 ))}
               </select>

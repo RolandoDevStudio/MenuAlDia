@@ -7,8 +7,8 @@ import type {
   Restaurant,
   TenantPayment,
 } from "@/lib/types";
-import type { PlanType } from "@/lib/plans";
-import { PLAN_LABELS, PLAN_PRICES_MXN } from "@/lib/plans";
+import type { PlanPricesMap, PlanType } from "@/lib/plans";
+import { FALLBACK_PLAN_PRICES, PLAN_LABELS } from "@/lib/plans";
 import {
   BUSINESS_TYPE_LABELS,
   BUSINESS_TYPES,
@@ -77,15 +77,37 @@ export function TenantEditModal({
 
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [logsError, setLogsError] = useState<string | null>(null);
+  const [planPrices, setPlanPrices] =
+    useState<PlanPricesMap>(FALLBACK_PLAN_PRICES);
+
+  useEffect(() => {
+    if (!open) return;
+    void (async () => {
+      const res = await fetch("/api/plan-prices");
+      if (!res.ok) return;
+      const prices = (await res.json()) as PlanPricesMap;
+      const next = {
+        catalog: prices.catalog ?? FALLBACK_PLAN_PRICES.catalog,
+        daily: prices.daily ?? FALLBACK_PLAN_PRICES.daily,
+        pro: prices.pro ?? FALLBACK_PLAN_PRICES.pro,
+      };
+      setPlanPrices(next);
+      if (restaurant) {
+        const plan = (restaurant.plan_type || "catalog") as PlanType;
+        setAmount(String(next[plan]?.monthly ?? FALLBACK_PLAN_PRICES[plan].monthly));
+      }
+    })();
+  }, [open, restaurant]);
 
   useEffect(() => {
     if (!restaurant || !open) return;
+    const plan = (restaurant.plan_type || "catalog") as PlanType;
     setTab("datos");
     setName(restaurant.name);
     setOwnerName(restaurant.owner_name ?? "");
     setSlug(restaurant.slug);
     setPhone(restaurant.phone_whatsapp ?? "");
-    setPlanType((restaurant.plan_type || "catalog") as PlanType);
+    setPlanType(plan);
     setBusinessType(
       (restaurant.business_type || "restaurante") as BusinessType,
     );
@@ -97,10 +119,12 @@ export function TenantEditModal({
     setPassword("");
     setError(null);
     setMessage(null);
-    setAmount(String(PLAN_PRICES_MXN[(restaurant.plan_type || "catalog") as PlanType] ?? ""));
+    setAmount(
+      String(planPrices[plan]?.monthly ?? FALLBACK_PLAN_PRICES[plan].monthly),
+    );
     setPaidAt(new Date().toISOString().slice(0, 10));
     setMethod("transfer");
-    setPayPlan((restaurant.plan_type || "catalog") as PlanType);
+    setPayPlan(plan);
     setPeriodDays("30");
     setReference("");
     setNotes("");

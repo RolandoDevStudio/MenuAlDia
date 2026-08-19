@@ -1,8 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import type { Restaurant } from "@/lib/types";
-import type { PlanType } from "@/lib/plans";
-import { PLAN_LABELS, PLAN_PRICES_MXN } from "@/lib/plans";
+import type { PlanPricesMap, PlanType } from "@/lib/plans";
+import { FALLBACK_PLAN_PRICES, PLAN_LABELS } from "@/lib/plans";
 import { formatMxn } from "@/lib/money";
 import { buildWaMeUrl } from "@/lib/whatsapp";
 import { Button } from "@/components/ui/button";
@@ -16,10 +17,14 @@ function formatEndDate(iso: string | null | undefined): string {
   });
 }
 
-export function buildPaymentReminderMessage(restaurant: Restaurant): string {
+export function buildPaymentReminderMessage(
+  restaurant: Restaurant,
+  prices: PlanPricesMap = FALLBACK_PLAN_PRICES,
+): string {
   const plan = (restaurant.plan_type || "catalog") as PlanType;
   const planLabel = PLAN_LABELS[plan] ?? plan;
-  const price = PLAN_PRICES_MXN[plan] ?? 0;
+  const price =
+    prices[plan]?.monthly ?? FALLBACK_PLAN_PRICES[plan]?.monthly ?? 0;
   const end = formatEndDate(restaurant.subscription_end_date);
 
   return [
@@ -42,8 +47,24 @@ export function RemindPaymentButton({
   restaurant: Restaurant;
   size?: "sm" | "default";
 }) {
+  const [planPrices, setPlanPrices] =
+    useState<PlanPricesMap>(FALLBACK_PLAN_PRICES);
+
+  useEffect(() => {
+    void (async () => {
+      const res = await fetch("/api/plan-prices");
+      if (!res.ok) return;
+      const prices = (await res.json()) as PlanPricesMap;
+      setPlanPrices({
+        catalog: prices.catalog ?? FALLBACK_PLAN_PRICES.catalog,
+        daily: prices.daily ?? FALLBACK_PLAN_PRICES.daily,
+        pro: prices.pro ?? FALLBACK_PLAN_PRICES.pro,
+      });
+    })();
+  }, []);
+
   function openReminder() {
-    const message = buildPaymentReminderMessage(restaurant);
+    const message = buildPaymentReminderMessage(restaurant, planPrices);
     const url = buildWaMeUrl(restaurant.phone_whatsapp || "", message);
     window.open(url, "_blank", "noopener,noreferrer");
   }
