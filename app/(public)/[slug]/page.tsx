@@ -149,7 +149,7 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
         };
 
   return (
-    <main className="relative min-h-full overflow-x-hidden bg-background">
+    <main className="relative min-h-full overflow-x-clip bg-background">
       <div
         className="pointer-events-none absolute inset-0 -z-10 opacity-90"
         aria-hidden

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { BrandLogo } from "@/components/brand/brand-logo";
@@ -20,6 +20,16 @@ type Props = {
 
 export function LandingNav({ onContactClick }: Props) {
   const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    function onScroll() {
+      setScrolled(window.scrollY > 8);
+    }
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   function go(href: string) {
     setOpen(false);
@@ -32,7 +42,14 @@ export function LandingNav({ onContactClick }: Props) {
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-black/5 bg-background/90 backdrop-blur">
+    <header
+      className={cn(
+        "sticky top-0 z-40 border-b bg-background/90 backdrop-blur transition-[border-color,box-shadow] duration-300",
+        scrolled
+          ? "border-black/10 shadow-sm shadow-black/5"
+          : "border-black/5 shadow-none",
+      )}
+    >
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
         <BrandLogo variant="lockup" size="sm" href="/" />
 
@@ -41,7 +58,7 @@ export function LandingNav({ onContactClick }: Props) {
             <button
               key={l.href}
               type="button"
-              className="text-muted hover:text-brand"
+              className="text-muted transition-colors duration-200 hover:text-brand"
               onClick={() => go(l.href)}
             >
               {l.label}
@@ -53,14 +70,18 @@ export function LandingNav({ onContactClick }: Props) {
           <Button asChild variant="ghost" size="sm">
             <Link href="/admin/login">Entrar</Link>
           </Button>
-          <Button size="sm" onClick={() => go("#contacto")}>
+          <Button
+            size="sm"
+            className="landing-cta"
+            onClick={() => go("#contacto")}
+          >
             Hablar por WhatsApp
           </Button>
         </div>
 
         <button
           type="button"
-          className="flex h-11 w-11 items-center justify-center rounded-lg text-foreground hover:bg-black/5 md:hidden"
+          className="flex h-11 w-11 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-black/5 md:hidden"
           aria-label={open ? "Cerrar menú" : "Abrir menú"}
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
@@ -71,32 +92,39 @@ export function LandingNav({ onContactClick }: Props) {
 
       <div
         className={cn(
-          "border-t border-black/5 bg-background px-4 py-3 md:hidden",
-          open ? "block" : "hidden",
+          "grid overflow-hidden border-black/5 bg-background transition-[grid-template-rows,opacity,border-width] duration-300 ease-out md:hidden",
+          open
+            ? "grid-rows-[1fr] border-t opacity-100"
+            : "grid-rows-[0fr] border-t-0 opacity-0",
         )}
       >
-        <nav className="flex flex-col gap-1">
-          {LINKS.map((l) => (
-            <button
-              key={l.href}
-              type="button"
-              className="rounded-lg px-3 py-3 text-left text-sm font-semibold text-foreground hover:bg-black/5"
-              onClick={() => go(l.href)}
+        <div className="min-h-0">
+          <nav className="flex flex-col gap-1 px-4 py-3">
+            {LINKS.map((l) => (
+              <button
+                key={l.href}
+                type="button"
+                className="rounded-lg px-3 py-3 text-left text-sm font-semibold text-foreground transition-colors hover:bg-black/5"
+                onClick={() => go(l.href)}
+              >
+                {l.label}
+              </button>
+            ))}
+            <Link
+              href="/admin/login"
+              className="rounded-lg px-3 py-3 text-sm font-semibold text-muted transition-colors hover:bg-black/5"
+              onClick={() => setOpen(false)}
             >
-              {l.label}
-            </button>
-          ))}
-          <Link
-            href="/admin/login"
-            className="rounded-lg px-3 py-3 text-sm font-semibold text-muted hover:bg-black/5"
-            onClick={() => setOpen(false)}
-          >
-            Entrar al admin
-          </Link>
-          <Button className="mt-2 w-full" onClick={() => go("#contacto")}>
-            Hablar por WhatsApp
-          </Button>
-        </nav>
+              Entrar al admin
+            </Link>
+            <Button
+              className="mt-2 w-full landing-cta"
+              onClick={() => go("#contacto")}
+            >
+              Hablar por WhatsApp
+            </Button>
+          </nav>
+        </div>
       </div>
     </header>
   );

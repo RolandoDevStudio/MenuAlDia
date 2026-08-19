@@ -23,10 +23,15 @@
   --font-display: var(--font-display);
 }
 
+html {
+  overflow-x: clip;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
+  overflow-x: clip;
 }
 
 @keyframes rise {
@@ -37,5 +42,92 @@ body {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes aurora-shift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(1.5%, 1%, 0);
+  }
+}
+
+@keyframes soft-pulse {
+  0%,
+  100% {
+    box-shadow: 0 10px 24px rgba(37, 211, 102, 0.28);
+  }
+  50% {
+    box-shadow: 0 12px 28px rgba(37, 211, 102, 0.42);
+  }
+}
+
+.landing-aurora {
+  background:
+    radial-gradient(ellipse 80% 50% at 15% 0%, #f0d4b8 0%, transparent 55%),
+    radial-gradient(ellipse 60% 40% at 90% 10%, #d4e8dc 0%, transparent 50%),
+    linear-gradient(180deg, #faf6f1 0%, #f3e8dc 40%, #faf6f1 100%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .landing-aurora {
+    animation: aurora-shift 18s ease-in-out infinite;
+    will-change: transform;
+  }
+
+  .landing-fab-pulse {
+    animation: soft-pulse 2.8s ease-in-out infinite;
+  }
+}
+
+.landing-cta {
+  transition:
+    transform 200ms ease,
+    box-shadow 200ms ease,
+    background-color 200ms ease,
+    color 200ms ease,
+    border-color 200ms ease;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .landing-cta:hover {
+    transform: translateY(-2px);
+  }
+}
+
+.landing-card {
+  transition:
+    transform 220ms ease,
+    box-shadow 220ms ease,
+    border-color 220ms ease;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .landing-card:hover {
+    transform: translateY(-3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-aurora,
+  .landing-fab-pulse {
+    animation: none !important;
+  }
+
+  .landing-cta:hover,
+  .landing-card:hover {
+    transform: none;
   }
 }
