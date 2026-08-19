@@ -105,6 +105,7 @@ export interface Order {
 export interface OrderLogPayload {
   customer_name: string;
   address: string;
+  maps_url?: string | null;
   references: string;
   payment_method: PaymentMethod;
   cash_amount?: number | null;
@@ -114,6 +115,10 @@ export interface OrderLogPayload {
   shipping: number;
   total: number;
   wa_message?: string;
+  /** Legacy camelCase from older clients */
+  customerName?: string;
+  mapsUrl?: string;
+  paymentMethod?: PaymentMethod;
 }
 
 export interface CartItem {
@@ -129,6 +134,7 @@ export interface CartItem {
 export interface CheckoutFormValues {
   customerName: string;
   address: string;
+  mapsUrl?: string;
   references: string;
   paymentMethod: PaymentMethod;
   cashAmount?: number | null;

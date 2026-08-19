@@ -2,16 +2,29 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionRestaurant } from "@/lib/restaurant";
 import { PlanGate } from "@/components/admin/plan-gate";
+import { OpenMapsButton } from "@/components/admin/open-maps-button";
 import { can } from "@/lib/plans";
 import { formatMxn } from "@/lib/money";
-import type { Order } from "@/lib/types";
+import type { Order, OrderLogPayload } from "@/lib/types";
+
+function customerName(p: OrderLogPayload) {
+  return p.customer_name || p.customerName || "Cliente";
+}
+
+function mapsUrl(p: OrderLogPayload) {
+  return (p.maps_url || p.mapsUrl || "").trim();
+}
 
 export default async function OrdersPage() {
   const session = await getSessionRestaurant();
   if (!session) redirect("/admin/login");
   const plan = session.restaurant.plan_type || "catalog";
   if (!can(plan, "crm")) {
-    return <PlanGate plan={plan} feature="crm" title="Pedidos CRM (Pro)" >{null}</PlanGate>;
+    return (
+      <PlanGate plan={plan} feature="crm" title="Pedidos CRM (Pro)">
+        {null}
+      </PlanGate>
+    );
   }
 
   const supabase = await createClient();
@@ -44,29 +57,39 @@ export default async function OrdersPage() {
         </p>
       ) : (
         <ul className="space-y-2">
-          {orders.map((o) => (
-            <li
-              key={o.id}
-              className="rounded-xl border border-black/5 bg-surface px-3 py-3"
-            >
-              <div className="flex justify-between gap-2">
-                <p className="font-medium">
-                  {o.payload?.customer_name ?? "Cliente"}
+          {orders.map((o) => {
+            const payload = o.payload ?? ({} as OrderLogPayload);
+            const map = mapsUrl(payload);
+            return (
+              <li
+                key={o.id}
+                className="rounded-xl border border-black/5 bg-surface px-3 py-3"
+              >
+                <div className="flex justify-between gap-2">
+                  <p className="font-medium">{customerName(payload)}</p>
+                  <p className="text-sm font-semibold text-brand">
+                    {formatMxn(Number(o.total))}
+                  </p>
+                </div>
+                <p className="mt-1 text-xs text-muted">
+                  {new Date(o.created_at).toLocaleString("es-MX")} · {o.status}
                 </p>
-                <p className="text-sm font-semibold text-brand">
-                  {formatMxn(Number(o.total))}
+                {payload.address ? (
+                  <p className="mt-1 text-xs text-muted">{payload.address}</p>
+                ) : null}
+                <p className="mt-1 line-clamp-2 text-xs text-muted">
+                  {(payload.items ?? [])
+                    .map((i) => `${i.quantity}x ${i.name}`)
+                    .join(", ")}
                 </p>
-              </div>
-              <p className="mt-1 text-xs text-muted">
-                {new Date(o.created_at).toLocaleString("es-MX")} · {o.status}
-              </p>
-              <p className="mt-1 line-clamp-2 text-xs text-muted">
-                {(o.payload?.items ?? [])
-                  .map((i) => `${i.quantity}x ${i.name}`)
-                  .join(", ")}
-              </p>
-            </li>
-          ))}
+                {map ? (
+                  <div className="mt-2">
+                    <OpenMapsButton url={map} className="min-h-11" />
+                  </div>
+                ) : null}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

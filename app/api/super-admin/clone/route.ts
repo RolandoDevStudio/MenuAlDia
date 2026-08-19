@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/admin";
 import { isCurrentUserSuperAdmin } from "@/lib/restaurant";
 
 export async function POST(request: Request) {
@@ -11,14 +12,47 @@ export async function POST(request: Request) {
     source_slug?: string;
     new_slug?: string;
     new_name?: string;
+    phone_whatsapp?: string;
+    owner_email?: string;
+    owner_password?: string;
   };
 
   const sourceSlug = body.source_slug?.trim();
   const newSlug = body.new_slug?.trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
   const newName = body.new_name?.trim();
+  const phone = body.phone_whatsapp?.replace(/\D/g, "") ?? "";
+  const ownerEmail = body.owner_email?.trim().toLowerCase();
+  const ownerPassword = body.owner_password ?? "";
 
   if (!sourceSlug || !newSlug || !newName) {
     return NextResponse.json({ error: "missing fields" }, { status: 400 });
+  }
+  if (!ownerEmail || !ownerPassword) {
+    return NextResponse.json(
+      { error: "owner_email y owner_password son obligatorios" },
+      { status: 400 },
+    );
+  }
+  if (ownerPassword.length < 6) {
+    return NextResponse.json(
+      { error: "La contraseña debe tener al menos 6 caracteres" },
+      { status: 400 },
+    );
+  }
+
+  let admin;
+  try {
+    admin = createServiceClient();
+  } catch (e) {
+    return NextResponse.json(
+      {
+        error:
+          e instanceof Error
+            ? e.message
+            : "Configura SUPABASE_SERVICE_ROLE_KEY",
+      },
+      { status: 500 },
+    );
   }
 
   const supabase = await createClient();
@@ -40,7 +74,7 @@ export async function POST(request: Request) {
       name: newName,
       slogan: source.slogan,
       logo_url: source.logo_url,
-      phone_whatsapp: source.phone_whatsapp,
+      phone_whatsapp: phone || source.phone_whatsapp,
       address: source.address,
       maps_url: source.maps_url,
       schedule_text: source.schedule_text,
@@ -154,5 +188,44 @@ export async function POST(request: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, slug: created.slug, id: created.id });
+  const { data: authUser, error: authErr } = await admin.auth.admin.createUser({
+    email: ownerEmail,
+    password: ownerPassword,
+    email_confirm: true,
+  });
+
+  if (authErr || !authUser.user) {
+    return NextResponse.json(
+      {
+        error: `Tenant clonado pero falló el usuario: ${authErr?.message ?? "unknown"}`,
+        slug: created.slug,
+        id: created.id,
+      },
+      { status: 500 },
+    );
+  }
+
+  const { error: memErr } = await admin.from("restaurant_members").insert({
+    user_id: authUser.user.id,
+    restaurant_id: created.id,
+    role: "owner",
+  });
+
+  if (memErr) {
+    return NextResponse.json(
+      {
+        error: `Usuario creado pero no se vinculó: ${memErr.message}`,
+        slug: created.slug,
+        id: created.id,
+      },
+      { status: 500 },
+    );
+  }
+
+  return NextResponse.json({
+    ok: true,
+    slug: created.slug,
+    id: created.id,
+    owner_email: ownerEmail,
+  });
 }

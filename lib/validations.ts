@@ -4,6 +4,15 @@ export const checkoutSchema = z
   .object({
     customerName: z.string().min(2, "Escribe tu nombre"),
     address: z.string().min(5, "Escribe la dirección de entrega"),
+    mapsUrl: z
+      .string()
+      .trim()
+      .optional()
+      .default("")
+      .refine(
+        (v) => !v || /^https?:\/\//i.test(v),
+        "Pega el enlace completo de Google Maps (https://…)",
+      ),
     references: z.string().optional().default(""),
     paymentMethod: z.enum(["cash", "transfer"]),
     cashAmount: z.coerce.number().optional().nullable(),

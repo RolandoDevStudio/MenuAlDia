@@ -16,7 +16,7 @@ SaaS multi-tenant para negocios locales: menú digital, menú del día, flyer Wh
 cp .env.example .env.local
 ```
 
-Completa `NEXT_PUBLIC_SUPABASE_*` y opcionalmente `NEXT_PUBLIC_SALES_WHATSAPP` (landing → WhatsApp de ventas).
+Completa `NEXT_PUBLIC_SUPABASE_*`, `SUPABASE_SERVICE_ROLE_KEY` (super-admin: clonar con usuario/contraseña) y opcionalmente `NEXT_PUBLIC_SALES_WHATSAPP`.
 
 2. En Supabase SQL Editor, ejecuta en orden:
 

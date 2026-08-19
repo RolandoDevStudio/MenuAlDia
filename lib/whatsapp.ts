@@ -32,13 +32,21 @@ export function buildOrderMessage(params: {
   lines.push("");
   lines.push(`Cliente: ${checkout.customerName}`);
   lines.push(`Dirección: ${checkout.address}`);
-  if (checkout.references) lines.push(`Refs: ${checkout.references}`);
+  if (checkout.mapsUrl?.trim()) {
+    lines.push(`Maps: ${checkout.mapsUrl.trim()}`);
+  }
+  if (checkout.references) {
+    lines.push(`Referencias de la dirección: ${checkout.references}`);
+  }
   if (checkout.paymentMethod === "cash") {
     lines.push(
       `Pago: Efectivo (paga con ${formatMxn(checkout.cashAmount ?? 0)})`,
     );
   } else {
     lines.push("Pago: Transferencia");
+    lines.push(
+      "Por favor, ¿me puedes compartir los datos para transferir (banco / CLABE / cuenta)?",
+    );
   }
   return lines.join("\n");
 }

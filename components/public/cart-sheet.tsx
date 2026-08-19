@@ -40,6 +40,7 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
   const [step, setStep] = useState<"review" | "checkout">("review");
   const [customerName, setCustomerName] = useState("");
   const [address, setAddress] = useState("");
+  const [mapsUrl, setMapsUrl] = useState("");
   const [references, setReferences] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "transfer">(
     "cash",
@@ -78,6 +79,7 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
     const parsed = checkoutSchema.safeParse({
       customerName,
       address,
+      mapsUrl,
       references,
       paymentMethod,
       cashAmount: paymentMethod === "cash" ? Number(cashAmount) : null,
@@ -276,9 +278,24 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="references">Referencias</Label>
+                <Label htmlFor="mapsUrl">URL de Google Maps</Label>
+                <Input
+                  id="mapsUrl"
+                  type="url"
+                  inputMode="url"
+                  placeholder="https://maps.google.com/…"
+                  value={mapsUrl}
+                  onChange={(e) => setMapsUrl(e.target.value)}
+                />
+                <p className="text-[11px] text-muted">
+                  Opcional. En Maps: compartir → copiar enlace.
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="references">Referencias de la dirección</Label>
                 <Input
                   id="references"
+                  placeholder="Ej. portón negro, 2do piso"
                   value={references}
                   onChange={(e) => setReferences(e.target.value)}
                 />

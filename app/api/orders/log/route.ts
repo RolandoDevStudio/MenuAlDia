@@ -7,7 +7,7 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as {
       restaurant_id?: string;
-      payload?: OrderLogPayload;
+      payload?: Record<string, unknown>;
     };
     if (!body.restaurant_id || !body.payload) {
       return NextResponse.json({ error: "invalid payload" }, { status: 400 });
@@ -25,18 +25,46 @@ export async function POST(request: Request) {
     }
 
     const plan = (restaurant as Restaurant).plan_type || "catalog";
-    const payload = body.payload;
+    const raw = body.payload;
 
-    // Always best-effort log
+    const customerName = String(
+      raw.customer_name ?? raw.customerName ?? "Cliente",
+    );
+    const address = String(raw.address ?? "");
+    const mapsUrl = String(raw.maps_url ?? raw.mapsUrl ?? "").trim() || null;
+    const references = String(raw.references ?? "");
+    const paymentMethod = (raw.payment_method ??
+      raw.paymentMethod ??
+      "cash") as OrderLogPayload["payment_method"];
+    const cashAmount =
+      (raw.cash_amount as number | null | undefined) ??
+      (raw.cashAmount as number | null | undefined) ??
+      null;
+    const phone =
+      (raw.phone as string | null | undefined)?.trim() || null;
+
+    const normalized: OrderLogPayload = {
+      customer_name: customerName,
+      address,
+      maps_url: mapsUrl,
+      references,
+      payment_method: paymentMethod,
+      cash_amount: cashAmount,
+      phone,
+      items: (raw.items as OrderLogPayload["items"]) ?? [],
+      subtotal: Number(raw.subtotal ?? 0),
+      shipping: Number(raw.shipping ?? 0),
+      total: Number(raw.total ?? 0),
+      wa_message: raw.wa_message as string | undefined,
+    };
+
     await supabase.from("order_logs").insert({
       restaurant_id: body.restaurant_id,
-      payload,
+      payload: normalized,
     });
 
     if (can(plan, "crm")) {
-      const name = payload.customer_name?.trim() || "Cliente";
-      const phone = payload.phone?.trim() || null;
-      const address = payload.address || "";
+      const name = customerName.trim() || "Cliente";
 
       let customerId: string | null = null;
 
@@ -81,14 +109,15 @@ export async function POST(request: Request) {
       await supabase.from("orders").insert({
         restaurant_id: body.restaurant_id,
         customer_id: customerId,
-        payload,
-        total: payload.total ?? 0,
+        payload: normalized,
+        total: normalized.total,
         status: "submitted",
       });
     }
 
     return NextResponse.json({ ok: true });
-  } catch {
-    return NextResponse.json({ error: "invalid body" }, { status: 400 });
+  } catch (e) {
+    console.error(e);
+    return NextResponse.json({ error: "server error" }, { status: 500 });
   }
 }

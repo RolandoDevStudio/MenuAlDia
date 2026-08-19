@@ -10,25 +10,69 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 
+type OwnerInfo = { user_id: string; email: string | null; role: string };
+
 export default function TenantsPage() {
   const [rows, setRows] = useState<Restaurant[]>([]);
+  const [owners, setOwners] = useState<Record<string, OwnerInfo>>({});
   const [q, setQ] = useState("");
   const [planFilter, setPlanFilter] = useState<string>("all");
   const [error, setError] = useState<string | null>(null);
   const [cloneSource, setCloneSource] = useState("");
   const [cloneSlug, setCloneSlug] = useState("");
   const [cloneName, setCloneName] = useState("");
+  const [clonePhone, setClonePhone] = useState("");
+  const [cloneEmail, setCloneEmail] = useState("");
+  const [clonePassword, setClonePassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [credDrafts, setCredDrafts] = useState<
+    Record<string, { phone: string; email: string; password: string }>
+  >({});
 
   const load = useCallback(async () => {
-    const supabase = createClient();
-    const { data, error: err } = await supabase
-      .from("restaurants")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (err) setError(err.message);
-    else setRows((data ?? []) as Restaurant[]);
+    setError(null);
+    const res = await fetch("/api/super-admin/tenants");
+    const json = (await res.json()) as {
+      restaurants?: Restaurant[];
+      owners?: Record<string, OwnerInfo>;
+      error?: string;
+      warning?: string;
+    };
+    if (!res.ok) {
+      setError(json.error ?? "No se pudieron cargar suscriptores");
+      // fallback client load
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("restaurants")
+        .select("*")
+        .order("created_at", { ascending: false });
+      setRows((data ?? []) as Restaurant[]);
+      return;
+    }
+    const list = (json.restaurants ?? []) as Restaurant[];
+    setRows(list);
+    setOwners(json.owners ?? {});
+    if (json.warning) setMessage(json.warning);
+    setCredDrafts((prev) => {
+      const next = { ...prev };
+      for (const r of list) {
+        if (!next[r.id]) {
+          next[r.id] = {
+            phone: r.phone_whatsapp ?? "",
+            email: json.owners?.[r.id]?.email ?? "",
+            password: "",
+          };
+        } else {
+          next[r.id] = {
+            ...next[r.id],
+            phone: next[r.id].phone || r.phone_whatsapp || "",
+            email: next[r.id].email || json.owners?.[r.id]?.email || "",
+          };
+        }
+      }
+      return next;
+    });
   }, []);
 
   useEffect(() => {
@@ -41,14 +85,18 @@ export default function TenantsPage() {
       if (!q) return true;
       const s = q.toLowerCase();
       return (
-        r.name.toLowerCase().includes(s) || r.slug.toLowerCase().includes(s)
+        r.name.toLowerCase().includes(s) ||
+        r.slug.toLowerCase().includes(s) ||
+        (owners[r.id]?.email ?? "").toLowerCase().includes(s)
       );
     });
-  }, [rows, q, planFilter]);
+  }, [rows, q, planFilter, owners]);
 
   async function patch(
     id: string,
-    patch: Partial<Pick<Restaurant, "plan_type" | "is_active" | "subscription_end_date">>,
+    patch: Partial<
+      Pick<Restaurant, "plan_type" | "is_active" | "subscription_end_date">
+    >,
   ) {
     setError(null);
     const supabase = createClient();
@@ -58,6 +106,36 @@ export default function TenantsPage() {
       .eq("id", id);
     if (err) setError(err.message);
     else await load();
+  }
+
+  async function saveCredentials(id: string) {
+    const draft = credDrafts[id];
+    if (!draft) return;
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    const res = await fetch("/api/super-admin/tenants", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id,
+        phone_whatsapp: draft.phone,
+        owner_email: draft.email || undefined,
+        owner_password: draft.password || undefined,
+      }),
+    });
+    const json = (await res.json()) as { error?: string };
+    setBusy(false);
+    if (!res.ok) {
+      setError(json.error ?? "No se pudieron guardar credenciales");
+      return;
+    }
+    setMessage("Credenciales actualizadas");
+    setCredDrafts((d) => ({
+      ...d,
+      [id]: { ...d[id], password: "" },
+    }));
+    await load();
   }
 
   async function cloneTenant() {
@@ -71,17 +149,29 @@ export default function TenantsPage() {
         source_slug: cloneSource,
         new_slug: cloneSlug,
         new_name: cloneName,
+        phone_whatsapp: clonePhone,
+        owner_email: cloneEmail,
+        owner_password: clonePassword,
       }),
     });
-    const json = (await res.json()) as { error?: string; slug?: string };
+    const json = (await res.json()) as {
+      error?: string;
+      slug?: string;
+      owner_email?: string;
+    };
     setBusy(false);
     if (!res.ok) {
       setError(json.error ?? "Error al clonar");
       return;
     }
-    setMessage(`Clonado: /${json.slug}`);
+    setMessage(
+      `Clonado: /${json.slug} · login ${json.owner_email ?? cloneEmail}`,
+    );
     setCloneSlug("");
     setCloneName("");
+    setClonePhone("");
+    setCloneEmail("");
+    setClonePassword("");
     await load();
   }
 
@@ -89,12 +179,15 @@ export default function TenantsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-lg font-semibold">Suscriptores</h1>
-        <p className="text-sm text-muted">Planes, estado y vencimiento.</p>
+        <p className="text-sm text-muted">
+          El <strong>slug</strong> es la URL pública (`/mi-fonda`), no el usuario
+          de login. El acceso al admin es con <strong>email + contraseña</strong>.
+        </p>
       </div>
 
       <div className="flex flex-wrap gap-2">
         <Input
-          placeholder="Buscar nombre o slug"
+          placeholder="Buscar nombre, slug o email"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           className="max-w-xs"
@@ -115,64 +208,143 @@ export default function TenantsPage() {
       {message ? <p className="text-sm text-accent">{message}</p> : null}
 
       <ul className="space-y-3">
-        {filtered.map((r) => (
-          <li
-            key={r.id}
-            className="space-y-3 rounded-2xl border border-black/5 bg-surface p-4"
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <p className="font-semibold">{r.name}</p>
-                <p className="text-xs text-muted">/{r.slug}</p>
+        {filtered.map((r) => {
+          const draft = credDrafts[r.id] ?? {
+            phone: r.phone_whatsapp ?? "",
+            email: owners[r.id]?.email ?? "",
+            password: "",
+          };
+          return (
+            <li
+              key={r.id}
+              className="space-y-3 rounded-2xl border border-black/5 bg-surface p-4"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="font-semibold">{r.name}</p>
+                  <p className="text-xs text-muted">
+                    Slug público: /{r.slug}
+                  </p>
+                  {owners[r.id]?.email ? (
+                    <p className="text-xs text-muted">
+                      Login: {owners[r.id].email}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-amber-700">
+                      Sin usuario owner vinculado
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted">Activo</span>
+                  <Switch
+                    checked={r.is_active !== false}
+                    onCheckedChange={(on) => patch(r.id, { is_active: on })}
+                  />
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted">Activo</span>
-                <Switch
-                  checked={r.is_active !== false}
-                  onCheckedChange={(on) => patch(r.id, { is_active: on })}
-                />
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label>Plan</Label>
+                  <select
+                    className="h-11 w-full rounded-lg border border-black/10 bg-background px-3 text-sm"
+                    value={r.plan_type || "catalog"}
+                    onChange={(e) =>
+                      patch(r.id, { plan_type: e.target.value as PlanType })
+                    }
+                  >
+                    {(Object.keys(PLAN_LABELS) as PlanType[]).map((p) => (
+                      <option key={p} value={p}>
+                        {PLAN_LABELS[p]} (${PLAN_PRICES_MXN[p]})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <Label>Vence</Label>
+                  <Input
+                    type="date"
+                    value={r.subscription_end_date?.slice(0, 10) ?? ""}
+                    onChange={(e) =>
+                      patch(r.id, {
+                        subscription_end_date: new Date(
+                          e.target.value + "T23:59:59",
+                        ).toISOString(),
+                      })
+                    }
+                  />
+                </div>
               </div>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <div className="space-y-1">
-                <Label>Plan</Label>
-                <select
-                  className="h-11 w-full rounded-lg border border-black/10 bg-background px-3 text-sm"
-                  value={r.plan_type || "catalog"}
-                  onChange={(e) =>
-                    patch(r.id, { plan_type: e.target.value as PlanType })
-                  }
+
+              <div className="space-y-2 rounded-xl border border-black/5 bg-background/50 p-3">
+                <p className="text-xs font-semibold text-muted">
+                  Acceso admin (email ≠ slug)
+                </p>
+                <div className="space-y-1.5">
+                  <Label>WhatsApp del negocio</Label>
+                  <Input
+                    value={draft.phone}
+                    onChange={(e) =>
+                      setCredDrafts((d) => ({
+                        ...d,
+                        [r.id]: { ...draft, phone: e.target.value },
+                      }))
+                    }
+                    placeholder="52155…"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Email de login</Label>
+                  <Input
+                    type="email"
+                    value={draft.email}
+                    onChange={(e) =>
+                      setCredDrafts((d) => ({
+                        ...d,
+                        [r.id]: { ...draft, email: e.target.value },
+                      }))
+                    }
+                    placeholder="dueno@negocio.com"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Nueva contraseña</Label>
+                  <Input
+                    type="password"
+                    value={draft.password}
+                    onChange={(e) =>
+                      setCredDrafts((d) => ({
+                        ...d,
+                        [r.id]: { ...draft, password: e.target.value },
+                      }))
+                    }
+                    placeholder="Dejar vacío para no cambiar"
+                    autoComplete="new-password"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="w-full min-h-11"
+                  disabled={busy}
+                  onClick={() => saveCredentials(r.id)}
                 >
-                  {(Object.keys(PLAN_LABELS) as PlanType[]).map((p) => (
-                    <option key={p} value={p}>
-                      {PLAN_LABELS[p]} (${PLAN_PRICES_MXN[p]})
-                    </option>
-                  ))}
-                </select>
+                  Guardar teléfono / acceso
+                </Button>
               </div>
-              <div className="space-y-1">
-                <Label>Vence</Label>
-                <Input
-                  type="date"
-                  value={r.subscription_end_date?.slice(0, 10) ?? ""}
-                  onChange={(e) =>
-                    patch(r.id, {
-                      subscription_end_date: new Date(
-                        e.target.value + "T23:59:59",
-                      ).toISOString(),
-                    })
-                  }
-                />
-              </div>
-            </div>
-          </li>
-        ))}
+            </li>
+          );
+        })}
       </ul>
 
-      <section className="rounded-2xl border border-black/10 bg-surface p-4 space-y-3">
+      <section className="space-y-3 rounded-2xl border border-black/10 bg-surface p-4">
         <h2 className="text-sm font-semibold">Clonar plantilla</h2>
+        <p className="text-xs text-muted">
+          Crea el menú clonado y un usuario owner con email + contraseña para
+          entrar a /admin/login.
+        </p>
         <div className="space-y-1.5">
-          <Label>Origen (slug)</Label>
+          <Label>Origen (slug público)</Label>
           <Input
             list="seed-slugs"
             value={cloneSource}
@@ -186,7 +358,7 @@ export default function TenantsPage() {
           </datalist>
         </div>
         <div className="space-y-1.5">
-          <Label>Nuevo slug</Label>
+          <Label>Nuevo slug (URL pública)</Label>
           <Input
             value={cloneSlug}
             onChange={(e) => setCloneSlug(e.target.value)}
@@ -194,16 +366,50 @@ export default function TenantsPage() {
           />
         </div>
         <div className="space-y-1.5">
-          <Label>Nombre</Label>
+          <Label>Nombre del negocio</Label>
           <Input
             value={cloneName}
             onChange={(e) => setCloneName(e.target.value)}
             placeholder="Mi Fonda"
           />
         </div>
+        <div className="space-y-1.5">
+          <Label>WhatsApp del negocio</Label>
+          <Input
+            value={clonePhone}
+            onChange={(e) => setClonePhone(e.target.value)}
+            placeholder="52155…"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Email de login (owner)</Label>
+          <Input
+            type="email"
+            value={cloneEmail}
+            onChange={(e) => setCloneEmail(e.target.value)}
+            placeholder="dueno@negocio.com"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Contraseña de login</Label>
+          <Input
+            type="password"
+            value={clonePassword}
+            onChange={(e) => setClonePassword(e.target.value)}
+            placeholder="Mínimo 6 caracteres"
+            autoComplete="new-password"
+          />
+        </div>
         <Button
           className="w-full"
-          disabled={busy || !cloneSource || !cloneSlug || !cloneName}
+          disabled={
+            busy ||
+            !cloneSource ||
+            !cloneSlug ||
+            !cloneName ||
+            !cloneEmail ||
+            !clonePassword
+          }
           onClick={cloneTenant}
         >
           {busy ? "Clonando…" : "Clonar tenant"}
