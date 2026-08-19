@@ -16,6 +16,7 @@ import {
   FloatingCart,
 } from "@/components/public/floating-cart";
 import { PoweredByMenuAlDia } from "@/components/brand/brand-logo";
+import { TryAsCustomerBanner } from "@/components/marketing/try-as-customer-banner";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -155,6 +156,7 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
         aria-hidden
         style={bgStyle}
       />
+      <TryAsCustomerBanner slug={slug} />
       {theme.bannerUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img

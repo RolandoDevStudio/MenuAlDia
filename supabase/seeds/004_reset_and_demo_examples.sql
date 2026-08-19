@@ -11,8 +11,8 @@
 --
 -- Demos:
 --   /demo-restaurante → restaurante · plan daily · menú del día · combo · addons
---   /demo-estetica    → servicios · plan catalog · servicios/paquetes
---   /demo-productos   → productos · plan daily · colección express
+--   /demo-servicios    → servicios · plan catalog · servicios/paquetes
+--   /demo-tienda   → productos · plan daily · colección express
 --   /demo-pro         → restaurante · plan pro · CRM (customers/orders)
 --   /demo-vencido     → oculto al público (RLS)
 --   /demo             → redirect app a /demo-restaurante
@@ -289,7 +289,7 @@ insert into public.combo_items (combo_id, dish_id, quantity, sort_order) values
   ('cb000000-0000-4000-8000-000000000001', 'c0000000-0000-4000-8000-000000000009', 1, 1);
 
 -- ---------------------------------------------------------------------------
--- 5) DEMO SERVICIOS — /demo-estetica (plan catalog)
+-- 5) DEMO SERVICIOS — /demo-servicios (plan catalog)
 -- ---------------------------------------------------------------------------
 
 insert into public.restaurants (
@@ -298,7 +298,7 @@ insert into public.restaurants (
   subscription_end_date, theme_config, business_type, owner_name
 ) values (
   'a0000000-0000-4000-8000-000000000002',
-  'demo-estetica',
+  'demo-servicios',
   'Estética Bella Luna',
   'Belleza y cuidado personal',
   '5215512345679',
@@ -349,7 +349,7 @@ insert into public.dish_addons (id, dish_id, name, price_delta, sort_order, is_a
   ('aa000000-0000-4000-8000-000000000012', 'c0000000-0000-4000-8000-000000000023', 'Diseño en uñas', 40, 0, true);
 
 -- ---------------------------------------------------------------------------
--- 6) DEMO PRODUCTOS — /demo-productos (plan daily + colección)
+-- 6) DEMO PRODUCTOS — /demo-tienda (plan daily + colección)
 -- ---------------------------------------------------------------------------
 
 insert into public.restaurants (
@@ -358,7 +358,7 @@ insert into public.restaurants (
   subscription_end_date, theme_config, business_type, owner_name
 ) values (
   'a0000000-0000-4000-8000-000000000005',
-  'demo-productos',
+  'demo-tienda',
   'Abarrotes Don Pepe',
   'Todo para tu casa',
   '5218187654321',
@@ -658,8 +658,8 @@ drop table if exists public._seed_super_admins;
 -- Checklist:
 --   /demo-restaurante?c=combo-familiar
 --   /demo-restaurante?p=c0000000-0000-4000-8000-000000000001
---   /demo-estetica
---   /demo-productos?c=despensa-basica
+--   /demo-servicios
+--   /demo-tienda?c=despensa-basica
 --   /demo-pro  (+ admin CRM)
 --   /demo-vencido → 404 público
 --   /super-admin → CMS + tenants

@@ -35,7 +35,7 @@ const LABELS: Record<BusinessType, Record<LabelKey, string>> = {
     combos: "Paquetes",
   },
   productos: {
-    business: "Productos",
+    business: "Tienda",
     dish: "Producto",
     dishes: "Productos",
     side: "Extra",
@@ -50,7 +50,7 @@ const LABELS: Record<BusinessType, Record<LabelKey, string>> = {
 export const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = {
   restaurante: "Restaurante",
   servicios: "Servicios",
-  productos: "Productos / Tienda",
+  productos: "Tienda",
 };
 
 export const BUSINESS_TYPES: BusinessType[] = [

@@ -8,6 +8,16 @@ const nextConfig: NextConfig = {
         destination: "/demo-restaurante",
         permanent: true,
       },
+      {
+        source: "/demo-estetica",
+        destination: "/demo-servicios",
+        permanent: true,
+      },
+      {
+        source: "/demo-productos",
+        destination: "/demo-tienda",
+        permanent: true,
+      },
     ];
   },
   images: {

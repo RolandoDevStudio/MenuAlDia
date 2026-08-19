@@ -1,20 +1,26 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ImageIcon, Smartphone, MessageCircle } from "lucide-react";
 import {
   PLAN_LABELS,
-  PLAN_PRICES_MXN,
+  FALLBACK_PLAN_PRICES,
   annualPrice,
   dailyValue,
+  type PlanPricesMap,
   type PlanType,
 } from "@/lib/plans";
 import { formatMxn } from "@/lib/money";
 import { buildWaMeUrl, SALES_WHATSAPP } from "@/lib/whatsapp";
+import { CANONICAL_DEMOS, OFFICIAL_DOMAIN } from "@/lib/canonical-demos";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { LandingNav } from "@/components/marketing/landing-nav";
 import { LandingWhatsAppFab } from "@/components/marketing/landing-whatsapp-fab";
+import { ProductStage } from "@/components/marketing/product-stage";
+import { ProductShots } from "@/components/marketing/product-shots";
+import { TrustStrip } from "@/components/marketing/trust-strip";
+import { RoiCalculator } from "@/components/marketing/roi-calculator";
 import { Reveal } from "@/components/marketing/reveal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,6 +72,8 @@ export default function HomePage() {
   const [business, setBusiness] = useState("");
   const [city, setCity] = useState("");
   const [note, setNote] = useState("");
+  const [planPrices, setPlanPrices] =
+    useState<PlanPricesMap>(FALLBACK_PLAN_PRICES);
 
   const salesPhone =
     process.env.NEXT_PUBLIC_SALES_WHATSAPP || SALES_WHATSAPP;
@@ -75,9 +83,25 @@ export default function HomePage() {
     [],
   );
 
+  const fromDaily =
+    planPrices.daily?.monthly ?? FALLBACK_PLAN_PRICES.daily.monthly;
+
+  useEffect(() => {
+    void (async () => {
+      const res = await fetch("/api/plan-prices");
+      if (!res.ok) return;
+      const data = (await res.json()) as PlanPricesMap;
+      setPlanPrices({
+        catalog: data.catalog ?? FALLBACK_PLAN_PRICES.catalog,
+        daily: data.daily ?? FALLBACK_PLAN_PRICES.daily,
+        pro: data.pro ?? FALLBACK_PLAN_PRICES.pro,
+      });
+    })();
+  }, []);
+
   function contactSales(plan?: PlanType) {
     const lines = [
-      "*Prospecto Menú al Día*",
+      `*Prospecto ${OFFICIAL_DOMAIN}*`,
       `Nombre: ${name || "—"}`,
       `Negocio: ${business || "—"}`,
       `Ciudad: ${city || "—"}`,
@@ -99,13 +123,16 @@ export default function HomePage() {
 
   return (
     <main className="relative min-h-full overflow-x-clip bg-background">
-      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden>
+      <div
+        className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
+        aria-hidden
+      >
         <div className="landing-aurora absolute -inset-[6%]" />
       </div>
 
       <LandingNav onContactClick={scrollToContact} />
 
-      <section className="mx-auto max-w-3xl px-6 pb-12 pt-10 sm:pt-14">
+      <section className="mx-auto max-w-3xl px-6 pb-8 pt-10 sm:pt-14">
         <div
           className="motion-safe:animate-[rise_0.7s_ease-out]"
           style={{ animationFillMode: "both" }}
@@ -123,37 +150,32 @@ export default function HomePage() {
           className="mt-3 max-w-lg text-muted motion-safe:animate-[rise_0.7s_ease-out]"
           style={{ animationDelay: "160ms", animationFillMode: "both" }}
         >
-          Hecho para restaurantes y negocios locales que viven de
-          listas de difusión — no de apps de delivery.
+          Hecho para restaurantes, servicios y tiendas locales que viven de
+          listas de difusión — no de intermediarios.
         </p>
-        <div
-          className="mt-8 flex flex-wrap gap-3 motion-safe:animate-[rise_0.7s_ease-out]"
-          style={{ animationDelay: "240ms", animationFillMode: "both" }}
+        <p
+          className="mt-2 text-sm font-semibold text-brand motion-safe:animate-[rise_0.7s_ease-out]"
+          style={{ animationDelay: "200ms", animationFillMode: "both" }}
         >
-          <Link
-            href="/demo-restaurante"
-            className="landing-cta rounded-lg bg-brand px-5 py-3.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-dark hover:shadow-md"
-          >
-            Ver demo restaurante
-          </Link>
-          <Link
-            href="/demo-estetica"
-            className="landing-cta rounded-lg border border-brand/30 bg-surface px-5 py-3.5 text-sm font-semibold text-brand-dark hover:bg-white hover:shadow-sm"
-          >
-            Ver demo estética
-          </Link>
+          Desde {formatMxn(dailyValue(fromDaily))} al día ·{" "}
           <button
             type="button"
+            className="underline-offset-2 hover:underline"
             onClick={() =>
               document
                 .getElementById("precios")
                 ?.scrollIntoView({ behavior: "smooth" })
             }
-            className="landing-cta rounded-lg px-5 py-3.5 text-sm font-semibold text-muted underline-offset-4 hover:text-brand hover:underline"
           >
             Ver precios
           </button>
-        </div>
+        </p>
+      </section>
+
+      <section className="mx-auto max-w-3xl px-6 pb-12">
+        <Reveal>
+          <ProductStage />
+        </Reveal>
       </section>
 
       <section
@@ -181,68 +203,45 @@ export default function HomePage() {
             </Reveal>
           ))}
         </ul>
+        <div className="mt-10">
+          <ProductShots />
+        </div>
       </section>
 
       <section id="demos" className="mx-auto max-w-3xl scroll-mt-20 px-6 py-10">
         <Reveal>
           <h2 className="font-[family-name:var(--font-display)] text-3xl text-brand-dark">
-            Pruébalo en vivo
+            Tres giros, un producto
           </h2>
           <p className="mt-1 text-sm text-muted">
-            Tres demos: restaurante, servicios y productos. Mismo producto,
-            vocabulario distinto según el giro.
+            Elige el que se parece a tu negocio. Mismo panel; vocabulario y
+            demos distintos.
           </p>
         </Reveal>
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
-          <Reveal delayMs={0}>
-            <Link
-              href="/demo-restaurante"
-              className="landing-card group block rounded-2xl border border-brand/20 bg-white p-5 hover:border-brand hover:shadow-md"
-            >
-              <p className="text-[10px] font-bold uppercase tracking-wider text-brand">
-                Restaurante
-              </p>
-              <p className="mt-2 font-[family-name:var(--font-display)] text-3xl text-brand-dark transition-colors group-hover:text-brand">
-                Demo restaurante
-              </p>
-              <p className="mt-1 text-sm text-muted">
-                Menú del día, combos y pedidos por WhatsApp.
-              </p>
-            </Link>
-          </Reveal>
-          <Reveal delayMs={90}>
-            <Link
-              href="/demo-estetica"
-              className="landing-card group block rounded-2xl border border-black/10 bg-surface/90 p-5 hover:border-brand/40 hover:shadow-md"
-            >
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted">
-                Servicios
-              </p>
-              <p className="mt-2 font-[family-name:var(--font-display)] text-3xl text-brand-dark transition-colors group-hover:text-brand">
-                Demo estética
-              </p>
-              <p className="mt-1 text-sm text-muted">
-                Servicios y opciones con menú digital.
-              </p>
-            </Link>
-          </Reveal>
-          <Reveal delayMs={180}>
-            <Link
-              href="/demo-productos"
-              className="landing-card group block rounded-2xl border border-black/10 bg-surface/90 p-5 hover:border-brand/40 hover:shadow-md"
-            >
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted">
-                Productos
-              </p>
-              <p className="mt-2 font-[family-name:var(--font-display)] text-3xl text-brand-dark transition-colors group-hover:text-brand">
-                Demo abarrotes
-              </p>
-              <p className="mt-1 text-sm text-muted">
-                Catálogo retail y colecciones express.
-              </p>
-            </Link>
-          </Reveal>
+          {CANONICAL_DEMOS.map((d, i) => (
+            <Reveal key={d.slug} delayMs={i * 90}>
+              <Link
+                href={`/${d.slug}`}
+                className="landing-card group block rounded-2xl border border-black/10 bg-white p-5 hover:border-brand hover:shadow-md"
+              >
+                <p className="text-[10px] font-bold uppercase tracking-wider text-brand">
+                  {d.label}
+                </p>
+                <p className="mt-2 font-[family-name:var(--font-display)] text-3xl text-brand-dark transition-colors group-hover:text-brand">
+                  Demo {d.label.toLowerCase()}
+                </p>
+                <p className="mt-1 text-sm text-muted">
+                  Abre la demo y prueba un pedido por WhatsApp.
+                </p>
+              </Link>
+            </Reveal>
+          ))}
         </div>
+      </section>
+
+      <section className="mx-auto max-w-3xl px-6 py-6">
+        <TrustStrip />
       </section>
 
       <section
@@ -256,7 +255,7 @@ export default function HomePage() {
                 Planes claros
               </h2>
               <p className="mt-1 text-sm text-muted">
-                Desde {formatMxn(dailyValue(199))} al día.
+                Desde {formatMxn(dailyValue(fromDaily))} al día.
               </p>
             </div>
             <div className="flex rounded-lg border border-black/10 bg-surface p-1">
@@ -280,7 +279,8 @@ export default function HomePage() {
 
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
           {plans.map((plan, i) => {
-            const monthly = PLAN_PRICES_MXN[plan];
+            const monthly =
+              planPrices[plan]?.monthly ?? FALLBACK_PLAN_PRICES[plan].monthly;
             const price =
               billing === "annual" ? annualPrice(monthly) : monthly;
             const period = billing === "annual" ? "/año" : "/mes";
@@ -296,7 +296,7 @@ export default function HomePage() {
                     </p>
                   ) : null}
                   <p className="font-semibold">{PLAN_LABELS[plan]}</p>
-                  <p className="mt-2 font-[family-name:var(--font-display)] text-4xl text-brand transition-opacity duration-300">
+                  <p className="mt-2 font-[family-name:var(--font-display)] text-4xl text-brand">
                     {formatMxn(price)}
                     <span className="text-sm font-sans font-medium text-muted">
                       {period}
@@ -322,6 +322,10 @@ export default function HomePage() {
             );
           })}
         </div>
+
+        <Reveal className="mt-8" delayMs={80}>
+          <RoiCalculator />
+        </Reveal>
       </section>
 
       <section
@@ -381,35 +385,34 @@ export default function HomePage() {
 
       <footer className="mx-auto max-w-3xl border-t border-black/5 px-6 py-8 text-xs text-muted">
         <BrandLogo variant="lockup" size="sm" href={null} />
-        <p className="mt-2">menualdia.app · SaaS para negocios locales</p>
+        <p className="mt-2">
+          {OFFICIAL_DOMAIN} · SaaS para negocios locales
+        </p>
         <div className="mt-4 flex flex-wrap gap-4">
-          <Link href="/admin/login" className="transition-colors hover:text-brand">
+          <Link
+            href="/admin/login"
+            className="transition-colors hover:text-brand"
+          >
             Entrar al admin
           </Link>
-          <Link href="/privacidad" className="transition-colors hover:text-brand">
+          <Link
+            href="/privacidad"
+            className="transition-colors hover:text-brand"
+          >
             Privacidad
           </Link>
           <Link href="/terminos" className="transition-colors hover:text-brand">
             Términos
           </Link>
-          <Link
-            href="/demo-restaurante"
-            className="transition-colors hover:text-brand"
-          >
-            Demo restaurante
-          </Link>
-          <Link
-            href="/demo-estetica"
-            className="transition-colors hover:text-brand"
-          >
-            Demo estética
-          </Link>
-          <Link
-            href="/demo-productos"
-            className="transition-colors hover:text-brand"
-          >
-            Demo productos
-          </Link>
+          {CANONICAL_DEMOS.map((d) => (
+            <Link
+              key={d.slug}
+              href={`/${d.slug}`}
+              className="transition-colors hover:text-brand"
+            >
+              Demo {d.label.toLowerCase()}
+            </Link>
+          ))}
         </div>
       </footer>
       <LandingWhatsAppFab />

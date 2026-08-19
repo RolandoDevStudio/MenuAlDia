@@ -61,8 +61,9 @@ npm run dev
 |------|-----|
 | `/` | Landing CRO + pricing |
 | `/demo-restaurante` | Demo restaurante |
-| `/demo-estetica` | Demo servicios |
-| `/demo-productos` | Demo productos / retail |
+| `/demo-restaurante` | Demo restaurante |
+| `/demo-servicios` | Demo servicios (redirect desde `/demo-estetica`) |
+| `/demo-tienda` | Demo tienda (redirect desde `/demo-productos`) |
 | `/demo` | Redirect → `/demo-restaurante` |
 | `/admin/login` | Admin tenant |
 | `/super-admin` | Plataforma (rol `super_admin`) |
@@ -90,7 +91,7 @@ Cobro: manual vía super-admin (`plan_type`, `subscription_end_date`, `is_active
 - [ ] Env en Vercel (`NEXT_PUBLIC_*`)
 - [ ] Smoke RLS: anon no ve tenants con `is_active=false` o suscripción vencida
 - [ ] Usuario `super_admin` creado
-- [ ] Demos `/demo-restaurante` y `/demo-estetica` en móvil
+- [ ] Demos `/demo-restaurante`, `/demo-servicios`, `/demo-tienda` en móvil
 - [ ] Flyer export con fotos del bucket (CORS)
 
 ## Estructura
