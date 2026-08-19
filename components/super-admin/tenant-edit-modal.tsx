@@ -14,6 +14,8 @@ import {
   BUSINESS_TYPES,
 } from "@/lib/business-labels";
 import { formatMxn } from "@/lib/money";
+import { MxLocationFields } from "@/components/location/mx-location-fields";
+import { normalizeLegacyState } from "@/lib/mx-locations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -112,7 +114,7 @@ export function TenantEditModal({
       (restaurant.business_type || "restaurante") as BusinessType,
     );
     setCity(restaurant.city ?? "");
-    setStateMx(restaurant.state ?? "");
+    setStateMx(normalizeLegacyState(restaurant.state) || restaurant.state || "");
     setIsActive(restaurant.is_active !== false);
     setEndDate(restaurant.subscription_end_date?.slice(0, 10) ?? "");
     setEmail(ownerEmail ?? "");
@@ -346,22 +348,12 @@ export function TenantEditModal({
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label>Ciudad</Label>
-                <Input
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Estado</Label>
-                <Input
-                  value={stateMx}
-                  onChange={(e) => setStateMx(e.target.value)}
-                />
-              </div>
-            </div>
+            <MxLocationFields
+              state={stateMx}
+              city={city}
+              onStateChange={setStateMx}
+              onCityChange={setCity}
+            />
 
             <div className="flex items-center justify-between gap-3 rounded-lg border border-black/5 bg-background/50 px-3 py-2">
               <Label>Activo</Label>

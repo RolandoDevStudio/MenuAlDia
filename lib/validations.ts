@@ -1,23 +1,36 @@
 import { z } from "zod";
+import { isMxStateCode, normalizeLegacyState } from "@/lib/mx-locations";
+
+const optionalHttpUrl = z
+  .string()
+  .trim()
+  .optional()
+  .default("")
+  .refine(
+    (v) => !v || /^https?:\/\//i.test(v),
+    "Usa un enlace completo (https://…)",
+  );
 
 export const checkoutSchema = z
   .object({
+    fulfillment: z.enum(["pickup", "delivery"]).default("delivery"),
     customerName: z.string().min(2, "Escribe tu nombre"),
-    address: z.string().min(5, "Escribe la dirección de entrega"),
-    mapsUrl: z
-      .string()
-      .trim()
-      .optional()
-      .default("")
-      .refine(
-        (v) => !v || /^https?:\/\//i.test(v),
-        "Pega el enlace completo de Google Maps (https://…)",
-      ),
+    address: z.string().optional().default(""),
+    mapsUrl: optionalHttpUrl,
     references: z.string().optional().default(""),
     paymentMethod: z.enum(["cash", "transfer"]),
     cashAmount: z.coerce.number().optional().nullable(),
   })
   .superRefine((data, ctx) => {
+    if (data.fulfillment === "delivery") {
+      if (!data.address || data.address.trim().length < 5) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["address"],
+          message: "Escribe la dirección de entrega",
+        });
+      }
+    }
     if (data.paymentMethod === "cash") {
       if (data.cashAmount == null || Number.isNaN(data.cashAmount)) {
         ctx.addIssue({
@@ -55,23 +68,28 @@ export const restaurantSettingsSchema = z.object({
   phone_whatsapp: z
     .string()
     .min(10, "WhatsApp con código de país (ej. 52155…)"),
-  address: z.string().min(3, "Escribe la dirección"),
-  maps_url: z
-    .string()
-    .url("Enlace de Maps inválido")
-    .optional()
-    .or(z.literal("")),
+  address: z.string().optional().default(""),
+  maps_url: optionalHttpUrl,
   city: z.string().optional().default(""),
-  state: z.string().optional().default(""),
+  state: z
+    .string()
+    .optional()
+    .default("")
+    .transform((v) => normalizeLegacyState(v) || v.trim().toUpperCase())
+    .refine((v) => !v || isMxStateCode(v), "Selecciona un estado válido"),
   schedule_text: z.string().min(1, "Escribe el horario"),
   shipping_cost: z.coerce.number().min(0, "El envío no puede ser negativo"),
   free_shipping: z.boolean(),
+  offers_delivery: z.boolean().default(true),
   logo_url: z
     .string()
     .url("URL de logo inválida")
     .nullable()
     .optional()
     .or(z.literal("")),
+  instagram_url: optionalHttpUrl,
+  facebook_url: optionalHttpUrl,
+  tiktok_url: optionalHttpUrl,
 });
 
 export type CheckoutInput = z.infer<typeof checkoutSchema>;

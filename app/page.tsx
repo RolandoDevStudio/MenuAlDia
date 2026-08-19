@@ -32,6 +32,8 @@ import { TrustStrip } from "@/components/marketing/trust-strip";
 import { FaqSection } from "@/components/marketing/faq-section";
 import { RoiCalculator } from "@/components/marketing/roi-calculator";
 import { Reveal } from "@/components/marketing/reveal";
+import { MxLocationFields } from "@/components/location/mx-location-fields";
+import { stateLabel } from "@/lib/mx-locations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -118,6 +120,7 @@ export default function HomePage() {
   const [name, setName] = useState("");
   const [business, setBusiness] = useState("");
   const [city, setCity] = useState("");
+  const [stateCode, setStateCode] = useState("");
   const [note, setNote] = useState("");
   const [planPrices, setPlanPrices] =
     useState<PlanPricesMap>(FALLBACK_PLAN_PRICES);
@@ -175,6 +178,7 @@ export default function HomePage() {
       `Nombre: ${name || "—"}`,
       `Negocio: ${business || "—"}`,
       `Ciudad: ${city || "—"}`,
+      `Estado: ${stateLabel(stateCode) || "—"}`,
       plan
         ? `Interés: ${PLAN_LABELS[plan]} (${billing === "annual" ? "anual" : "mensual"})`
         : null,
@@ -434,11 +438,12 @@ export default function HomePage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="city">Ciudad</Label>
-              <Input
-                id="city"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
+              <MxLocationFields
+                state={stateCode}
+                city={city}
+                onStateChange={setStateCode}
+                onCityChange={setCity}
+                idPrefix="landing-"
               />
             </div>
             <div className="space-y-1.5">

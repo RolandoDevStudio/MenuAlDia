@@ -28,8 +28,9 @@ export default async function SuperAdminLayout({
           <Link
             href="/super-admin/templates"
             className="text-muted hover:text-brand"
+            title="Semillas demo por giro × plan"
           >
-            Plantillas
+            Semillas
           </Link>
           <Link
             href="/super-admin/settings"

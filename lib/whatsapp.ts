@@ -73,17 +73,26 @@ export function buildOrderMessage(params: {
   }
 
   lines.push("");
-  if (shipping > 0) lines.push(`🚚 Envío: ${formatMxn(shipping)}`);
-  else lines.push("🚚 Envío: Gratis");
+  if (checkout.fulfillment === "pickup") {
+    lines.push("🏪 Modalidad: Recoger en el local");
+  } else if (shipping > 0) {
+    lines.push(`🚚 Envío: ${formatMxn(shipping)}`);
+  } else {
+    lines.push("🚚 Envío: Gratis");
+  }
   lines.push(`💰 *Total estimado: ${formatMxn(total)}*`);
   lines.push("");
   lines.push(`👤 ${checkout.customerName}`);
-  lines.push(`📍 ${checkout.address}`);
-  if (checkout.mapsUrl?.trim()) {
-    lines.push(`🗺️ ${checkout.mapsUrl.trim()}`);
-  }
-  if (checkout.references) {
-    lines.push(`📝 ${checkout.references}`);
+  if (checkout.fulfillment === "pickup") {
+    lines.push("🏪 Recoger en el local");
+  } else {
+    lines.push(`📍 ${checkout.address}`);
+    if (checkout.mapsUrl?.trim()) {
+      lines.push(`🗺️ ${checkout.mapsUrl.trim()}`);
+    }
+    if (checkout.references) {
+      lines.push(`📝 ${checkout.references}`);
+    }
   }
   if (checkout.paymentMethod === "cash") {
     lines.push(

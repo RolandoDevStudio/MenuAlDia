@@ -8,6 +8,7 @@ import {
   applySnapshotToRestaurant,
   cloneRestaurantMenu,
 } from "@/lib/plan-templates";
+import { THEME_PRESETS } from "@/lib/theme";
 
 export async function POST(request: Request) {
   if (!(await isCurrentUserSuperAdmin())) {
@@ -25,10 +26,11 @@ export async function POST(request: Request) {
     owner_password?: string;
     business_type?: string;
     plan_type?: string;
+    theme_preset?: string;
   };
 
   const sourceSlug = body.source_slug?.trim();
-  const templateId = body.template_id?.trim();
+  let templateId = body.template_id?.trim();
   const newSlug = normalizeSlug(body.new_slug ?? "");
   const newName = body.new_name?.trim();
   const ownerName = body.owner_name?.trim() ?? "";
@@ -37,10 +39,15 @@ export async function POST(request: Request) {
   const ownerPassword = body.owner_password ?? "";
   const businessType = body.business_type?.trim();
   const planType = body.plan_type?.trim();
+  const themePresetKey = body.theme_preset?.trim();
+  const themeOverride =
+    themePresetKey && THEME_PRESETS[themePresetKey]
+      ? THEME_PRESETS[themePresetKey]
+      : null;
 
-  if ((!sourceSlug && !templateId) || !newSlug || !newName) {
+  if (!newSlug || !newName) {
     return NextResponse.json(
-      { error: "missing fields (source_slug o template_id, new_slug, new_name)" },
+      { error: "missing fields (new_slug, new_name)" },
       { status: 400 },
     );
   }
@@ -96,6 +103,27 @@ export async function POST(request: Request) {
   let created: Record<string, unknown> | null = null;
   let cloneLabel = "";
 
+  if (!templateId && !sourceSlug && businessType && planType) {
+    const { data: autoTpl } = await supabase
+      .from("plan_templates")
+      .select("id")
+      .eq("business_type", businessType)
+      .eq("plan_type", planType)
+      .eq("is_active", true)
+      .maybeSingle();
+    if (autoTpl?.id) templateId = autoTpl.id as string;
+  }
+
+  if (!templateId && !sourceSlug) {
+    return NextResponse.json(
+      {
+        error:
+          "No hay plantilla activa para ese giro/plan. Sincroniza una en Plantillas o indica un slug de origen.",
+      },
+      { status: 400 },
+    );
+  }
+
   if (templateId) {
     const { data: template, error: tplErr } = await supabase
       .from("plan_templates")
@@ -121,7 +149,7 @@ export async function POST(request: Request) {
         plan_type: planType || template.plan_type || "catalog",
         is_active: true,
         subscription_end_date: subscriptionEnd,
-        theme_config: template.theme_config,
+        theme_config: themeOverride ?? template.theme_config,
         slogan: "",
         address: "",
         schedule_text: "",
@@ -170,7 +198,7 @@ export async function POST(request: Request) {
         business_type: businessType || source.business_type || "restaurante",
         is_active: true,
         subscription_end_date: subscriptionEnd,
-        theme_config: source.theme_config,
+        theme_config: themeOverride ?? source.theme_config,
       })
       .select("*")
       .single();

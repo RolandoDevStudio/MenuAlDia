@@ -3,6 +3,10 @@ import { createPublicClient } from "@/lib/supabase/public";
 import { can } from "@/lib/plans";
 import type { OrderLogPayload, Restaurant } from "@/lib/types";
 
+/**
+ * Persist order analytics without customer delivery address
+ * (address lives only in the WhatsApp message to the business).
+ */
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as {
@@ -30,9 +34,9 @@ export async function POST(request: Request) {
     const customerName = String(
       raw.customer_name ?? raw.customerName ?? "Cliente",
     );
-    const address = String(raw.address ?? "");
-    const mapsUrl = String(raw.maps_url ?? raw.mapsUrl ?? "").trim() || null;
-    const references = String(raw.references ?? "");
+    const fulfillmentRaw = String(raw.fulfillment ?? "delivery");
+    const fulfillment: "pickup" | "delivery" =
+      fulfillmentRaw === "pickup" ? "pickup" : "delivery";
     const paymentMethod = (raw.payment_method ??
       raw.paymentMethod ??
       "cash") as OrderLogPayload["payment_method"];
@@ -45,9 +49,7 @@ export async function POST(request: Request) {
 
     const normalized: OrderLogPayload = {
       customer_name: customerName,
-      address,
-      maps_url: mapsUrl,
-      references,
+      fulfillment,
       payment_method: paymentMethod,
       cash_amount: cashAmount,
       phone,
@@ -55,7 +57,7 @@ export async function POST(request: Request) {
       subtotal: Number(raw.subtotal ?? 0),
       shipping: Number(raw.shipping ?? 0),
       total: Number(raw.total ?? 0),
-      wa_message: raw.wa_message as string | undefined,
+      // Strip address / maps / references / full WA body for privacy
     };
 
     await supabase.from("order_logs").insert({
@@ -82,7 +84,6 @@ export async function POST(request: Request) {
             .from("customers")
             .update({
               name,
-              address,
               orders_count: (existing.orders_count ?? 0) + 1,
               last_order_at: new Date().toISOString(),
             })
@@ -97,7 +98,7 @@ export async function POST(request: Request) {
             restaurant_id: body.restaurant_id,
             name,
             phone,
-            address,
+            address: "",
             orders_count: 1,
             last_order_at: new Date().toISOString(),
           })

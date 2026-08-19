@@ -32,6 +32,10 @@ export interface Restaurant {
   theme_config: ThemeConfig | Record<string, unknown>;
   business_type: BusinessType;
   owner_name: string;
+  instagram_url?: string | null;
+  facebook_url?: string | null;
+  tiktok_url?: string | null;
+  offers_delivery?: boolean;
 }
 
 export interface TenantPayment {
@@ -187,9 +191,11 @@ export interface Order {
 
 export interface OrderLogPayload {
   customer_name: string;
-  address: string;
+  /** @deprecated Prefer fulfillment; address no longer persisted for privacy */
+  address?: string;
   maps_url?: string | null;
-  references: string;
+  references?: string;
+  fulfillment?: "pickup" | "delivery";
   payment_method: PaymentMethod;
   cash_amount?: number | null;
   phone?: string | null;
@@ -226,6 +232,7 @@ export interface CartItem {
 }
 
 export interface CheckoutFormValues {
+  fulfillment: "pickup" | "delivery";
   customerName: string;
   address: string;
   mapsUrl?: string;

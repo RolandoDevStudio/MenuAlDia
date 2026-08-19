@@ -8,6 +8,7 @@ import { comboDisplayPrice } from "@/lib/combo";
 import { parseThemeConfig } from "@/lib/theme";
 import { labelsFor } from "@/lib/business-labels";
 import { formatMxn } from "@/lib/money";
+import { formatPlaceLine } from "@/lib/mx-locations";
 import { RestaurantHeader } from "@/components/public/restaurant-header";
 import { DailyMenuHero } from "@/components/public/daily-menu-hero";
 import { PublicMenuClient } from "@/components/public/public-menu-client";
@@ -134,9 +135,7 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
   const maxSides = data.dailyMenu?.max_sides ?? 2;
   const theme = parseThemeConfig(data.restaurant.theme_config);
   const labels = labelsFor(data.restaurant.business_type);
-  const place = [data.restaurant.city, data.restaurant.state]
-    .filter(Boolean)
-    .join(", ");
+  const place = formatPlaceLine(data.restaurant.city, data.restaurant.state);
 
   const bgStyle =
     theme.useBackgroundImage && theme.backgroundImageUrl

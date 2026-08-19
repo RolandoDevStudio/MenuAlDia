@@ -123,10 +123,10 @@ export default function TemplatesPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-lg font-semibold">Plantillas</h1>
+        <h1 className="text-lg font-semibold">Semillas demo</h1>
         <p className="text-sm text-muted">
-          Una plantilla por giro × plan. Sincroniza el snapshot desde un slug
-          demo.
+          Contenido inicial por giro × plan. Al crear un admin se usa sola;
+          aquí sincronizas o activas semillas.
         </p>
       </div>
 

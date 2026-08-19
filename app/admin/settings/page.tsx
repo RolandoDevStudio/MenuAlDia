@@ -8,8 +8,11 @@ import {
   fieldErrorsFromZod,
   restaurantSettingsSchema,
 } from "@/lib/validations";
+import { normalizeLegacyState } from "@/lib/mx-locations";
 import { parseThemeConfig, type ThemeConfig } from "@/lib/theme";
 import { ThemeEditor } from "@/components/admin/theme-editor";
+import { DishPhotoUpload } from "@/components/admin/dish-photo-upload";
+import { MxLocationFields } from "@/components/location/mx-location-fields";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,7 +23,11 @@ export default function SettingsPage() {
   const router = useRouter();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [freeShipping, setFreeShipping] = useState(false);
+  const [offersDelivery, setOffersDelivery] = useState(true);
   const [theme, setTheme] = useState<ThemeConfig | null>(null);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [city, setCity] = useState("");
+  const [stateCode, setStateCode] = useState("");
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -79,7 +86,11 @@ export default function SettingsPage() {
     const r = data as Restaurant;
     setRestaurant(r);
     setFreeShipping(r.free_shipping);
+    setOffersDelivery(r.offers_delivery !== false);
     setTheme(parseThemeConfig(r.theme_config));
+    setLogoUrl(r.logo_url);
+    setCity(r.city ?? "");
+    setStateCode(normalizeLegacyState(r.state) || r.state || "");
     setLoading(false);
   }, [router]);
 
@@ -116,14 +127,18 @@ export default function SettingsPage() {
       name: fd.get("name"),
       slogan: fd.get("slogan"),
       phone_whatsapp: fd.get("phone_whatsapp"),
-      address: fd.get("address"),
+      address: fd.get("address") || "",
       maps_url: fd.get("maps_url") || "",
-      city: fd.get("city") || "",
-      state: fd.get("state") || "",
+      city,
+      state: stateCode,
       schedule_text: fd.get("schedule_text"),
       shipping_cost: fd.get("shipping_cost"),
       free_shipping: freeShipping,
-      logo_url: restaurant.logo_url || "",
+      offers_delivery: offersDelivery,
+      logo_url: logoUrl || "",
+      instagram_url: fd.get("instagram_url") || "",
+      facebook_url: fd.get("facebook_url") || "",
+      tiktok_url: fd.get("tiktok_url") || "",
     });
     if (!parsed.success) {
       const errors = fieldErrorsFromZod(parsed.error);
@@ -146,6 +161,9 @@ export default function SettingsPage() {
         ...parsed.data,
         maps_url: parsed.data.maps_url || null,
         logo_url: parsed.data.logo_url || null,
+        instagram_url: parsed.data.instagram_url || null,
+        facebook_url: parsed.data.facebook_url || null,
+        tiktok_url: parsed.data.tiktok_url || null,
         theme_config: theme,
       })
       .eq("id", restaurant.id);
@@ -162,16 +180,6 @@ export default function SettingsPage() {
     setMessage("Ajustes guardados");
     router.refresh();
   }
-
-  const fields = [
-    ["name", "Nombre", restaurant.name],
-    ["slogan", "Eslogan", restaurant.slogan],
-    ["phone_whatsapp", "WhatsApp (521…)", restaurant.phone_whatsapp],
-    ["address", "Dirección", restaurant.address],
-    ["maps_url", "Google Maps URL", restaurant.maps_url ?? ""],
-    ["schedule_text", "Horario", restaurant.schedule_text],
-    ["shipping_cost", "Costo de envío", String(restaurant.shipping_cost)],
-  ] as const;
 
   return (
     <div className="space-y-6">
@@ -190,14 +198,28 @@ export default function SettingsPage() {
       />
 
       <form onSubmit={onSubmit} className="space-y-4">
-        {fields.map(([id, label, value]) => (
+        <DishPhotoUpload
+          restaurantId={restaurant.id}
+          value={logoUrl}
+          onChange={setLogoUrl}
+          label="Logo del negocio"
+          kind="product"
+        />
+
+        {(
+          [
+            ["name", "Nombre", restaurant.name],
+            ["slogan", "Eslogan", restaurant.slogan],
+            ["phone_whatsapp", "WhatsApp (521…)", restaurant.phone_whatsapp],
+            ["schedule_text", "Horario", restaurant.schedule_text],
+          ] as const
+        ).map(([id, label, value]) => (
           <div key={id} className="space-y-1.5">
             <Label htmlFor={id}>{label}</Label>
             <Input
               id={id}
               name={id}
               defaultValue={value}
-              inputMode={id === "shipping_cost" ? "decimal" : undefined}
               aria-invalid={!!fieldErrors[id]}
             />
             {fieldErrors[id] ? (
@@ -205,34 +227,102 @@ export default function SettingsPage() {
             ) : null}
           </div>
         ))}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="city">Ciudad</Label>
-            <Input
-              id="city"
-              name="city"
-              defaultValue={restaurant.city ?? ""}
-              className="min-h-11"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="state">Estado</Label>
-            <Input
-              id="state"
-              name="state"
-              defaultValue={restaurant.state ?? ""}
-              className="min-h-11"
-            />
-          </div>
+
+        <MxLocationFields
+          state={stateCode}
+          city={city}
+          onStateChange={setStateCode}
+          onCityChange={setCity}
+          stateError={fieldErrors.state}
+          cityError={fieldErrors.city}
+        />
+
+        <div className="space-y-1.5">
+          <Label htmlFor="address">Dirección (opcional)</Label>
+          <Input
+            id="address"
+            name="address"
+            defaultValue={restaurant.address}
+            aria-invalid={!!fieldErrors.address}
+          />
+          {fieldErrors.address ? (
+            <p className="text-xs text-red-600">{fieldErrors.address}</p>
+          ) : null}
         </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="maps_url">Link de Google Maps (opcional)</Label>
+          <Input
+            id="maps_url"
+            name="maps_url"
+            type="url"
+            defaultValue={restaurant.maps_url ?? ""}
+            placeholder="https://maps.app.goo.gl/…"
+            aria-invalid={!!fieldErrors.maps_url}
+          />
+          <p className="text-[11px] text-muted">
+            En Maps: Compartir → Copiar enlace. Aparece como “Cómo llegar”.
+          </p>
+          {fieldErrors.maps_url ? (
+            <p className="text-xs text-red-600">{fieldErrors.maps_url}</p>
+          ) : null}
+        </div>
+
+        <div className="space-y-3 rounded-xl border border-black/5 bg-surface p-3">
+          <p className="text-sm font-semibold">Redes sociales</p>
+          {(
+            [
+              ["instagram_url", "Instagram", restaurant.instagram_url],
+              ["facebook_url", "Facebook", restaurant.facebook_url],
+              ["tiktok_url", "TikTok", restaurant.tiktok_url],
+            ] as const
+          ).map(([id, label, value]) => (
+            <div key={id} className="space-y-1.5">
+              <Label htmlFor={id}>{label}</Label>
+              <Input
+                id={id}
+                name={id}
+                type="url"
+                defaultValue={value ?? ""}
+                placeholder="https://…"
+              />
+              {fieldErrors[id] ? (
+                <p className="text-xs text-red-600">{fieldErrors[id]}</p>
+              ) : null}
+            </div>
+          ))}
+        </div>
+
+        <div className="flex min-h-14 items-center justify-between rounded-xl border border-black/5 bg-surface px-3 py-3">
+          <Label htmlFor="offers_delivery">Acepto pedidos a domicilio</Label>
+          <Switch
+            id="offers_delivery"
+            checked={offersDelivery}
+            onCheckedChange={setOffersDelivery}
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="shipping_cost">Costo de envío</Label>
+          <Input
+            id="shipping_cost"
+            name="shipping_cost"
+            defaultValue={String(restaurant.shipping_cost)}
+            inputMode="decimal"
+            disabled={!offersDelivery}
+          />
+        </div>
+
         <div className="flex min-h-14 items-center justify-between rounded-xl border border-black/5 bg-surface px-3 py-3">
           <Label htmlFor="free_shipping">Envío gratis</Label>
           <Switch
             id="free_shipping"
             checked={freeShipping}
             onCheckedChange={setFreeShipping}
+            disabled={!offersDelivery}
           />
         </div>
+
         {error ? <p className="text-sm text-red-600">{error}</p> : null}
         {message ? <p className="text-sm text-accent">{message}</p> : null}
         <Button type="submit" className="w-full" disabled={saving}>

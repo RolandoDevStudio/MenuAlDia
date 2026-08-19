@@ -8,6 +8,7 @@ import {
   BUSINESS_TYPE_LABELS,
   BUSINESS_TYPES,
 } from "@/lib/business-labels";
+import { MX_STATES } from "@/lib/mx-locations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TenantsTable, type OwnerInfo } from "@/components/super-admin/tenants-table";
@@ -23,6 +24,7 @@ export default function TenantsPage() {
   const [q, setQ] = useState("");
   const [planFilter, setPlanFilter] = useState<string>("all");
   const [giroFilter, setGiroFilter] = useState<string>("all");
+  const [stateFilter, setStateFilter] = useState("all");
   const [cityFilter, setCityFilter] = useState("");
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [error, setError] = useState<string | null>(null);
@@ -56,10 +58,10 @@ export default function TenantsPage() {
     return rows.filter((r) => {
       if (planFilter !== "all" && r.plan_type !== planFilter) return false;
       if (giroFilter !== "all" && r.business_type !== giroFilter) return false;
+      if (stateFilter !== "all" && (r.state ?? "") !== stateFilter) return false;
       if (
         cityFilter.trim() &&
-        !(r.city ?? "").toLowerCase().includes(cityFilter.toLowerCase()) &&
-        !(r.state ?? "").toLowerCase().includes(cityFilter.toLowerCase())
+        !(r.city ?? "").toLowerCase().includes(cityFilter.toLowerCase())
       ) {
         return false;
       }
@@ -75,7 +77,7 @@ export default function TenantsPage() {
         (owners[r.id]?.email ?? "").toLowerCase().includes(s)
       );
     });
-  }, [rows, q, planFilter, giroFilter, cityFilter, activeFilter, owners]);
+  }, [rows, q, planFilter, giroFilter, stateFilter, cityFilter, activeFilter, owners]);
 
   function handleSaved(updated?: Restaurant) {
     if (updated) {
@@ -142,8 +144,20 @@ export default function TenantsPage() {
           <option value="active">Solo activos</option>
           <option value="inactive">Solo inactivos</option>
         </select>
+        <select
+          className={`${selectClass} w-full sm:w-auto`}
+          value={stateFilter}
+          onChange={(e) => setStateFilter(e.target.value)}
+        >
+          <option value="all">Todos los estados</option>
+          {MX_STATES.map((s) => (
+            <option key={s.code} value={s.code}>
+              {s.name}
+            </option>
+          ))}
+        </select>
         <Input
-          placeholder="Ciudad / estado…"
+          placeholder="Ciudad…"
           value={cityFilter}
           onChange={(e) => setCityFilter(e.target.value)}
           className="w-full min-w-0 sm:max-w-[10rem]"

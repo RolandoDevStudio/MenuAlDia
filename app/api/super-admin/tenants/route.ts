@@ -4,6 +4,7 @@ import { createServiceClient } from "@/lib/supabase/admin";
 import { isCurrentUserSuperAdmin } from "@/lib/restaurant";
 import { writeAuditLog, logFieldChanges } from "@/lib/audit";
 import { normalizeSlug } from "@/lib/plan-templates";
+import { isMxStateCode, normalizeLegacyState } from "@/lib/mx-locations";
 
 /** List tenants with owner login email (service role for auth lookup). */
 export async function GET() {
@@ -123,7 +124,17 @@ export async function PATCH(request: Request) {
   if (typeof body.business_type === "string")
     updates.business_type = body.business_type;
   if (typeof body.city === "string") updates.city = body.city.trim();
-  if (typeof body.state === "string") updates.state = body.state.trim();
+  if (typeof body.state === "string") {
+    const code =
+      normalizeLegacyState(body.state) || body.state.trim().toUpperCase();
+    if (code && !isMxStateCode(code)) {
+      return NextResponse.json(
+        { error: "estado inválido" },
+        { status: 400 },
+      );
+    }
+    updates.state = code;
+  }
   if (body.subscription_end_date !== undefined) {
     updates.subscription_end_date = body.subscription_end_date;
   }

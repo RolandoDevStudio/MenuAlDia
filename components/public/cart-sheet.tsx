@@ -53,6 +53,9 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
   const clear = useCartStore((s) => s.clear);
 
   const [step, setStep] = useState<"review" | "checkout">("review");
+  const [fulfillment, setFulfillment] = useState<"pickup" | "delivery">(
+    "delivery",
+  );
   const [customerName, setCustomerName] = useState("");
   const [address, setAddress] = useState("");
   const [mapsUrl, setMapsUrl] = useState("");
@@ -64,19 +67,23 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
 
+  const offersDelivery = restaurant.offers_delivery !== false;
+
   useEffect(() => {
     if (open) {
       setStep("review");
       setError(null);
+      setFulfillment(offersDelivery ? "delivery" : "pickup");
     }
-  }, [open]);
+  }, [open, offersDelivery]);
 
   useEffect(() => {
     if (open && items.length === 0) onOpenChange(false);
   }, [items.length, open, onOpenChange]);
 
   const subtotal = subtotalFn();
-  const total = subtotal + shipping;
+  const effectiveShipping = fulfillment === "pickup" ? 0 : shipping;
+  const total = subtotal + effectiveShipping;
 
   function openWhatsApp(url: string) {
     const isMobile =
@@ -92,10 +99,11 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
   async function submit() {
     setError(null);
     const parsed = checkoutSchema.safeParse({
+      fulfillment,
       customerName,
-      address,
-      mapsUrl,
-      references,
+      address: fulfillment === "delivery" ? address : "",
+      mapsUrl: fulfillment === "delivery" ? mapsUrl : "",
+      references: fulfillment === "delivery" ? references : "",
       paymentMethod,
       cashAmount: paymentMethod === "cash" ? Number(cashAmount) : null,
     });
@@ -120,7 +128,7 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
       restaurant,
       items,
       checkout: parsed.data,
-      shipping,
+      shipping: effectiveShipping,
       total,
     });
 
@@ -130,12 +138,14 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
       body: JSON.stringify({
         restaurant_id: restaurant.id,
         payload: {
-          ...parsed.data,
+          fulfillment: parsed.data.fulfillment,
+          customer_name: parsed.data.customerName,
+          payment_method: parsed.data.paymentMethod,
+          cash_amount: parsed.data.cashAmount,
           items,
           subtotal,
-          shipping,
+          shipping: effectiveShipping,
           total,
-          wa_message: message,
         },
       }),
     });
@@ -241,11 +251,21 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
               </div>
               <div className="flex justify-between text-muted">
                 <span>Envío</span>
-                <span>{shipping === 0 ? "Gratis" : formatMxn(shipping)}</span>
+                <span>
+                  {fulfillment === "pickup"
+                    ? "—"
+                    : shipping === 0
+                      ? "Gratis"
+                      : formatMxn(shipping)}
+                </span>
               </div>
               <div className="flex justify-between text-base font-semibold">
                 <span>Total</span>
-                <span>{formatMxn(total)}</span>
+                <span>
+                  {formatMxn(
+                    subtotal + (fulfillment === "pickup" ? 0 : shipping),
+                  )}
+                </span>
               </div>
             </div>
 
@@ -261,9 +281,10 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
         ) : (
           <>
             <DialogHeader>
-              <DialogTitle>Datos de entrega</DialogTitle>
+              <DialogTitle>Cómo quieres tu pedido</DialogTitle>
               <DialogDescription>
-                Te redirigiremos a WhatsApp con el resumen.
+                Te redirigiremos a WhatsApp. La dirección de envío solo va en el
+                mensaje; no la guardamos.
               </DialogDescription>
             </DialogHeader>
 
@@ -274,13 +295,44 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
               </div>
               <div className="flex justify-between text-muted">
                 <span>Envío</span>
-                <span>{shipping === 0 ? "Gratis" : formatMxn(shipping)}</span>
+                <span>
+                  {fulfillment === "pickup"
+                    ? "—"
+                    : effectiveShipping === 0
+                      ? "Gratis"
+                      : formatMxn(effectiveShipping)}
+                </span>
               </div>
               <div className="flex justify-between font-semibold">
                 <span>Total</span>
                 <span>{formatMxn(total)}</span>
               </div>
             </div>
+
+            {offersDelivery ? (
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant={fulfillment === "pickup" ? "default" : "secondary"}
+                  className="min-h-11"
+                  onClick={() => setFulfillment("pickup")}
+                >
+                  Recoger
+                </Button>
+                <Button
+                  type="button"
+                  variant={fulfillment === "delivery" ? "default" : "secondary"}
+                  className="min-h-11"
+                  onClick={() => setFulfillment("delivery")}
+                >
+                  Envío
+                </Button>
+              </div>
+            ) : (
+              <p className="rounded-lg bg-brand/5 px-3 py-2 text-sm text-muted">
+                Este negocio solo ofrece recogida en el local.
+              </p>
+            )}
 
             <div className="space-y-3">
               <div className="space-y-1.5">
@@ -291,37 +343,40 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
                   onChange={(e) => setCustomerName(e.target.value)}
                 />
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="address">Dirección de entrega</Label>
-                <Textarea
-                  id="address"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="mapsUrl">URL de Google Maps</Label>
-                <Input
-                  id="mapsUrl"
-                  type="url"
-                  inputMode="url"
-                  placeholder="https://maps.google.com/…"
-                  value={mapsUrl}
-                  onChange={(e) => setMapsUrl(e.target.value)}
-                />
-                <p className="text-[11px] text-muted">
-                  Opcional. En Maps: compartir → copiar enlace.
-                </p>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="references">Referencias de la dirección</Label>
-                <Input
-                  id="references"
-                  placeholder="Ej. portón negro, 2do piso"
-                  value={references}
-                  onChange={(e) => setReferences(e.target.value)}
-                />
-              </div>
+              {fulfillment === "delivery" ? (
+                <>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="address">Dirección de entrega</Label>
+                    <Textarea
+                      id="address"
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="mapsUrl">URL de Google Maps</Label>
+                    <Input
+                      id="mapsUrl"
+                      type="url"
+                      inputMode="url"
+                      placeholder="https://maps.google.com/…"
+                      value={mapsUrl}
+                      onChange={(e) => setMapsUrl(e.target.value)}
+                    />
+                    <p className="text-[11px] text-muted">
+                      Opcional. En Maps: compartir → copiar enlace.
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="references">Referencias</Label>
+                    <Input
+                      id="references"
+                      value={references}
+                      onChange={(e) => setReferences(e.target.value)}
+                    />
+                  </div>
+                </>
+              ) : null}
               <div className="space-y-2">
                 <Label>Método de pago</Label>
                 <div
