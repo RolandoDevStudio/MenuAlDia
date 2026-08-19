@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { ImageIcon, Smartphone, MessageCircle } from "lucide-react";
 import {
   PLAN_LABELS,
   PLAN_PRICES_MXN,
@@ -12,6 +13,7 @@ import {
 import { formatMxn } from "@/lib/money";
 import { buildWaMeUrl } from "@/lib/whatsapp";
 import { BrandLogo } from "@/components/brand/brand-logo";
+import { LandingNav } from "@/components/marketing/landing-nav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -37,6 +39,24 @@ const FEATURES: Record<PlanType, string[]> = {
     "Exportar CSV",
   ],
 };
+
+const BENEFITS = [
+  {
+    icon: Smartphone,
+    title: "Actualiza desde el celular",
+    body: "Cambia el menú del día en segundos, sin diseñador ni Excel.",
+  },
+  {
+    icon: ImageIcon,
+    title: "Flyer listo para WhatsApp",
+    body: "Genera un PNG para Status y listas de difusión en un toque.",
+  },
+  {
+    icon: MessageCircle,
+    title: "Pedidos sin comisiones",
+    body: "El cliente pide y el mensaje llega a tu WhatsApp. Tú cobras.",
+  },
+] as const;
 
 export default function HomePage() {
   const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
@@ -69,6 +89,12 @@ export default function HomePage() {
     window.location.href = url;
   }
 
+  function scrollToContact() {
+    document
+      .getElementById("contacto")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   return (
     <main className="relative min-h-full overflow-x-hidden bg-background">
       <div
@@ -79,12 +105,14 @@ export default function HomePage() {
         }}
       />
 
-      <section className="mx-auto max-w-3xl px-6 pb-12 pt-16">
+      <LandingNav onContactClick={scrollToContact} />
+
+      <section className="mx-auto max-w-3xl px-6 pb-12 pt-10 sm:pt-14">
         <div
           className="motion-safe:animate-[rise_0.7s_ease-out]"
           style={{ animationFillMode: "both" }}
         >
-          <BrandLogo variant="lockup" size="xl" href={null} priority />
+          <BrandLogo variant="lockup" size="xl" href={null} />
         </div>
         <h1
           className="mt-5 max-w-xl text-2xl font-semibold leading-snug text-foreground sm:text-3xl motion-safe:animate-[rise_0.7s_ease-out]"
@@ -97,7 +125,7 @@ export default function HomePage() {
           className="mt-3 max-w-lg text-muted motion-safe:animate-[rise_0.7s_ease-out]"
           style={{ animationDelay: "120ms", animationFillMode: "both" }}
         >
-          Hecho para fondas, cocinas económicas y negocios locales que viven de
+          Hecho para restaurantes, fondas y negocios locales que viven de
           listas de difusión — no de apps de delivery.
         </p>
         <div
@@ -108,7 +136,7 @@ export default function HomePage() {
             href="/demo-fonda"
             className="rounded-lg bg-brand px-5 py-3.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-dark"
           >
-            Ver demo fonda
+            Ver demo restaurante
           </Link>
           <Link
             href="/demo-estetica"
@@ -116,28 +144,87 @@ export default function HomePage() {
           >
             Ver demo estética
           </Link>
+          <button
+            type="button"
+            onClick={() =>
+              document
+                .getElementById("precios")
+                ?.scrollIntoView({ behavior: "smooth" })
+            }
+            className="rounded-lg px-5 py-3.5 text-sm font-semibold text-muted underline-offset-4 hover:text-brand hover:underline"
+          >
+            Ver precios
+          </button>
         </div>
       </section>
 
-      <section className="mx-auto max-w-3xl px-6 py-10">
+      <section
+        id="beneficios"
+        className="mx-auto max-w-3xl scroll-mt-20 px-6 py-10"
+      >
         <h2 className="font-[family-name:var(--font-display)] text-3xl text-brand-dark">
           Por qué te conviene
         </h2>
-        <ul className="mt-4 space-y-3 text-sm text-foreground">
-          <li className="rounded-xl bg-surface/80 px-4 py-3">
-            Actualiza el menú del día desde el celular, sin diseñador.
-          </li>
-          <li className="rounded-xl bg-surface/80 px-4 py-3">
-            Genera un flyer listo para WhatsApp Status y listas.
-          </li>
-          <li className="rounded-xl bg-surface/80 px-4 py-3">
-            El cliente pide y el mensaje llega a tu WhatsApp — tú cobras, sin
-            intermediarios.
-          </li>
+        <p className="mt-1 text-sm text-muted">
+          Simple, eficiente y pensado para el ritmo de un negocio local.
+        </p>
+        <ul className="mt-6 grid gap-4 sm:grid-cols-3">
+          {BENEFITS.map(({ icon: Icon, title, body }) => (
+            <li key={title} className="rounded-2xl bg-surface/80 px-4 py-4">
+              <Icon className="h-6 w-6 text-brand" aria-hidden />
+              <p className="mt-3 text-sm font-semibold text-foreground">
+                {title}
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-muted">{body}</p>
+            </li>
+          ))}
         </ul>
       </section>
 
-      <section id="precios" className="mx-auto max-w-3xl px-6 py-10">
+      <section id="demos" className="mx-auto max-w-3xl scroll-mt-20 px-6 py-10">
+        <h2 className="font-[family-name:var(--font-display)] text-3xl text-brand-dark">
+          Pruébalo en vivo
+        </h2>
+        <p className="mt-1 text-sm text-muted">
+          Dos demos reales: restaurante y estética. Mismo producto, vocabulario
+          distinto según el giro.
+        </p>
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <Link
+            href="/demo-fonda"
+            className="group rounded-2xl border border-brand/20 bg-white p-5 transition hover:border-brand hover:shadow-md"
+          >
+            <p className="text-[10px] font-bold uppercase tracking-wider text-brand">
+              Restaurante
+            </p>
+            <p className="mt-2 font-[family-name:var(--font-display)] text-3xl text-brand-dark group-hover:text-brand">
+              Demo fonda
+            </p>
+            <p className="mt-1 text-sm text-muted">
+              Menú del día, guarniciones y pedidos por WhatsApp.
+            </p>
+          </Link>
+          <Link
+            href="/demo-estetica"
+            className="group rounded-2xl border border-black/10 bg-surface/90 p-5 transition hover:border-brand/40 hover:shadow-md"
+          >
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted">
+              Estética
+            </p>
+            <p className="mt-2 font-[family-name:var(--font-display)] text-3xl text-brand-dark group-hover:text-brand">
+              Demo estética
+            </p>
+            <p className="mt-1 text-sm text-muted">
+              Servicios y paquetes con la misma experiencia de menú digital.
+            </p>
+          </Link>
+        </div>
+      </section>
+
+      <section
+        id="precios"
+        className="mx-auto max-w-3xl scroll-mt-20 px-6 py-10"
+      >
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="font-[family-name:var(--font-display)] text-3xl text-brand-dark">
@@ -210,7 +297,10 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-lg px-6 py-10">
+      <section
+        id="contacto"
+        className="mx-auto max-w-lg scroll-mt-20 px-6 py-10"
+      >
         <h2 className="font-[family-name:var(--font-display)] text-3xl text-brand-dark">
           Habla con nosotros
         </h2>
@@ -220,7 +310,11 @@ export default function HomePage() {
         <div className="mt-4 space-y-3">
           <div className="space-y-1.5">
             <Label htmlFor="name">Tu nombre</Label>
-            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
+            <Input
+              id="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="business">Nombre del negocio</Label>
@@ -232,7 +326,11 @@ export default function HomePage() {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="city">Ciudad</Label>
-            <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} />
+            <Input
+              id="city"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="note">¿Qué necesitas?</Label>
@@ -259,7 +357,7 @@ export default function HomePage() {
             Super admin
           </Link>
           <Link href="/demo-fonda" className="hover:text-brand">
-            Demo fonda
+            Demo restaurante
           </Link>
           <Link href="/demo-estetica" className="hover:text-brand">
             Demo estética

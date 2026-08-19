@@ -25,9 +25,9 @@ function MenuMark({
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="40 40 280 290"
+      viewBox="130 40 256 295"
       width={size}
-      height={Math.round(size * (290 / 280))}
+      height={Math.round(size * (295 / 256))}
       className={cn("shrink-0", className)}
       aria-hidden
     >
