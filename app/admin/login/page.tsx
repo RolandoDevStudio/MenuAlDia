@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,9 +35,7 @@ export default function AdminLoginPage() {
 
   return (
     <main className="mx-auto flex min-h-full max-w-sm flex-col justify-center px-4 py-12">
-      <Link href="/" className="font-[family-name:var(--font-display)] text-4xl text-brand">
-        Menú al Día
-      </Link>
+      <BrandLogo variant="lockup" size="lg" href="/" priority />
       <h1 className="mt-6 text-xl font-semibold">Entrar al panel</h1>
       <p className="mt-1 text-sm text-muted">Usa tu correo de dueño del restaurante.</p>
       <form onSubmit={onSubmit} className="mt-6 space-y-4">

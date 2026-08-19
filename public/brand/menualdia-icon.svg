@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Menú al Día">
+  <rect width="512" height="512" fill="#FAF6F1" rx="96"/>
+  <g transform="translate(96,88) scale(0.625)">
+    <defs>
+      <linearGradient id="icon-sun" x1="0%" y1="100%" x2="0%" y2="0%">
+        <stop offset="0%" stop-color="#EA580C"/>
+        <stop offset="100%" stop-color="#FBBF24"/>
+      </linearGradient>
+      <linearGradient id="icon-cover" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#EA580C"/>
+        <stop offset="100%" stop-color="#C2410C"/>
+      </linearGradient>
+    </defs>
+    <g transform="translate(-96,-36)">
+      <path d="M 200 130 A 56 56 0 0 1 312 130 Z" fill="url(#icon-sun)"/>
+      <g stroke="#F59E0B" stroke-width="5" stroke-linecap="round">
+        <line x1="256" y1="58" x2="256" y2="44"/>
+        <line x1="220" y1="68" x2="212" y2="56"/>
+        <line x1="292" y1="68" x2="300" y2="56"/>
+        <line x1="188" y1="92" x2="176" y2="84"/>
+        <line x1="324" y1="92" x2="336" y2="84"/>
+        <line x1="168" y1="124" x2="154" y2="122"/>
+        <line x1="344" y1="124" x2="358" y2="122"/>
+      </g>
+      <path d="M 256 142 L 366 102 C 370 100, 376 103, 376 108 L 376 272 C 376 277, 370 281, 366 283 L 256 322 Z"
+            fill="#FFFDF9" stroke="#1C1917" stroke-width="8" stroke-linejoin="round"/>
+      <rect x="276" y="148" width="36" height="46" rx="4" fill="#EA580C"/>
+      <line x1="322" y1="156" x2="356" y2="156" stroke="#1C1917" stroke-width="5" stroke-linecap="round"/>
+      <line x1="322" y1="170" x2="356" y2="170" stroke="#1C1917" stroke-width="5" stroke-linecap="round"/>
+      <line x1="322" y1="184" x2="346" y2="184" stroke="#1C1917" stroke-width="5" stroke-linecap="round"/>
+      <line x1="276" y1="212" x2="356" y2="212" stroke="#1C1917" stroke-width="5" stroke-linecap="round"/>
+      <line x1="276" y1="228" x2="356" y2="228" stroke="#1C1917" stroke-width="5" stroke-linecap="round"/>
+      <line x1="276" y1="244" x2="356" y2="244" stroke="#1C1917" stroke-width="5" stroke-linecap="round"/>
+      <line x1="276" y1="260" x2="336" y2="260" stroke="#1C1917" stroke-width="5" stroke-linecap="round"/>
+      <path d="M 256 142 L 146 102 C 142 100, 136 103, 136 108 L 136 272 C 136 277, 142 281, 146 283 L 256 322 Z"
+            fill="url(#icon-cover)" stroke="#1C1917" stroke-width="8" stroke-linejoin="round"/>
+      <circle cx="196" cy="208" r="18" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+      <g stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round">
+        <line x1="196" y1="182" x2="196" y2="186"/>
+        <line x1="196" y1="230" x2="196" y2="234"/>
+        <line x1="170" y1="208" x2="174" y2="208"/>
+        <line x1="222" y1="208" x2="218" y2="208"/>
+        <line x1="178" y1="190" x2="181" y2="193"/>
+        <line x1="214" y1="226" x2="211" y2="223"/>
+        <line x1="178" y1="226" x2="181" y2="223"/>
+        <line x1="214" y1="190" x2="211" y2="193"/>
+      </g>
+      <line x1="256" y1="142" x2="256" y2="322" stroke="#1C1917" stroke-width="8" stroke-linecap="round"/>
+    </g>
+  </g>
+</svg>

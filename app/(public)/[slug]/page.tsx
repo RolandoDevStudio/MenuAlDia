@@ -9,6 +9,7 @@ import {
   CartBottomSpacer,
   FloatingCart,
 } from "@/components/public/floating-cart";
+import { PoweredByMenuAlDia } from "@/components/brand/brand-logo";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -59,6 +60,9 @@ export default async function PublicMenuPage({ params }: Props) {
         dishes={data.dishes}
         photoFrame={theme.photoFrame}
       />
+      <div className="mx-auto max-w-lg px-4 pb-4 pt-2 text-center">
+        <PoweredByMenuAlDia />
+      </div>
       <CartBottomSpacer />
       <FloatingCart restaurant={data.restaurant} />
     </main>

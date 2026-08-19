@@ -2,13 +2,13 @@
 
 :root {
   --background: #faf6f1;
-  --foreground: #1c1410;
-  --brand: #c45c26;
-  --brand-dark: #8b3a14;
+  --foreground: #1c1917;
+  --brand: #ea580c;
+  --brand-dark: #c2410c;
   --surface: #ffffff;
   --muted: #6b5b4f;
   --accent: #2f6b4f;
-  --ring: #c45c26;
+  --ring: #ea580c;
 }
 
 @theme inline {

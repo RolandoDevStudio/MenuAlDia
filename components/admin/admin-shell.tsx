@@ -20,6 +20,7 @@ import type { PlanType } from "@/lib/plans";
 import { can, PLAN_LABELS, isSubscriptionActive } from "@/lib/plans";
 import { label } from "@/lib/business-labels";
 import type { BusinessType } from "@/lib/types";
+import { BrandLogo } from "@/components/brand/brand-logo";
 
 type NavItem = {
   href: string;
@@ -97,10 +98,8 @@ export function AdminShell({
       <header className="sticky top-0 z-20 border-b border-black/5 bg-background/95 px-4 py-3 backdrop-blur">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="font-[family-name:var(--font-display)] text-2xl text-brand">
-              Menú al Día
-            </p>
-            <p className="truncate text-xs text-muted">
+            <BrandLogo variant="lockup" size="sm" href="/admin" />
+            <p className="mt-0.5 truncate text-xs text-muted">
               {restaurantName} · {PLAN_LABELS[planType]}
             </p>
           </div>

@@ -80,29 +80,29 @@ export default function TenantsPage() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="w-full min-w-0 space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <h1 className="text-lg font-semibold">Tenants</h1>
           <p className="text-sm text-muted">
             El slug es la URL pública; el acceso al admin es con email +
             contraseña.
           </p>
         </div>
-        <Button type="button" onClick={() => setCreateOpen(true)}>
+        <Button type="button" className="shrink-0" onClick={() => setCreateOpen(true)}>
           Crear Nuevo Admin
         </Button>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap">
         <Input
           placeholder="Buscar nombre, slug, dueño, email…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          className="max-w-xs"
+          className="w-full min-w-0 sm:max-w-xs"
         />
         <select
-          className={selectClass}
+          className={`${selectClass} w-full sm:w-auto`}
           value={planFilter}
           onChange={(e) => setPlanFilter(e.target.value)}
         >
@@ -114,7 +114,7 @@ export default function TenantsPage() {
           ))}
         </select>
         <select
-          className={selectClass}
+          className={`${selectClass} w-full sm:w-auto`}
           value={giroFilter}
           onChange={(e) => setGiroFilter(e.target.value)}
         >
@@ -126,7 +126,7 @@ export default function TenantsPage() {
           ))}
         </select>
         <select
-          className={selectClass}
+          className={`${selectClass} w-full sm:w-auto`}
           value={activeFilter}
           onChange={(e) => setActiveFilter(e.target.value)}
         >

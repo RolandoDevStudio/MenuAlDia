@@ -114,92 +114,177 @@ export function TenantsTable({ restaurants, owners, onEdit }: Props) {
     </th>
   );
 
+  function RowActions({ r }: { r: Restaurant }) {
+    return (
+      <div className="flex flex-wrap gap-1.5">
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          className="min-h-10"
+          onClick={() => onEdit(r)}
+        >
+          Editar
+        </Button>
+        <RemindPaymentButton restaurant={r} />
+      </div>
+    );
+  }
+
   return (
-    <div className="overflow-x-auto rounded-2xl border border-black/10 bg-surface">
-      <table className="w-full min-w-[1100px] text-sm">
-        <thead className="border-b border-black/10 text-xs text-muted">
-          <tr>
-            {header("name", "Nombre")}
-            {header("owner_name", "Dueño")}
-            {header("slug", "Slug")}
-            {header("plan", "Plan")}
-            {header("business_type", "Giro")}
-            {header("is_active", "Activo")}
-            {header("subscription_end_date", "Vence")}
-            {header("phone", "Teléfono")}
-            {header("email", "Email")}
-            <th className="px-2 py-2 text-left font-semibold">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.length === 0 ? (
-            <tr>
-              <td
-                colSpan={10}
-                className="px-3 py-8 text-center text-sm text-muted"
+    <div className="w-full min-w-0">
+      {/* Mobile / tablet: cards */}
+      <ul className="space-y-3 lg:hidden">
+        {sorted.length === 0 ? (
+          <li className="rounded-2xl border border-dashed border-black/10 px-4 py-8 text-center text-sm text-muted">
+            No hay tenants con esos filtros.
+          </li>
+        ) : (
+          sorted.map((r) => {
+            const plan = (r.plan_type || "catalog") as PlanType;
+            const giro = (r.business_type || "restaurante") as BusinessType;
+            return (
+              <li
+                key={r.id}
+                className="space-y-3 rounded-2xl border border-black/10 bg-surface p-4"
               >
-                No hay tenants con esos filtros.
-              </td>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold">{r.name}</p>
+                    <p className="text-xs text-muted">
+                      {r.owner_name || "Sin dueño"} · /{r.slug}
+                    </p>
+                  </div>
+                  {r.is_active !== false ? (
+                    <span className="shrink-0 text-xs font-semibold text-accent">
+                      Activo
+                    </span>
+                  ) : (
+                    <span className="shrink-0 text-xs font-semibold text-red-600">
+                      Inactivo
+                    </span>
+                  )}
+                </div>
+                <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+                  <div>
+                    <dt className="text-muted">Plan</dt>
+                    <dd className="font-medium">{PLAN_LABELS[plan] ?? plan}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted">Giro</dt>
+                    <dd className="font-medium">
+                      {BUSINESS_TYPE_LABELS[giro] ?? giro}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted">Vence</dt>
+                    <dd className="font-medium">
+                      {r.subscription_end_date
+                        ? new Date(r.subscription_end_date).toLocaleDateString(
+                            "es-MX",
+                          )
+                        : "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted">WhatsApp</dt>
+                    <dd className="truncate font-mono">
+                      {r.phone_whatsapp || "—"}
+                    </dd>
+                  </div>
+                  <div className="col-span-2">
+                    <dt className="text-muted">Email</dt>
+                    <dd className="truncate">{owners[r.id]?.email ?? "—"}</dd>
+                  </div>
+                </dl>
+                <RowActions r={r} />
+              </li>
+            );
+          })
+        )}
+      </ul>
+
+      {/* Desktop: scrollable table constrained to viewport */}
+      <div className="hidden w-full min-w-0 max-w-full overflow-x-auto rounded-2xl border border-black/10 bg-surface lg:block">
+        <table className="w-full min-w-[960px] text-sm">
+          <thead className="border-b border-black/10 text-xs text-muted">
+            <tr>
+              {header("name", "Nombre")}
+              {header("owner_name", "Dueño")}
+              {header("slug", "Slug")}
+              {header("plan", "Plan")}
+              {header("business_type", "Giro")}
+              {header("is_active", "Activo")}
+              {header("subscription_end_date", "Vence")}
+              {header("phone", "Teléfono")}
+              {header("email", "Email")}
+              <th className="sticky right-0 bg-surface px-2 py-2 text-left font-semibold shadow-[-4px_0_8px_rgba(0,0,0,0.04)]">
+                Acciones
+              </th>
             </tr>
-          ) : (
-            sorted.map((r) => {
-              const plan = (r.plan_type || "catalog") as PlanType;
-              const giro = (r.business_type || "restaurante") as BusinessType;
-              return (
-                <tr
-                  key={r.id}
-                  className="border-t border-black/5 hover:bg-black/[0.02]"
+          </thead>
+          <tbody>
+            {sorted.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={10}
+                  className="px-3 py-8 text-center text-sm text-muted"
                 >
-                  <td className="px-2 py-2.5 font-medium">{r.name}</td>
-                  <td className="px-2 py-2.5 text-muted">
-                    {r.owner_name || "—"}
-                  </td>
-                  <td className="px-2 py-2.5 font-mono text-xs">/{r.slug}</td>
-                  <td className="px-2 py-2.5">
-                    {PLAN_LABELS[plan] ?? plan}
-                  </td>
-                  <td className="px-2 py-2.5">
-                    {BUSINESS_TYPE_LABELS[giro] ?? giro}
-                  </td>
-                  <td className="px-2 py-2.5">
-                    {r.is_active !== false ? (
-                      <span className="text-accent">Sí</span>
-                    ) : (
-                      <span className="text-red-600">No</span>
-                    )}
-                  </td>
-                  <td className="whitespace-nowrap px-2 py-2.5">
-                    {r.subscription_end_date
-                      ? new Date(r.subscription_end_date).toLocaleDateString(
-                          "es-MX",
-                        )
-                      : "—"}
-                  </td>
-                  <td className="px-2 py-2.5 font-mono text-xs">
-                    {r.phone_whatsapp || "—"}
-                  </td>
-                  <td className="max-w-[10rem] truncate px-2 py-2.5 text-xs">
-                    {owners[r.id]?.email ?? "—"}
-                  </td>
-                  <td className="px-2 py-2.5">
-                    <div className="flex flex-wrap gap-1.5">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => onEdit(r)}
-                      >
-                        Editar
-                      </Button>
-                      <RemindPaymentButton restaurant={r} />
-                    </div>
-                  </td>
-                </tr>
-              );
-            })
-          )}
-        </tbody>
-      </table>
+                  No hay tenants con esos filtros.
+                </td>
+              </tr>
+            ) : (
+              sorted.map((r) => {
+                const plan = (r.plan_type || "catalog") as PlanType;
+                const giro = (r.business_type || "restaurante") as BusinessType;
+                return (
+                  <tr
+                    key={r.id}
+                    className="border-t border-black/5 hover:bg-black/[0.02]"
+                  >
+                    <td className="max-w-[10rem] truncate px-2 py-2.5 font-medium">
+                      {r.name}
+                    </td>
+                    <td className="max-w-[8rem] truncate px-2 py-2.5 text-muted">
+                      {r.owner_name || "—"}
+                    </td>
+                    <td className="px-2 py-2.5 font-mono text-xs">/{r.slug}</td>
+                    <td className="px-2 py-2.5 whitespace-nowrap">
+                      {PLAN_LABELS[plan] ?? plan}
+                    </td>
+                    <td className="px-2 py-2.5 whitespace-nowrap">
+                      {BUSINESS_TYPE_LABELS[giro] ?? giro}
+                    </td>
+                    <td className="px-2 py-2.5">
+                      {r.is_active !== false ? (
+                        <span className="text-accent">Sí</span>
+                      ) : (
+                        <span className="text-red-600">No</span>
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap px-2 py-2.5">
+                      {r.subscription_end_date
+                        ? new Date(r.subscription_end_date).toLocaleDateString(
+                            "es-MX",
+                          )
+                        : "—"}
+                    </td>
+                    <td className="px-2 py-2.5 font-mono text-xs">
+                      {r.phone_whatsapp || "—"}
+                    </td>
+                    <td className="max-w-[9rem] truncate px-2 py-2.5 text-xs">
+                      {owners[r.id]?.email ?? "—"}
+                    </td>
+                    <td className="sticky right-0 bg-surface px-2 py-2.5 shadow-[-4px_0_8px_rgba(0,0,0,0.04)]">
+                      <RowActions r={r} />
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

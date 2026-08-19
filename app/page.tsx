@@ -11,6 +11,7 @@ import {
 } from "@/lib/plans";
 import { formatMxn } from "@/lib/money";
 import { buildWaMeUrl } from "@/lib/whatsapp";
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -79,12 +80,12 @@ export default function HomePage() {
       />
 
       <section className="mx-auto max-w-3xl px-6 pb-12 pt-16">
-        <p
-          className="font-[family-name:var(--font-display)] text-5xl leading-none tracking-wide text-brand sm:text-7xl motion-safe:animate-[rise_0.7s_ease-out]"
+        <div
+          className="motion-safe:animate-[rise_0.7s_ease-out]"
           style={{ animationFillMode: "both" }}
         >
-          Menú al Día
-        </p>
+          <BrandLogo variant="lockup" size="xl" href={null} priority />
+        </div>
         <h1
           className="mt-5 max-w-xl text-2xl font-semibold leading-snug text-foreground sm:text-3xl motion-safe:animate-[rise_0.7s_ease-out]"
           style={{ animationDelay: "60ms", animationFillMode: "both" }}
@@ -248,8 +249,8 @@ export default function HomePage() {
       </section>
 
       <footer className="mx-auto max-w-3xl border-t border-black/5 px-6 py-8 text-xs text-muted">
-        <p className="font-semibold text-brand-dark">Menú al Día</p>
-        <p className="mt-1">menualdia.app · SaaS para negocios locales</p>
+        <BrandLogo variant="lockup" size="sm" href={null} />
+        <p className="mt-2">menualdia.app · SaaS para negocios locales</p>
         <div className="mt-4 flex flex-wrap gap-4">
           <Link href="/admin/login" className="hover:text-brand">
             Entrar al admin

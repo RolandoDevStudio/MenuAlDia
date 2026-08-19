@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireSuperAdmin } from "@/lib/super-admin";
+import { BrandLogo } from "@/components/brand/brand-logo";
 
 export default async function SuperAdminLayout({
   children,
@@ -9,13 +10,13 @@ export default async function SuperAdminLayout({
   await requireSuperAdmin();
 
   return (
-    <div className="mx-auto min-h-full max-w-6xl px-4 py-6">
+    <div className="mx-auto min-h-full w-full min-w-0 max-w-6xl px-3 py-6 sm:px-4">
       <header className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-black/10 pb-4">
-        <div>
-          <p className="font-[family-name:var(--font-display)] text-3xl text-brand">
-            Super Admin
+        <div className="min-w-0">
+          <BrandLogo variant="lockup" size="md" href="/super-admin" />
+          <p className="mt-1 text-xs text-muted">
+            Super Admin · control global menualdia.app
           </p>
-          <p className="text-xs text-muted">Control global menualdia.app</p>
         </div>
         <nav className="flex flex-wrap gap-3 text-sm font-semibold">
           <Link href="/super-admin" className="text-brand">
@@ -35,7 +36,7 @@ export default async function SuperAdminLayout({
           </Link>
         </nav>
       </header>
-      {children}
+      <div className="min-w-0 w-full">{children}</div>
     </div>
   );
 }
