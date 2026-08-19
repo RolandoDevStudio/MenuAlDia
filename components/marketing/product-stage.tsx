@@ -56,8 +56,8 @@ export function ProductStage({ className }: Props) {
     salesInterestMessage(demo.label),
   );
 
-  function selectTab(id: CanonicalDemoId) {
-    setActiveId(id);
+  function openModal() {
+    setModalOpen(true);
   }
 
   return (
@@ -76,7 +76,7 @@ export function ProductStage({ className }: Props) {
               type="button"
               role="tab"
               aria-selected={active}
-              onClick={() => selectTab(d.id)}
+              onClick={() => setActiveId(d.id)}
               className={cn(
                 "inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold transition-colors sm:text-sm",
                 active
@@ -91,65 +91,102 @@ export function ProductStage({ className }: Props) {
         })}
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-md">
-        <div className="flex items-center justify-between gap-2 border-b border-black/5 bg-surface px-3 py-2">
-          <p className="flex items-center gap-2 text-xs font-semibold text-foreground">
-            <Icon className="h-4 w-4 text-brand" aria-hidden />
-            Vista previa · {demo.label}
+      <div className="grid items-center gap-5 md:grid-cols-[1fr_minmax(180px,240px)] md:gap-8">
+        {/* Copy + CTAs (left on desktop) */}
+        <div className="order-2 flex flex-col items-start text-left md:order-1">
+          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-brand">
+            <Icon className="h-3.5 w-3.5" aria-hidden />
+            Vista previa
           </p>
+          <h3 className="mt-1 font-[family-name:var(--font-display)] text-2xl text-brand-dark sm:text-3xl">
+            Prueba el menú de {demo.label}
+          </h3>
+          <p className="mt-2 max-w-md text-sm text-muted">
+            Agrega al carrito y pulsa Enviar por WhatsApp — así arma el cliente
+            el pedido y así le llega al negocio.
+          </p>
+
+          <div className="mt-4 flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+            <Button
+              type="button"
+              className="landing-cta min-h-11"
+              onClick={openModal}
+            >
+              <Play className="h-4 w-4 fill-current" aria-hidden />
+              Cargar demo interactiva
+            </Button>
+            <Button
+              asChild
+              variant="secondary"
+              className="landing-cta min-h-11"
+            >
+              <a href={salesUrl} target="_blank" rel="noreferrer">
+                {demo.ctaLabel}
+              </a>
+            </Button>
+          </div>
+
           <Link
             href={`/${demo.slug}`}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1 text-xs font-semibold text-brand hover:underline"
+            className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-brand hover:underline"
           >
-            Pantalla completa
+            Abrir demo en pestaña
             <ExternalLink className="h-3.5 w-3.5" aria-hidden />
           </Link>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setModalOpen(true)}
-          className="group relative block w-full max-h-72 overflow-hidden bg-[#f3e8dc] sm:max-h-80"
-        >
-          <div className="relative aspect-[4/3] w-full sm:aspect-[16/10]">
-            <Image
-              src={POSTERS[activeId]}
-              alt={`Vista previa del menú demo ${demo.label}`}
-              fill
-              className="object-cover object-top opacity-95 transition group-hover:opacity-100"
-              sizes="(max-width: 768px) 100vw, 720px"
-              priority={activeId === "restaurante"}
-            />
-            <span className="absolute inset-0 flex items-center justify-center bg-black/10 transition group-hover:bg-black/15">
-              <span className="inline-flex items-center gap-2 rounded-full bg-brand px-5 py-3 text-sm font-semibold text-white shadow-lg">
-                <Play className="h-4 w-4 fill-current" aria-hidden />
-                Cargar demo interactiva
+        {/* Compact phone / wide poster */}
+        <div className="order-1 md:order-2 md:justify-self-end">
+          {/* Mobile: short landscape strip */}
+          <button
+            type="button"
+            onClick={openModal}
+            className="group relative block w-full overflow-hidden rounded-2xl border border-black/10 bg-[#f3e8dc] shadow-md md:hidden"
+          >
+            <div className="relative h-40 w-full">
+              <Image
+                src={POSTERS[activeId]}
+                alt={`Vista previa del menú demo ${demo.label}`}
+                fill
+                className="object-cover object-top opacity-95 transition group-hover:opacity-100"
+                sizes="100vw"
+                priority={activeId === "restaurante"}
+              />
+              <span className="absolute inset-0 flex items-center justify-center bg-black/15">
+                <span className="inline-flex items-center gap-2 rounded-full bg-brand px-4 py-2.5 text-sm font-semibold text-white shadow-lg">
+                  <Play className="h-4 w-4 fill-current" aria-hidden />
+                  Ver demo
+                </span>
               </span>
-            </span>
-          </div>
-        </button>
-      </div>
+            </div>
+          </button>
 
-      <p className="text-center text-xs text-muted md:text-left">
-        En la demo: agrega al carrito y pulsa Enviar por WhatsApp — así arma el
-        cliente el pedido y así le llega al negocio.
-      </p>
-
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-        <Button asChild className="landing-cta min-h-11 flex-1 sm:flex-none">
-          <Link href={`/${demo.slug}`}>Ver demo {demo.label}</Link>
-        </Button>
-        <Button
-          asChild
-          variant="secondary"
-          className="landing-cta min-h-11 flex-1 sm:flex-none"
-        >
-          <a href={salesUrl} target="_blank" rel="noreferrer">
-            {demo.ctaLabel}
-          </a>
-        </Button>
+          {/* Desktop: phone frame */}
+          <button
+            type="button"
+            onClick={openModal}
+            aria-label={`Cargar demo interactiva de ${demo.label}`}
+            className="group relative hidden w-full max-w-[220px] overflow-hidden rounded-[1.75rem] border-2 border-black/10 bg-[#f3e8dc] shadow-lg ring-4 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-xl md:block"
+          >
+            <div className="relative aspect-[9/16] max-h-72 w-full">
+              <Image
+                src={POSTERS[activeId]}
+                alt=""
+                fill
+                className="object-cover object-top opacity-95 transition group-hover:opacity-100"
+                sizes="220px"
+              />
+              <span className="absolute inset-x-0 bottom-0 flex justify-center bg-gradient-to-t from-black/50 to-transparent px-3 pb-4 pt-10">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-brand px-3 py-2 text-xs font-semibold text-white shadow-md">
+                  <Play className="h-3.5 w-3.5 fill-current" aria-hidden />
+                  Cargar demo
+                </span>
+              </span>
+            </div>
+          </button>
+        </div>
       </div>
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
@@ -175,11 +212,7 @@ export function ProductStage({ className }: Props) {
 
           <div className="flex shrink-0 flex-wrap gap-2">
             <Button asChild variant="secondary" size="sm" className="min-h-11">
-              <a
-                href={`/${demo.slug}`}
-                target="_blank"
-                rel="noreferrer"
-              >
+              <a href={`/${demo.slug}`} target="_blank" rel="noreferrer">
                 Abrir en pestaña
                 <ExternalLink className="ml-1.5 h-3.5 w-3.5" aria-hidden />
               </a>
