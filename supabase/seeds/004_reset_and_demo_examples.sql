@@ -113,9 +113,18 @@ insert into public.platform_settings (key, value, updated_at) values
 (
   'landing_content',
   '{
-    "heroTitle": "Tu menú digital, pedidos por WhatsApp",
-    "heroSubtitle": "Actualiza el menú, genera flyers y recibe pedidos sin comisiones de delivery.",
-    "contactBlurb": "Cuéntanos de tu negocio y te armamos el plan."
+    "heroTitle": "Digitaliza tu menú en 2 minutos. Recibe pedidos por WhatsApp sin comisiones.",
+    "heroSubtitle": "Hecho para restaurantes, servicios y tiendas locales que viven de listas de difusión — no de intermediarios.",
+    "contactBlurb": "Te respondemos por WhatsApp y te activamos en el mismo día.",
+    "socialProofLine": "Hecho para locales en México · activación el mismo día",
+    "testimonials": [],
+    "faq": [
+      {"q": "¿Necesito que mis clientes instalen una app?", "a": "No. Solo compartes un link: abren el menú en el navegador y piden por WhatsApp."},
+      {"q": "¿Quién paga WhatsApp?", "a": "El cliente escribe a tu número de negocio. MenuAlDía no cobra comisión por pedido."},
+      {"q": "¿Cuánto tarda la activación?", "a": "Te activamos el mismo día. Configuras tu menú y ya puedes compartir el link."},
+      {"q": "¿Puedo cambiar de plan después?", "a": "Sí. Te ajustamos el plan cuando lo necesites, sin fricción."}
+    ],
+    "demoPosters": {}
   }'::jsonb,
   now()
 )

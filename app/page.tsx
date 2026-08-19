@@ -18,12 +18,18 @@ import {
   OFFICIAL_DOMAIN,
   type CanonicalDemoId,
 } from "@/lib/canonical-demos";
+import {
+  DEFAULT_LANDING_CONTENT,
+  DEFAULT_LANDING_FAQ,
+  type LandingContent,
+} from "@/lib/landing-content";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { LandingNav } from "@/components/marketing/landing-nav";
 import { LandingWhatsAppFab } from "@/components/marketing/landing-whatsapp-fab";
 import { ProductStage } from "@/components/marketing/product-stage";
 import { ProductShots } from "@/components/marketing/product-shots";
 import { TrustStrip } from "@/components/marketing/trust-strip";
+import { FaqSection } from "@/components/marketing/faq-section";
 import { RoiCalculator } from "@/components/marketing/roi-calculator";
 import { Reveal } from "@/components/marketing/reveal";
 import { Button } from "@/components/ui/button";
@@ -115,6 +121,10 @@ export default function HomePage() {
   const [note, setNote] = useState("");
   const [planPrices, setPlanPrices] =
     useState<PlanPricesMap>(FALLBACK_PLAN_PRICES);
+  const [landing, setLanding] = useState<LandingContent>({
+    ...DEFAULT_LANDING_CONTENT,
+    faq: [...DEFAULT_LANDING_FAQ],
+  });
 
   const salesPhone =
     process.env.NEXT_PUBLIC_SALES_WHATSAPP || SALES_WHATSAPP;
@@ -129,14 +139,33 @@ export default function HomePage() {
 
   useEffect(() => {
     void (async () => {
-      const res = await fetch("/api/plan-prices");
-      if (!res.ok) return;
-      const data = (await res.json()) as PlanPricesMap;
-      setPlanPrices({
-        catalog: data.catalog ?? FALLBACK_PLAN_PRICES.catalog,
-        daily: data.daily ?? FALLBACK_PLAN_PRICES.daily,
-        pro: data.pro ?? FALLBACK_PLAN_PRICES.pro,
-      });
+      const [pricesRes, landingRes] = await Promise.all([
+        fetch("/api/plan-prices"),
+        fetch("/api/landing-content"),
+      ]);
+      if (pricesRes.ok) {
+        const data = (await pricesRes.json()) as PlanPricesMap;
+        setPlanPrices({
+          catalog: data.catalog ?? FALLBACK_PLAN_PRICES.catalog,
+          daily: data.daily ?? FALLBACK_PLAN_PRICES.daily,
+          pro: data.pro ?? FALLBACK_PLAN_PRICES.pro,
+        });
+      }
+      if (landingRes.ok) {
+        const data = (await landingRes.json()) as LandingContent;
+        setLanding({
+          ...DEFAULT_LANDING_CONTENT,
+          ...data,
+          faq:
+            Array.isArray(data.faq) && data.faq.length > 0
+              ? data.faq
+              : [...DEFAULT_LANDING_FAQ],
+          testimonials: Array.isArray(data.testimonials)
+            ? data.testimonials
+            : [],
+          demoPosters: data.demoPosters ?? {},
+        });
+      }
     })();
   }, []);
 
@@ -184,15 +213,13 @@ export default function HomePage() {
           className="mt-5 max-w-xl text-2xl font-semibold leading-snug text-foreground sm:text-3xl motion-safe:animate-[rise_0.7s_ease-out]"
           style={{ animationDelay: "80ms", animationFillMode: "both" }}
         >
-          Digitaliza tu menú en 2 minutos. Recibe pedidos por WhatsApp sin
-          comisiones.
+          {landing.heroTitle}
         </h1>
         <p
           className="mt-3 max-w-lg text-muted motion-safe:animate-[rise_0.7s_ease-out]"
           style={{ animationDelay: "160ms", animationFillMode: "both" }}
         >
-          Hecho para restaurantes, servicios y tiendas locales que viven de
-          listas de difusión — no de intermediarios.
+          {landing.heroSubtitle}
         </p>
         <p
           className="mt-2 text-sm font-semibold text-brand motion-safe:animate-[rise_0.7s_ease-out]"
@@ -215,13 +242,13 @@ export default function HomePage() {
           className="mt-2 text-xs text-muted motion-safe:animate-[rise_0.7s_ease-out]"
           style={{ animationDelay: "240ms", animationFillMode: "both" }}
         >
-          Hecho para locales en México · activación el mismo día
+          {landing.socialProofLine}
         </p>
       </section>
 
       <section className="mx-auto max-w-3xl px-6 pb-12 pt-2">
         <Reveal>
-          <ProductStage />
+          <ProductStage demoPosters={landing.demoPosters} />
         </Reveal>
       </section>
 
@@ -247,7 +274,7 @@ export default function HomePage() {
             </Reveal>
           ))}
         </ul>
-        <div className="mt-10">
+        <div className="mt-8">
           <ProductShots />
         </div>
       </SectionShell>
@@ -255,31 +282,28 @@ export default function HomePage() {
       <SectionShell id="demos" tone="plain">
         <Reveal>
           <h2 className="font-[family-name:var(--font-display)] text-4xl tracking-wide text-brand-dark sm:text-5xl">
-            Tres giros, un producto
+            Abrir demos
           </h2>
           <p className="mt-2 max-w-md text-sm text-muted">
-            Elige el que se parece a tu negocio.
+            Acceso directo por giro.
           </p>
         </Reveal>
-        <div className="mt-8 grid gap-4 sm:grid-cols-3">
+        <div className="mt-6 grid gap-3 sm:grid-cols-3">
           {CANONICAL_DEMOS.map((d, i) => (
             <Reveal key={d.slug} delayMs={i * 90}>
               <Link
                 href={`/${d.slug}`}
                 className={cn(
-                  "landing-card group block rounded-2xl border border-black/10 border-t-4 bg-white p-5 hover:shadow-md",
+                  "landing-card group flex min-h-11 items-center justify-between rounded-xl border border-black/10 border-t-4 bg-white px-4 py-3 hover:shadow-md",
                   GIRO_ACCENT[d.id],
                 )}
               >
-                <p className="text-[10px] font-bold uppercase tracking-wider text-muted">
+                <span className="text-sm font-semibold text-foreground">
                   {d.label}
-                </p>
-                <p className="mt-2 font-[family-name:var(--font-display)] text-3xl text-brand-dark transition-colors group-hover:text-brand">
-                  Demo {d.label.toLowerCase()}
-                </p>
-                <p className="mt-1 text-sm text-muted">
-                  Abre la demo y prueba un pedido por WhatsApp.
-                </p>
+                </span>
+                <span className="text-xs font-semibold text-brand group-hover:underline">
+                  Abrir demo
+                </span>
               </Link>
             </Reveal>
           ))}
@@ -287,7 +311,7 @@ export default function HomePage() {
       </SectionShell>
 
       <SectionShell tone="brand">
-        <TrustStrip />
+        <TrustStrip testimonials={landing.testimonials} />
       </SectionShell>
 
       <SectionShell id="precios" tone="white">
@@ -378,6 +402,10 @@ export default function HomePage() {
         </Reveal>
       </SectionShell>
 
+      <SectionShell id="faq" tone="surface">
+        <FaqSection items={landing.faq} />
+      </SectionShell>
+
       <SectionShell id="contacto" tone="plain" className="!py-0">
         <div className="mx-auto max-w-lg py-12 sm:py-14">
           <Reveal>
@@ -385,7 +413,7 @@ export default function HomePage() {
               Habla con nosotros
             </h2>
             <p className="mt-2 text-sm text-muted">
-              Te respondemos por WhatsApp y te activamos en el mismo día.
+              {landing.contactBlurb}
             </p>
           </Reveal>
           <Reveal delayMs={100} className="mt-5 space-y-3">

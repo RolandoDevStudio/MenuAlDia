@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import {
   ExternalLink,
@@ -15,6 +16,7 @@ import {
   salesInterestMessage,
   type CanonicalDemoId,
 } from "@/lib/canonical-demos";
+import type { LandingDemoPosters } from "@/lib/landing-content";
 import { buildWaMeUrl, SALES_WHATSAPP } from "@/lib/whatsapp";
 import { Button } from "@/components/ui/button";
 import {
@@ -71,15 +73,17 @@ const PANEL: Record<
 
 type Props = {
   className?: string;
+  demoPosters?: LandingDemoPosters;
 };
 
-export function ProductStage({ className }: Props) {
+export function ProductStage({ className, demoPosters = {} }: Props) {
   const [activeId, setActiveId] =
     useState<CanonicalDemoId>("restaurante");
   const [modalOpen, setModalOpen] = useState(false);
   const demo = getCanonicalDemo(activeId)!;
   const Icon = ICONS[activeId];
   const theme = PANEL[activeId];
+  const posterUrl = demoPosters[activeId]?.trim() || "";
   const salesPhone =
     process.env.NEXT_PUBLIC_SALES_WHATSAPP || SALES_WHATSAPP;
   const salesUrl = buildWaMeUrl(
@@ -124,57 +128,77 @@ export function ProductStage({ className }: Props) {
           })}
         </div>
 
-        <div className="mt-5 flex flex-col items-start text-left">
-          <p
-            className={cn(
-              "flex items-center gap-2 text-xs font-semibold uppercase tracking-wide transition-colors duration-200",
-              theme.eyebrow,
-            )}
-          >
-            <Icon className="h-3.5 w-3.5" aria-hidden />
-            Prueba el producto
-          </p>
-          <h3 className="mt-1 font-[family-name:var(--font-display)] text-3xl text-brand-dark sm:text-4xl">
-            Menú demo · {demo.label}
-          </h3>
-          <p className="mt-2 max-w-lg text-sm text-muted">
-            Adaptado a {demo.label.toLowerCase()}. Agrega al carrito y pulsa
-            Enviar por WhatsApp — así arma el cliente el pedido y así le llega
-            al negocio.
-          </p>
+        <div
+          className={cn(
+            "mt-5 flex flex-col gap-5",
+            posterUrl && "sm:flex-row sm:items-start sm:justify-between",
+          )}
+        >
+          <div className="flex min-w-0 flex-1 flex-col items-start text-left">
+            <p
+              className={cn(
+                "flex items-center gap-2 text-xs font-semibold uppercase tracking-wide transition-colors duration-200",
+                theme.eyebrow,
+              )}
+            >
+              <Icon className="h-3.5 w-3.5" aria-hidden />
+              Prueba el producto
+            </p>
+            <h3 className="mt-1 font-[family-name:var(--font-display)] text-3xl text-brand-dark sm:text-4xl">
+              Menú demo · {demo.label}
+            </h3>
+            <p className="mt-2 max-w-lg text-sm text-muted">
+              Adaptado a {demo.label.toLowerCase()}. Agrega al carrito y pulsa
+              Enviar por WhatsApp — así arma el cliente el pedido y así le llega
+              al negocio.
+            </p>
 
-          <div className="mt-5 flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
-            <Button
-              type="button"
-              className={cn("landing-cta min-h-11", theme.primaryBtn)}
-              onClick={() => setModalOpen(true)}
+            <div className="mt-5 flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+              <Button
+                type="button"
+                className={cn("landing-cta min-h-11", theme.primaryBtn)}
+                onClick={() => setModalOpen(true)}
+              >
+                <Play className="h-4 w-4 fill-current" aria-hidden />
+                Cargar demo interactiva
+              </Button>
+              <Button
+                asChild
+                variant="secondary"
+                className="landing-cta min-h-11"
+              >
+                <a href={salesUrl} target="_blank" rel="noreferrer">
+                  {demo.ctaLabel}
+                </a>
+              </Button>
+            </div>
+
+            <Link
+              href={`/${demo.slug}`}
+              target="_blank"
+              rel="noreferrer"
+              className={cn(
+                "mt-3 inline-flex items-center gap-1 text-sm font-semibold transition-colors hover:underline",
+                theme.link,
+              )}
             >
-              <Play className="h-4 w-4 fill-current" aria-hidden />
-              Cargar demo interactiva
-            </Button>
-            <Button
-              asChild
-              variant="secondary"
-              className="landing-cta min-h-11"
-            >
-              <a href={salesUrl} target="_blank" rel="noreferrer">
-                {demo.ctaLabel}
-              </a>
-            </Button>
+              Abrir demo en pestaña
+              <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+            </Link>
           </div>
 
-          <Link
-            href={`/${demo.slug}`}
-            target="_blank"
-            rel="noreferrer"
-            className={cn(
-              "mt-3 inline-flex items-center gap-1 text-sm font-semibold transition-colors hover:underline",
-              theme.link,
-            )}
-          >
-            Abrir demo en pestaña
-            <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-          </Link>
+          {posterUrl ? (
+            <div className="relative mx-auto aspect-[4/3] w-full max-w-[220px] shrink-0 overflow-hidden rounded-xl border border-black/10 bg-white shadow-sm sm:mx-0 sm:w-[200px]">
+              <Image
+                src={posterUrl}
+                alt={`Captura demo ${demo.label}`}
+                fill
+                className="object-cover"
+                sizes="220px"
+                unoptimized
+              />
+            </div>
+          ) : null}
         </div>
       </div>
 
