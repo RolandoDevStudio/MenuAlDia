@@ -1,10 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Cake, Plus, Search, Trash2 } from "lucide-react";
+import { Cake, Plus, Search, Trash2, MessageCircle } from "lucide-react";
 import type { Customer, CustomerPhoto } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import { compressImage } from "@/lib/compress-image";
+import {
+  type CampaignFilter,
+  filterCampaignCustomers,
+  buildCampaignMessage,
+  openCampaignWhatsApp,
+  templateKindForFilter,
+  isBirthdayWithinDays,
+} from "@/lib/crm-campaigns";
+import { CampaignPanel } from "@/components/admin/campaign-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,6 +47,7 @@ export function CustomersCrm({
 }: Props) {
   const [customers, setCustomers] = useState(initialCustomers);
   const [q, setQ] = useState("");
+  const [campaignFilter, setCampaignFilter] = useState<CampaignFilter>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [goal, setGoal] = useState(initialGoal || 10);
   const [rewardLabel, setRewardLabel] = useState(
@@ -51,15 +61,29 @@ export function CustomersCrm({
   const selected = customers.find((c) => c.id === selectedId) ?? null;
 
   const filtered = useMemo(() => {
+    const byCampaign = filterCampaignCustomers(customers, campaignFilter);
     const s = q.trim().toLowerCase();
-    if (!s) return customers;
-    return customers.filter(
+    if (!s) return byCampaign;
+    return byCampaign.filter(
       (c) =>
         c.name.toLowerCase().includes(s) ||
         (c.phone ?? "").includes(s) ||
         (c.tags ?? []).some((t) => t.toLowerCase().includes(s)),
     );
-  }, [customers, q]);
+  }, [customers, q, campaignFilter]);
+
+  function sendCampaignWa(c: Customer) {
+    if (!c.phone?.trim()) {
+      setMsg("Agrega un teléfono al cliente para WhatsApp");
+      return;
+    }
+    const msg = buildCampaignMessage({
+      kind: templateKindForFilter(campaignFilter),
+      customerName: c.name,
+      businessName: restaurantName,
+    });
+    openCampaignWhatsApp(c.phone, msg);
+  }
 
   useEffect(() => {
     if (!selectedId) {
@@ -245,6 +269,13 @@ export function CustomersCrm({
         posible.
       </div>
 
+      <CampaignPanel
+        customers={customers}
+        businessName={restaurantName}
+        activeFilter={campaignFilter}
+        onFilterChange={setCampaignFilter}
+      />
+
       <div className="grid gap-3 rounded-xl border border-black/5 bg-surface p-3 sm:grid-cols-[1fr_1fr_auto]">
         <div className="space-y-1">
           <Label htmlFor="loyalty-goal">Meta de visitas</Label>
@@ -307,7 +338,9 @@ export function CustomersCrm({
         <ul className="max-h-[70vh] space-y-2 overflow-y-auto">
           {filtered.length === 0 ? (
             <li className="rounded-xl border border-dashed border-black/10 px-4 py-8 text-center text-sm text-muted">
-              No hay clientes. Crea uno por teléfono.
+              {campaignFilter === "all"
+                ? "No hay clientes. Crea uno por teléfono."
+                : "Nadie en este filtro. Cambia el filtro de campañas."}
             </li>
           ) : (
             filtered.map((c) => {
@@ -340,6 +373,10 @@ export function CustomersCrm({
                           {isBirthdayToday(c.birthday) ? (
                             <span className="inline-flex items-center gap-0.5 text-xs text-brand">
                               <Cake className="h-3.5 w-3.5" /> Hoy
+                            </span>
+                          ) : isBirthdayWithinDays(c.birthday, 7) ? (
+                            <span className="inline-flex items-center gap-0.5 text-xs text-brand">
+                              <Cake className="h-3.5 w-3.5" /> Pronto
                             </span>
                           ) : null}
                         </p>
@@ -395,6 +432,18 @@ export function CustomersCrm({
                 <p className="text-xs text-muted">
                   Ficha privada · {restaurantName}
                 </p>
+                {selected.phone ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="mt-2"
+                    onClick={() => sendCampaignWa(selected)}
+                  >
+                    <MessageCircle className="h-3.5 w-3.5" />
+                    WhatsApp campaña
+                  </Button>
+                ) : null}
               </div>
 
               {selected.allergies_alert ? (

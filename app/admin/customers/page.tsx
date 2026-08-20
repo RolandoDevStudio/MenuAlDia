@@ -44,7 +44,7 @@ export default async function CustomersPage() {
             </span>
           </div>
           <p className="text-sm text-muted">
-            Fichas privadas, lealtad digital y preferencias.
+            Fichas, lealtad y campañas de reactivación.
           </p>
         </div>
         <a
