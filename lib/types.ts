@@ -111,6 +111,10 @@ export interface Dish {
   is_popular?: boolean;
   sort_order: number;
   archived_at?: string | null;
+  /** Cart / order checkout */
+  allow_purchase?: boolean;
+  /** Cita Express (servicios) */
+  allow_booking?: boolean;
 }
 
 export interface DishAddon {
@@ -136,6 +140,8 @@ export interface Combo {
   sort_order: number;
   archived_at?: string | null;
   created_at?: string;
+  allow_purchase?: boolean;
+  allow_booking?: boolean;
 }
 
 export interface ComboItem {
@@ -262,6 +268,9 @@ export interface CartItem {
   isDailyMenu?: boolean;
   comboId?: string;
   comboTitle?: string;
+  /** Snapshot from dish/combo at add time */
+  allowPurchase?: boolean;
+  allowBooking?: boolean;
 }
 
 export interface CheckoutFormValues {

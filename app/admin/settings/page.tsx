@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { PLAN_LABELS } from "@/lib/plans";
+import { normalizeBusinessType } from "@/lib/business-labels";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -203,6 +204,18 @@ export default function SettingsPage() {
         onChange={setTheme}
         restaurantId={restaurant.id}
       />
+
+      {normalizeBusinessType(restaurant.business_type) === "servicios" ? (
+        <div className="rounded-xl border border-black/5 bg-surface px-3 py-3 text-sm">
+          <p className="font-semibold">Citas por WhatsApp</p>
+          <p className="mt-1 text-xs text-muted">
+            Las solicitudes de cita del menú público llegan a tu WhatsApp
+            (nombre, teléfono y horario). En el catálogo marca cada servicio
+            como Agendar y/o Compra. La agenda visual completa llega en Pro
+            más adelante.
+          </p>
+        </div>
+      ) : null}
 
       <form onSubmit={onSubmit} className="space-y-4">
         <DishPhotoUpload

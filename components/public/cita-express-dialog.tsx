@@ -2,12 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { CalendarClock } from "lucide-react";
-import type { Dish } from "@/lib/types";
 import { formatMxn } from "@/lib/money";
 import {
   buildAppointmentMessage,
   buildWaMeUrl,
 } from "@/lib/whatsapp";
+import { can, type PlanType } from "@/lib/plans";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,12 +21,21 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
+export type CitaServiceLine = {
+  name: string;
+  price: number;
+  quantity?: number;
+};
+
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  dish: Dish | null;
+  services: CitaServiceLine[];
   businessName: string;
   phoneWhatsapp: string;
+  restaurantId: string;
+  planType?: PlanType | string | null;
+  onBooked?: () => void;
 };
 
 function formatDateLabel(isoDate: string) {
@@ -53,9 +62,12 @@ function formatTimeLabel(hhmm: string) {
 export function CitaExpressDialog({
   open,
   onOpenChange,
-  dish,
+  services,
   businessName,
   phoneWhatsapp,
+  restaurantId,
+  planType,
+  onBooked,
 }: Props) {
   const tomorrow = useMemo(() => {
     const d = new Date();
@@ -66,22 +78,89 @@ export function CitaExpressDialog({
   const [date, setDate] = useState(tomorrow);
   const [time, setTime] = useState("16:00");
   const [note, setNote] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const serviceNames = useMemo(
+    () =>
+      services.flatMap((s) => {
+        const q = s.quantity ?? 1;
+        const label = q > 1 ? `${q}× ${s.name}` : s.name;
+        return [label];
+      }),
+    [services],
+  );
+
+  const totalPrice = useMemo(
+    () =>
+      services.reduce(
+        (sum, s) => sum + Number(s.price) * (s.quantity ?? 1),
+        0,
+      ),
+    [services],
+  );
 
   useEffect(() => {
     if (!open) return;
     setDate(tomorrow);
     setTime("16:00");
     setNote("");
-  }, [open, dish?.id, tomorrow]);
+    setCustomerName("");
+    setCustomerPhone("");
+    setError(null);
+  }, [open, tomorrow]);
 
-  function requestCita() {
-    if (!dish || !phoneWhatsapp.trim()) return;
+  async function requestCita() {
+    if (!phoneWhatsapp.trim()) return;
+    const name = customerName.trim();
+    const phone = customerPhone.trim();
+    if (name.length < 2) {
+      setError("Escribe tu nombre");
+      return;
+    }
+    if (phone.replace(/\D/g, "").length < 10) {
+      setError("Escribe un teléfono válido (10+ dígitos)");
+      return;
+    }
+    if (!date || !time) {
+      setError("Elige día y hora");
+      return;
+    }
+    if (serviceNames.length === 0) {
+      setError("No hay servicios para agendar");
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+
+    if (can(planType, "crm")) {
+      try {
+        await fetch("/api/public/appointment-lead", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            restaurant_id: restaurantId,
+            name,
+            phone,
+          }),
+        });
+      } catch {
+        /* WA still goes out */
+      }
+    }
+
     const msg = buildAppointmentMessage({
       businessName,
-      serviceName: dish.name,
-      price: Number(dish.price),
+      serviceName: serviceNames[0]!,
+      serviceNames,
+      price: totalPrice,
       dateLabel: formatDateLabel(date),
       timeLabel: formatTimeLabel(time),
+      customerName: name,
+      customerPhone: phone,
       customerNote: note,
     });
     window.open(
@@ -89,6 +168,8 @@ export function CitaExpressDialog({
       "_blank",
       "noopener,noreferrer",
     );
+    setBusy(false);
+    onBooked?.();
     onOpenChange(false);
   }
 
@@ -97,7 +178,7 @@ export function CitaExpressDialog({
       <DialogContent
         className={cn(
           "menu-sheet-in fixed inset-x-0 bottom-0 top-auto left-0 max-h-[88dvh] w-full max-w-none translate-x-0 translate-y-0 rounded-b-none rounded-t-3xl",
-          "pb-[max(1rem,env(safe-area-inset-bottom))]",
+          "overflow-y-auto pb-[max(1rem,env(safe-area-inset-bottom))]",
         )}
       >
         <DialogHeader>
@@ -106,21 +187,50 @@ export function CitaExpressDialog({
             Solicitar cita
           </DialogTitle>
           <DialogDescription>
-            {dish
-              ? `Elige día y hora tentativos para ${dish.name}. Te redirigimos a WhatsApp.`
-              : "Elige un servicio"}
+            Déjanos tu nombre y teléfono. Te redirigimos a WhatsApp para
+            confirmar.
           </DialogDescription>
         </DialogHeader>
 
-        {dish ? (
+        {services.length > 0 ? (
           <div className="space-y-3">
             <div className="rounded-xl border border-black/5 bg-background/60 px-3 py-2">
-              <p className="font-semibold">{dish.name}</p>
-              <p className="text-sm text-brand">
-                {formatMxn(Number(dish.price))}
-              </p>
+              <ul className="space-y-1 text-sm">
+                {serviceNames.map((n) => (
+                  <li key={n} className="font-semibold">
+                    {n}
+                  </li>
+                ))}
+              </ul>
+              {totalPrice > 0 ? (
+                <p className="mt-1 text-sm text-brand">
+                  {formatMxn(totalPrice)}
+                </p>
+              ) : null}
             </div>
+
             <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="cita-name">Tu nombre *</Label>
+                <Input
+                  id="cita-name"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder="Ej. Ana López"
+                  autoComplete="name"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="cita-phone">Tu WhatsApp *</Label>
+                <Input
+                  id="cita-phone"
+                  type="tel"
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  placeholder="5512345678"
+                  autoComplete="tel"
+                />
+              </div>
               <div className="space-y-1.5">
                 <Label htmlFor="cita-date">Día tentativo</Label>
                 <Input
@@ -147,7 +257,7 @@ export function CitaExpressDialog({
                 id="cita-note"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="Ej. Prefiero con Mariana"
+                placeholder="Ej. Prefiero con Mariana / a domicilio"
                 className="min-h-20"
               />
             </div>
@@ -156,13 +266,14 @@ export function CitaExpressDialog({
                 Este negocio aún no tiene WhatsApp configurado.
               </p>
             ) : null}
+            {error ? <p className="text-sm text-red-600">{error}</p> : null}
             <Button
               type="button"
               className="min-h-11 w-full"
-              disabled={!date || !time || !phoneWhatsapp.trim()}
-              onClick={requestCita}
+              disabled={busy || !phoneWhatsapp.trim()}
+              onClick={() => void requestCita()}
             >
-              Solicitar cita por WhatsApp
+              {busy ? "Abriendo…" : "Solicitar cita por WhatsApp"}
             </Button>
           </div>
         ) : null}

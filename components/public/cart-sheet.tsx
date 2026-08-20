@@ -1,12 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import type { Restaurant } from "@/lib/types";
 import { formatMxn } from "@/lib/money";
 import { checkoutSchema } from "@/lib/validations";
 import { buildOrderMessage, buildWaMeUrl } from "@/lib/whatsapp";
+import { normalizeBusinessType } from "@/lib/business-labels";
+import {
+  bookableCartItems,
+  cartHasBookable,
+  cartHasPurchasable,
+  purchasableCartItems,
+} from "@/lib/item-fulfillment";
 import { useCartStore } from "@/stores/cart-store";
+import { CitaExpressDialog } from "@/components/public/cita-express-dialog";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import type { PlanType } from "@/lib/plans";
 
 type Props = {
   open: boolean;
@@ -47,7 +56,6 @@ function lineTotal(item: {
 
 export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
   const items = useCartStore((s) => s.items);
-  const subtotalFn = useCartStore((s) => s.subtotal);
   const updateQty = useCartStore((s) => s.updateQty);
   const removeItem = useCartStore((s) => s.removeItem);
   const clear = useCartStore((s) => s.clear);
@@ -66,8 +74,51 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
   const [cashAmount, setCashAmount] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [citaOpen, setCitaOpen] = useState(false);
 
   const offersDelivery = restaurant.offers_delivery !== false;
+  const isServicios =
+    normalizeBusinessType(restaurant.business_type) === "servicios";
+  const hasBookable = isServicios && cartHasBookable(items);
+  const hasPurchasable = cartHasPurchasable(items);
+  const bookableOnly = hasBookable && !hasPurchasable;
+
+  const citaServices = useMemo(
+    () =>
+      bookableCartItems(items).map((i) => ({
+        name: i.comboTitle ? `${i.comboTitle}: ${i.name}` : i.name,
+        price:
+          i.unitPrice +
+          (i.addons ?? []).reduce((s, a) => s + a.priceDelta, 0),
+        quantity: i.quantity,
+      })),
+    [items],
+  );
+
+  const orderItems = useMemo(() => {
+    if (isServicios && hasBookable && hasPurchasable) {
+      return purchasableCartItems(items);
+    }
+    return items;
+  }, [items, isServicios, hasBookable, hasPurchasable]);
+
+  const allSubtotal = useMemo(
+    () =>
+      items.reduce((sum, i) => {
+        const addons = (i.addons ?? []).reduce((s, a) => s + a.priceDelta, 0);
+        return sum + (i.unitPrice + addons) * i.quantity;
+      }, 0),
+    [items],
+  );
+
+  const purchaseSubtotal = useMemo(
+    () =>
+      orderItems.reduce((sum, i) => {
+        const addons = (i.addons ?? []).reduce((s, a) => s + a.priceDelta, 0);
+        return sum + (i.unitPrice + addons) * i.quantity;
+      }, 0),
+    [orderItems],
+  );
 
   useEffect(() => {
     if (open) {
@@ -81,7 +132,7 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
     if (open && items.length === 0) onOpenChange(false);
   }, [items.length, open, onOpenChange]);
 
-  const subtotal = subtotalFn();
+  const subtotal = step === "checkout" ? purchaseSubtotal : allSubtotal;
   const effectiveShipping = fulfillment === "pickup" ? 0 : shipping;
   const total = subtotal + effectiveShipping;
 
@@ -126,7 +177,7 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
     setSending(true);
     const message = buildOrderMessage({
       restaurant,
-      items,
+      items: orderItems,
       checkout: parsed.data,
       shipping: effectiveShipping,
       total,
@@ -142,10 +193,10 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
           customer_name: parsed.data.customerName,
           payment_method: parsed.data.paymentMethod,
           cash_amount: parsed.data.cashAmount,
-          items,
-          subtotal,
+          items: orderItems,
+          subtotal: purchaseSubtotal,
           shipping: effectiveShipping,
-          total,
+          total: purchaseSubtotal + effectiveShipping,
         },
       }),
     });
@@ -161,14 +212,19 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="menu-dialog-in max-h-[90dvh] gap-3 overflow-y-auto">
         {step === "review" ? (
           <>
             <DialogHeader>
-              <DialogTitle>Tu pedido</DialogTitle>
+              <DialogTitle>
+                {isServicios ? "Tu selección" : "Tu pedido"}
+              </DialogTitle>
               <DialogDescription>
-                Ajusta cantidades antes de continuar.
+                {isServicios
+                  ? "Agenda citas y/o continúa la compra de productos."
+                  : "Ajusta cantidades antes de continuar."}
               </DialogDescription>
             </DialogHeader>
 
@@ -273,10 +329,23 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
               className="w-full"
               size="lg"
               onClick={() => setStep("checkout")}
-              disabled={items.length === 0}
+              disabled={items.length === 0 || !hasPurchasable}
             >
-              Continuar
+              {isServicios && hasBookable && hasPurchasable
+                ? "Continuar compra"
+                : "Continuar"}
             </Button>
+            {hasBookable ? (
+              <Button
+                type="button"
+                variant={bookableOnly ? "default" : "secondary"}
+                className="w-full min-h-11"
+                size="lg"
+                onClick={() => setCitaOpen(true)}
+              >
+                Agendar cita por WhatsApp
+              </Button>
+            ) : null}
           </>
         ) : (
           <>
@@ -446,5 +515,19 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
         )}
       </DialogContent>
     </Dialog>
+    <CitaExpressDialog
+      open={citaOpen}
+      onOpenChange={setCitaOpen}
+      services={citaServices}
+      businessName={restaurant.name}
+      phoneWhatsapp={restaurant.phone_whatsapp || ""}
+      restaurantId={restaurant.id}
+      planType={restaurant.plan_type as PlanType}
+      onBooked={() => {
+        clear();
+        onOpenChange(false);
+      }}
+    />
+    </>
   );
 }

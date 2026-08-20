@@ -26,6 +26,9 @@ type Props = {
   sidesLabel?: string;
   shareUrl?: string;
   ctaLabel?: string;
+  allowBooking?: boolean;
+  allowPurchase?: boolean;
+  onRequestCita?: () => void;
 };
 
 export function ComboBottomSheet({
@@ -35,12 +38,18 @@ export function ComboBottomSheet({
   onOpenChange,
   sidesLabel = "Adicionales",
   shareUrl,
-  ctaLabel = "🛒 Agregar Paquete al Carrito",
+  ctaLabel = "Agregar paquete al carrito",
+  allowBooking = false,
+  allowPurchase = true,
+  onRequestCita,
 }: Props) {
   const addItems = useCartStore((s) => s.addItems);
   const [selectedByDish, setSelectedByDish] = useState<
     Record<string, Record<string, boolean>>
   >({});
+
+  const canBook = allowBooking;
+  const canBuy = allowPurchase;
 
   const price = useMemo(
     () => (combo ? comboDisplayPrice(combo) : 0),
@@ -66,7 +75,7 @@ export function ComboBottomSheet({
   }
 
   function addPackage() {
-    if (!combo) return;
+    if (!combo || !canBuy) return;
     const unitBase =
       combo.fixed_price != null && Number(combo.fixed_price) > 0
         ? Number(combo.fixed_price) / combo.items.reduce((s, i) => s + i.quantity, 0)
@@ -89,6 +98,8 @@ export function ComboBottomSheet({
         })),
         comboId: combo.id,
         comboTitle: combo.title,
+        allowPurchase: true,
+        allowBooking: canBook,
       }));
     });
 
@@ -203,25 +214,47 @@ export function ComboBottomSheet({
               })}
             </ul>
 
-            <div className="flex gap-2 pb-2">
-              {shareUrl ? (
+            <div className="flex flex-col gap-2 pb-2">
+              <div className="flex gap-2">
+                {shareUrl ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="min-h-11 min-w-11 shrink-0"
+                    onClick={share}
+                    aria-label="Compartir"
+                  >
+                    <Share2 className="h-5 w-5" />
+                  </Button>
+                ) : null}
+                {canBook ? (
+                  <Button
+                    type="button"
+                    className="min-h-11 flex-1 text-base"
+                    onClick={() => onRequestCita?.()}
+                  >
+                    Solicitar cita
+                  </Button>
+                ) : canBuy ? (
+                  <Button
+                    type="button"
+                    className="min-h-11 flex-1 text-base"
+                    onClick={addPackage}
+                  >
+                    {ctaLabel}
+                  </Button>
+                ) : null}
+              </div>
+              {canBook && canBuy ? (
                 <Button
                   type="button"
                   variant="secondary"
-                  className="min-h-11 min-w-11 shrink-0"
-                  onClick={share}
-                  aria-label="Compartir"
+                  className="min-h-11 w-full"
+                  onClick={addPackage}
                 >
-                  <Share2 className="h-5 w-5" />
+                  {ctaLabel}
                 </Button>
               ) : null}
-              <Button
-                type="button"
-                className="min-h-11 flex-1 text-base"
-                onClick={addPackage}
-              >
-                {ctaLabel}
-              </Button>
             </div>
           </div>
         ) : null}

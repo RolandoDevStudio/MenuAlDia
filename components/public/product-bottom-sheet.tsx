@@ -28,8 +28,8 @@ type Props = {
   photoFrame?: PhotoFrame;
   sidesLabel?: string;
   shareUrl?: string;
-  /** Giro servicios: primary CTA opens appointment flow. */
-  citaMode?: boolean;
+  allowBooking?: boolean;
+  allowPurchase?: boolean;
   onRequestCita?: () => void;
 };
 
@@ -41,7 +41,8 @@ export function ProductBottomSheet({
   photoFrame = "rounded_modern",
   sidesLabel = "Adicionales",
   shareUrl,
-  citaMode = false,
+  allowBooking = false,
+  allowPurchase = true,
   onRequestCita,
 }: Props) {
   const addItem = useCartStore((s) => s.addItem);
@@ -56,12 +57,15 @@ export function ProductBottomSheet({
     .filter((a) => selected[a.id])
     .reduce((s, a) => s + Number(a.price_delta), 0);
 
+  const canBook = allowBooking;
+  const canBuy = allowPurchase;
+
   function toggle(id: string) {
     setSelected((prev) => ({ ...prev, [id]: !prev[id] }));
   }
 
   function addToCart() {
-    if (!dish) return;
+    if (!dish || !canBuy) return;
     const chosen = activeAddons.filter((a) => selected[a.id]);
     addItem({
       dishId: dish.id,
@@ -73,6 +77,8 @@ export function ProductBottomSheet({
         name: a.name,
         priceDelta: Number(a.price_delta),
       })),
+      allowPurchase: true,
+      allowBooking: canBook,
     });
     setSelected({});
     onOpenChange(false);
@@ -174,17 +180,15 @@ export function ProductBottomSheet({
                       <Share2 className="h-5 w-5" />
                     </Button>
                   ) : null}
-                  {citaMode ? (
+                  {canBook ? (
                     <Button
                       type="button"
                       className="min-h-11 flex-1"
-                      onClick={() => {
-                        onRequestCita?.();
-                      }}
+                      onClick={() => onRequestCita?.()}
                     >
                       Solicitar cita
                     </Button>
-                  ) : (
+                  ) : canBuy ? (
                     <Button
                       type="button"
                       className="min-h-11 flex-1"
@@ -192,9 +196,9 @@ export function ProductBottomSheet({
                     >
                       Agregar al carrito
                     </Button>
-                  )}
+                  ) : null}
                 </div>
-                {citaMode ? (
+                {canBook && canBuy ? (
                   <Button
                     type="button"
                     variant="secondary"

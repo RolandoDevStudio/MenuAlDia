@@ -7,7 +7,7 @@ import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { BusinessType, Category, Dish, DishAddon, PlanType } from "@/lib/types";
 import { dishLimit } from "@/lib/plans";
-import { label } from "@/lib/business-labels";
+import { label, normalizeBusinessType } from "@/lib/business-labels";
 import { dishFormSchema, fieldErrorsFromZod } from "@/lib/validations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +38,7 @@ export function DishForm({
   const router = useRouter();
   const dishLabel = label(businessType, "dish");
   const sideLabel = label(businessType, "side");
+  const isServicios = normalizeBusinessType(businessType) === "servicios";
   const [name, setName] = useState(dish?.name ?? "");
   const [description, setDescription] = useState(dish?.description ?? "");
   const [price, setPrice] = useState(String(dish?.price ?? 0));
@@ -45,6 +46,12 @@ export function DishForm({
   const [isSide, setIsSide] = useState(dish?.is_side ?? false);
   const [isActive, setIsActive] = useState(dish?.is_active ?? true);
   const [isPopular, setIsPopular] = useState(dish?.is_popular ?? false);
+  const [allowPurchase, setAllowPurchase] = useState(
+    dish?.allow_purchase !== false,
+  );
+  const [allowBooking, setAllowBooking] = useState(
+    dish?.allow_booking ?? isServicios,
+  );
   const [photoUrl, setPhotoUrl] = useState<string | null>(dish?.photo_url ?? null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -116,6 +123,11 @@ export function DishForm({
       return;
     }
 
+    if (!allowPurchase && !allowBooking) {
+      setFormError("Activa al menos Compra o Agendar.");
+      return;
+    }
+
     setSaving(true);
     const supabase = createClient();
     const payload = {
@@ -128,6 +140,8 @@ export function DishForm({
       is_active: parsed.data.is_active,
       is_popular: isPopular,
       photo_url: parsed.data.photo_url || null,
+      allow_purchase: allowPurchase,
+      allow_booking: allowBooking,
     };
 
     const { data: saved, error: dbError } = dish
@@ -311,6 +325,31 @@ export function DishForm({
           onCheckedChange={setIsPopular}
         />
       </div>
+
+      {isServicios ? (
+        <div className="space-y-2 rounded-xl border border-black/5 bg-surface p-3">
+          <p className="text-sm font-semibold">Cómo lo pide el cliente</p>
+          <p className="text-xs text-muted">
+            Agendar = cita por WhatsApp. Compra = pedido/carrito (productos).
+          </p>
+          <div className="flex min-h-12 items-center justify-between gap-3">
+            <Label htmlFor="allowBooking">Se puede agendar</Label>
+            <Switch
+              id="allowBooking"
+              checked={allowBooking}
+              onCheckedChange={setAllowBooking}
+            />
+          </div>
+          <div className="flex min-h-12 items-center justify-between gap-3">
+            <Label htmlFor="allowPurchase">Se puede comprar</Label>
+            <Switch
+              id="allowPurchase"
+              checked={allowPurchase}
+              onCheckedChange={setAllowPurchase}
+            />
+          </div>
+        </div>
+      ) : null}
 
       {dish ? (
         <div className="space-y-3 rounded-2xl border border-black/5 bg-surface p-4">

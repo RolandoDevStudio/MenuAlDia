@@ -8,12 +8,13 @@ import type { Combo, Dish, Restaurant } from "@/lib/types";
 import { slugifyCombo, comboDisplayPrice } from "@/lib/combo";
 import { formatMxn } from "@/lib/money";
 import { buildComboShareMessage } from "@/lib/whatsapp";
-import { label } from "@/lib/business-labels";
+import { label, normalizeBusinessType } from "@/lib/business-labels";
 import { DishPhotoUpload } from "@/components/admin/dish-photo-upload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 
 type ComboRow = Combo & {
   items: Array<{ dish_id: string; quantity: number; dish?: Dish }>;
@@ -68,6 +69,8 @@ export function CombosManager({
   const dishLabel = label(restaurant.business_type, "dish");
   const sidesLabel = label(restaurant.business_type, "sides");
   const sideLabel = label(restaurant.business_type, "side");
+  const isServicios =
+    normalizeBusinessType(restaurant.business_type) === "servicios";
 
   const [mains, setMains] = useState<Dish[]>([]);
   const [sides, setSides] = useState<Dish[]>([]);
@@ -78,6 +81,8 @@ export function CombosManager({
   const [slug, setSlug] = useState("");
   const [fixedPrice, setFixedPrice] = useState("");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [allowPurchase, setAllowPurchase] = useState(true);
+  const [allowBooking, setAllowBooking] = useState(isServicios);
   /** dishId → quantity (0 = not included) */
   const [qtyById, setQtyById] = useState<Record<string, number>>({});
   const [message, setMessage] = useState<string | null>(null);
@@ -197,6 +202,10 @@ export function CombosManager({
       setError("Escribe un título.");
       return;
     }
+    if (!allowPurchase && !allowBooking) {
+      setError("Activa al menos Compra o Agendar.");
+      return;
+    }
     setSaving(true);
     const supabase = createClient();
     const s = (slug.trim() || slugifyCombo(title)).slice(0, 48);
@@ -210,6 +219,8 @@ export function CombosManager({
         photo_url: photoUrl,
         fixed_price: fixedPrice ? Number(fixedPrice) : null,
         is_active: true,
+        allow_purchase: allowPurchase,
+        allow_booking: allowBooking,
       })
       .select("*")
       .single();
@@ -236,6 +247,8 @@ export function CombosManager({
     setSlug("");
     setFixedPrice("");
     setPhotoUrl(null);
+    setAllowPurchase(true);
+    setAllowBooking(isServicios);
     setQtyById({});
     setMessage(`${comboLabel} creado`);
     await revalidate();
@@ -248,6 +261,26 @@ export function CombosManager({
       .from("combos")
       .update({ archived_at: new Date().toISOString(), is_active: false })
       .eq("id", id);
+    await revalidate();
+    await load();
+  }
+
+  async function patchComboFlags(
+    id: string,
+    patch: { allow_purchase?: boolean; allow_booking?: boolean },
+  ) {
+    const supabase = createClient();
+    const current = combos.find((c) => c.id === id);
+    const nextPurchase =
+      patch.allow_purchase ?? current?.allow_purchase !== false;
+    const nextBooking =
+      patch.allow_booking ?? current?.allow_booking === true;
+    if (!nextPurchase && !nextBooking) {
+      setError("Activa al menos Compra o Agendar.");
+      return;
+    }
+    setError(null);
+    await supabase.from("combos").update(patch).eq("id", id);
     await revalidate();
     await load();
   }
@@ -379,6 +412,28 @@ export function CombosManager({
           kind="banner"
         />
 
+        {isServicios ? (
+          <div className="space-y-2 rounded-xl border border-black/5 bg-background/60 p-3">
+            <p className="text-xs font-semibold">Cómo lo pide el cliente</p>
+            <div className="flex min-h-11 items-center justify-between gap-3">
+              <Label htmlFor="combo-booking">Se puede agendar</Label>
+              <Switch
+                id="combo-booking"
+                checked={allowBooking}
+                onCheckedChange={setAllowBooking}
+              />
+            </div>
+            <div className="flex min-h-11 items-center justify-between gap-3">
+              <Label htmlFor="combo-purchase">Se puede comprar</Label>
+              <Switch
+                id="combo-purchase"
+                checked={allowPurchase}
+                onCheckedChange={setAllowPurchase}
+              />
+            </div>
+          </div>
+        ) : null}
+
         <div className="space-y-2">
           <Label>{dishesLabel}</Label>
           {renderDishList(mains, dishesLabel)}
@@ -464,6 +519,28 @@ export function CombosManager({
                   .filter(Boolean)
                   .join(" · ")}
               </p>
+              {isServicios ? (
+                <div className="flex flex-wrap gap-4 text-xs">
+                  <label className="inline-flex items-center gap-2">
+                    <Switch
+                      checked={c.allow_booking === true}
+                      onCheckedChange={(v) =>
+                        void patchComboFlags(c.id, { allow_booking: v })
+                      }
+                    />
+                    Agendar
+                  </label>
+                  <label className="inline-flex items-center gap-2">
+                    <Switch
+                      checked={c.allow_purchase !== false}
+                      onCheckedChange={(v) =>
+                        void patchComboFlags(c.id, { allow_purchase: v })
+                      }
+                    />
+                    Compra
+                  </label>
+                </div>
+              ) : null}
               <div className="flex flex-wrap gap-2">
                 <Button
                   type="button"

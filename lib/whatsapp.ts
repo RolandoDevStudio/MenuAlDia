@@ -168,20 +168,36 @@ export function buildBroadcastMessage(params: {
 export function buildAppointmentMessage(params: {
   businessName: string;
   serviceName: string;
+  serviceNames?: string[];
   price?: number;
   dateLabel: string;
   timeLabel: string;
+  customerName: string;
+  customerPhone: string;
   customerNote?: string;
 }): string {
+  const services =
+    params.serviceNames && params.serviceNames.length > 0
+      ? params.serviceNames
+      : [params.serviceName];
   const lines: string[] = [
-    `Hola, me gustaría agendar *${params.serviceName}* en *${params.businessName}*.`,
+    `Hola, quiero agendar en *${params.businessName}*.`,
     "",
-    `📅 Día tentativo: ${params.dateLabel}`,
-    `⏰ Hora: ${params.timeLabel}`,
+    `👤 Cliente: *${params.customerName.trim()}*`,
+    `📱 Tel: ${params.customerPhone.trim()}`,
+    "",
   ];
+  if (services.length === 1) {
+    lines.push(`✂️ Servicio: *${services[0]}*`);
+  } else {
+    lines.push("✂️ Servicios:");
+    for (const s of services) lines.push(`• ${s}`);
+  }
   if (typeof params.price === "number" && params.price > 0) {
     lines.push(`💰 Precio ref.: ${formatMxn(params.price)}`);
   }
+  lines.push(`📅 Día tentativo: ${params.dateLabel}`);
+  lines.push(`⏰ Hora: ${params.timeLabel}`);
   if (params.customerNote?.trim()) {
     lines.push(`📝 ${params.customerNote.trim()}`);
   }

@@ -15,12 +15,19 @@ import { photoFrameClass } from "@/lib/theme";
 import { formatMxn } from "@/lib/money";
 import { comboDisplayPrice } from "@/lib/combo";
 import { normalizeBusinessType } from "@/lib/business-labels";
+import {
+  dishAllowsBooking,
+  dishAllowsPurchase,
+  comboAllowsBooking,
+  comboAllowsPurchase,
+} from "@/lib/item-fulfillment";
 import { useCartStore } from "@/stores/cart-store";
 import { ProductBottomSheet } from "@/components/public/product-bottom-sheet";
 import { ComboBottomSheet } from "@/components/public/combo-bottom-sheet";
 import { CitaExpressDialog } from "@/components/public/cita-express-dialog";
 import { StorageImage } from "@/components/ui/storage-image";
 import { cn } from "@/lib/utils";
+import type { PlanType } from "@/lib/plans";
 
 type Props = {
   slug: string;
@@ -63,6 +70,7 @@ export function PublicMenuClient({
   const [activeCat, setActiveCat] = useState<string | null>(null);
   const [flashDishId, setFlashDishId] = useState<string | null>(null);
   const [citaDishId, setCitaDishId] = useState<string | null>(null);
+  const [citaComboSlug, setCitaComboSlug] = useState<string | null>(null);
 
   const isServicios =
     normalizeBusinessType(restaurant.business_type) === "servicios";
@@ -70,6 +78,25 @@ export function PublicMenuClient({
     () => dishes.find((d) => d.id === citaDishId) ?? null,
     [dishes, citaDishId],
   );
+  const citaCombo = useMemo(
+    () => combos.find((c) => c.slug === citaComboSlug) ?? null,
+    [combos, citaComboSlug],
+  );
+
+  const citaServices = useMemo(() => {
+    if (citaDish) {
+      return [{ name: citaDish.name, price: Number(citaDish.price) }];
+    }
+    if (citaCombo) {
+      return [
+        {
+          name: citaCombo.title,
+          price: comboDisplayPrice(citaCombo),
+        },
+      ];
+    }
+    return [];
+  }, [citaDish, citaCombo]);
 
   useEffect(() => {
     if (initialComboSlug) setComboSlug(initialComboSlug);
@@ -146,10 +173,13 @@ export function PublicMenuClient({
 
   function quickAdd(dish: Dish, e: React.MouseEvent) {
     e.stopPropagation();
-    if (isServicios) {
+    const canBook = isServicios && dishAllowsBooking(dish);
+    const canBuy = dishAllowsPurchase(dish);
+    if (canBook && !canBuy) {
       setCitaDishId(dish.id);
       return;
     }
+    if (!canBuy) return;
     const addons = (addonsByDishId[dish.id] ?? []).filter(
       (a) => a.is_active && !a.archived_at,
     );
@@ -162,6 +192,8 @@ export function PublicMenuClient({
       name: dish.name,
       unitPrice: Number(dish.price),
       quantity: 1,
+      allowPurchase: true,
+      allowBooking: canBook,
     });
     setFlashDishId(dish.id);
     window.setTimeout(() => {
@@ -318,12 +350,16 @@ export function PublicMenuClient({
                             flashDishId === dish.id && "menu-quick-flash",
                           )}
                           aria-label={
-                            isServicios
+                            isServicios &&
+                            dishAllowsBooking(dish) &&
+                            !dishAllowsPurchase(dish)
                               ? `Solicitar cita para ${dish.name}`
                               : `Añadir ${dish.name}`
                           }
                         >
-                          {isServicios ? (
+                          {isServicios &&
+                          dishAllowsBooking(dish) &&
+                          !dishAllowsPurchase(dish) ? (
                             <CalendarClock className="h-5 w-5" />
                           ) : (
                             <Plus className="h-5 w-5" />
@@ -356,10 +392,14 @@ export function PublicMenuClient({
             ? `${origin}/${slug}?p=${product.id}`
             : undefined
         }
-        citaMode={isServicios}
+        allowBooking={
+          Boolean(product) && isServicios && dishAllowsBooking(product!)
+        }
+        allowPurchase={product ? dishAllowsPurchase(product) : true}
         onRequestCita={() => {
           if (product) {
             setCitaDishId(product.id);
+            setCitaComboSlug(null);
             setProductId(null);
             clearQuery();
           }
@@ -367,13 +407,18 @@ export function PublicMenuClient({
       />
 
       <CitaExpressDialog
-        open={Boolean(citaDish)}
+        open={citaServices.length > 0}
         onOpenChange={(o) => {
-          if (!o) setCitaDishId(null);
+          if (!o) {
+            setCitaDishId(null);
+            setCitaComboSlug(null);
+          }
         }}
-        dish={citaDish}
+        services={citaServices}
         businessName={restaurant.name}
         phoneWhatsapp={restaurant.phone_whatsapp || ""}
+        restaurantId={restaurant.id}
+        planType={restaurant.plan_type as PlanType}
       />
 
       <ComboBottomSheet
@@ -390,6 +435,18 @@ export function PublicMenuClient({
         shareUrl={
           combo && origin ? `${origin}/${slug}?c=${combo.slug}` : undefined
         }
+        allowBooking={
+          Boolean(combo) && isServicios && comboAllowsBooking(combo!)
+        }
+        allowPurchase={combo ? comboAllowsPurchase(combo) : true}
+        onRequestCita={() => {
+          if (combo) {
+            setCitaComboSlug(combo.slug);
+            setCitaDishId(null);
+            setComboSlug(null);
+            clearQuery();
+          }
+        }}
       />
     </>
   );
