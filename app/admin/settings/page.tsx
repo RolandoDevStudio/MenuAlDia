@@ -330,6 +330,45 @@ export default function SettingsPage() {
           />
         </div>
 
+        <div className="space-y-2 rounded-xl border border-black/5 bg-surface p-4">
+          <h2 className="text-sm font-semibold">Legal</h2>
+          {restaurant.terms_version_accepted &&
+          restaurant.terms_accepted_at ? (
+            <p className="text-sm text-muted">
+              Términos y Condiciones: Aceptados v
+              {restaurant.terms_version_accepted} el{" "}
+              {new Date(restaurant.terms_accepted_at).toLocaleString("es-MX", {
+                dateStyle: "long",
+                timeStyle: "short",
+              })}
+              .
+            </p>
+          ) : (
+            <p className="text-sm text-muted">
+              Términos y Condiciones: Pendiente de aceptación.
+            </p>
+          )}
+          <p className="text-sm">
+            <a
+              href="/terminos"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-brand underline-offset-2 hover:underline"
+            >
+              Ver Términos
+            </a>
+            {" · "}
+            <a
+              href="/privacidad"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-brand underline-offset-2 hover:underline"
+            >
+              Ver Privacidad
+            </a>
+          </p>
+        </div>
+
         {error ? <p className="text-sm text-red-600">{error}</p> : null}
         {message ? <p className="text-sm text-accent">{message}</p> : null}
         <Button type="submit" className="w-full" disabled={saving}>

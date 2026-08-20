@@ -36,6 +36,8 @@ export interface Restaurant {
   facebook_url?: string | null;
   tiktok_url?: string | null;
   offers_delivery?: boolean;
+  terms_version_accepted?: string | null;
+  terms_accepted_at?: string | null;
 }
 
 export interface TenantPayment {

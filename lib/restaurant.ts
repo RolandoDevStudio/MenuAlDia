@@ -27,6 +27,8 @@ function normalizeRestaurant(raw: Restaurant): Restaurant {
   r.facebook_url = r.facebook_url ?? null;
   r.tiktok_url = r.tiktok_url ?? null;
   r.offers_delivery = r.offers_delivery ?? true;
+  r.terms_version_accepted = r.terms_version_accepted ?? null;
+  r.terms_accepted_at = r.terms_accepted_at ?? null;
   return r;
 }
 
