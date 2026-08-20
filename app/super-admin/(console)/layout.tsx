@@ -26,6 +26,12 @@ export default async function SuperAdminConsoleLayout({
             Tenants
           </Link>
           <Link
+            href="/super-admin/finanzas"
+            className="text-muted hover:text-brand"
+          >
+            Finanzas
+          </Link>
+          <Link
             href="/super-admin/templates"
             className="text-muted hover:text-brand"
             title="Semillas demo por giro × plan"

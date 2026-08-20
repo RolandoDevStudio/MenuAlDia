@@ -8,25 +8,44 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
-  const restaurantId = new URL(request.url).searchParams.get("restaurant_id");
-  if (!restaurantId) {
-    return NextResponse.json(
-      { error: "missing restaurant_id" },
-      { status: 400 },
-    );
-  }
+  const { searchParams } = new URL(request.url);
+  const restaurantId = searchParams.get("restaurant_id");
+  const month = searchParams.get("month"); // YYYY-MM
 
   const supabase = await createClient();
-  const { data, error } = await supabase
+
+  if (restaurantId) {
+    const { data, error } = await supabase
+      .from("tenant_payments")
+      .select("*")
+      .eq("restaurant_id", restaurantId)
+      .order("paid_at", { ascending: false });
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    return NextResponse.json({ payments: data ?? [] });
+  }
+
+  // Month list for finance console
+  let query = supabase
     .from("tenant_payments")
-    .select("*")
-    .eq("restaurant_id", restaurantId)
+    .select(
+      "*, restaurants ( id, name, slug, owner_name )",
+    )
     .order("paid_at", { ascending: false });
 
+  if (month && /^\d{4}-\d{2}$/.test(month)) {
+    const [y, m] = month.split("-").map(Number);
+    const start = new Date(Date.UTC(y, m - 1, 1)).toISOString();
+    const end = new Date(Date.UTC(y, m, 1)).toISOString();
+    query = query.gte("paid_at", start).lt("paid_at", end);
+  }
+
+  const { data, error } = await query.limit(500);
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-
   return NextResponse.json({ payments: data ?? [] });
 }
 
@@ -44,6 +63,8 @@ export async function POST(request: Request) {
     period_days?: number;
     reference?: string;
     notes?: string;
+    receipt_url?: string | null;
+    needs_invoice?: boolean;
   };
 
   if (!body.restaurant_id) {
@@ -58,11 +79,27 @@ export async function POST(request: Request) {
       ? body.period_days
       : 30;
   const amount = Number(body.amount ?? 0);
+  if (!(amount > 0)) {
+    return NextResponse.json({ error: "monto inválido" }, { status: 400 });
+  }
+
   const method = body.method?.trim() || "transfer";
   const planType = body.plan_type?.trim() || "catalog";
   const paidAt = body.paid_at || new Date().toISOString();
   const reference = body.reference?.trim() ?? "";
   const notes = body.notes?.trim() ?? "";
+  const receiptUrl = body.receipt_url?.trim() || null;
+  const needsInvoice = Boolean(body.needs_invoice);
+
+  if (method === "transfer" && reference.length < 4) {
+    return NextResponse.json(
+      {
+        error:
+          "Para transferencia SPEI indica la clave de rastreo / referencia bancaria",
+      },
+      { status: 400 },
+    );
+  }
 
   const supabase = await createClient();
   const {
@@ -93,6 +130,8 @@ export async function POST(request: Request) {
       period_days: periodDays,
       reference,
       notes,
+      receipt_url: receiptUrl,
+      needs_invoice: needsInvoice,
       created_by: actor?.id ?? null,
     })
     .select("*")
@@ -141,7 +180,7 @@ export async function POST(request: Request) {
     fieldName: "amount",
     oldValue: null,
     newValue: String(amount),
-    summary: `Registró pago ${amount} (${method}, ${periodDays} días)`,
+    summary: `Registró pago ${amount} (${method}, SPEI:${reference || "—"}, ${periodDays} días)`,
   });
 
   await logFieldChanges({

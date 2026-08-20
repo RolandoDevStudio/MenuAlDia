@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { requireTenantSession } from "@/lib/admin-session";
+import { getAdminImpactStats } from "@/lib/admin-impact";
 import { DailyMenuToggles } from "@/components/admin/daily-menu-toggles";
+import { ImpactCard } from "@/components/admin/impact-card";
 import { PlanGate } from "@/components/admin/plan-gate";
 import { Button } from "@/components/ui/button";
 import { can } from "@/lib/plans";
@@ -14,16 +16,20 @@ export default async function AdminDashboardPage() {
   const plan = session.restaurant.plan_type || "catalog";
   const businessType = session.restaurant.business_type;
   const labels = labelsFor(businessType);
+  const impact = await getAdminImpactStats(session.restaurant.id, plan);
 
   if (!can(plan, "daily_menu")) {
     return (
-      <PlanGate
-        plan={plan}
-        feature="daily_menu"
-        title={`${labels.dailyMenu} no incluido`}
-      >
-        {null}
-      </PlanGate>
+      <div className="space-y-4">
+        <ImpactCard stats={impact} plan={plan} />
+        <PlanGate
+          plan={plan}
+          feature="daily_menu"
+          title={`${labels.dailyMenu} no incluido`}
+        >
+          {null}
+        </PlanGate>
+      </div>
     );
   }
 
@@ -81,6 +87,7 @@ export default async function AdminDashboardPage() {
 
   return (
     <div className="space-y-4">
+      <ImpactCard stats={impact} plan={plan} />
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">{labels.dailyMenu}</h1>
@@ -90,9 +97,14 @@ export default async function AdminDashboardPage() {
           </p>
         </div>
         {can(plan, "flyer") ? (
-          <Button asChild variant="secondary" size="sm">
-            <Link href="/admin/flyer?from=today">Generar Flyer</Link>
-          </Button>
+          <div className="flex shrink-0 flex-col gap-2 sm:items-end">
+            <Button asChild variant="secondary" size="sm">
+              <Link href="/admin/flyer?from=today">Generar Flyer</Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/admin/difusion">Difundir</Link>
+            </Button>
+          </div>
         ) : null}
       </div>
       <DailyMenuToggles

@@ -55,6 +55,8 @@ export interface TenantPayment {
   notes: string;
   created_by: string | null;
   created_at: string;
+  receipt_url?: string | null;
+  needs_invoice?: boolean;
 }
 
 export interface AuditLog {

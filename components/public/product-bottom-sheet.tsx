@@ -28,6 +28,9 @@ type Props = {
   photoFrame?: PhotoFrame;
   sidesLabel?: string;
   shareUrl?: string;
+  /** Giro servicios: primary CTA opens appointment flow. */
+  citaMode?: boolean;
+  onRequestCita?: () => void;
 };
 
 export function ProductBottomSheet({
@@ -38,6 +41,8 @@ export function ProductBottomSheet({
   photoFrame = "rounded_modern",
   sidesLabel = "Adicionales",
   shareUrl,
+  citaMode = false,
+  onRequestCita,
 }: Props) {
   const addItem = useCartStore((s) => s.addItem);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
@@ -156,25 +161,49 @@ export function ProductBottomSheet({
                 </div>
               ) : null}
 
-              <div className="flex gap-2 pb-2">
-                {shareUrl ? (
+              <div className="flex flex-col gap-2 pb-2">
+                <div className="flex gap-2">
+                  {shareUrl ? (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="min-h-11 min-w-11 shrink-0"
+                      onClick={share}
+                      aria-label="Compartir"
+                    >
+                      <Share2 className="h-5 w-5" />
+                    </Button>
+                  ) : null}
+                  {citaMode ? (
+                    <Button
+                      type="button"
+                      className="min-h-11 flex-1"
+                      onClick={() => {
+                        onRequestCita?.();
+                      }}
+                    >
+                      Solicitar cita
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      className="min-h-11 flex-1"
+                      onClick={addToCart}
+                    >
+                      Agregar al carrito
+                    </Button>
+                  )}
+                </div>
+                {citaMode ? (
                   <Button
                     type="button"
                     variant="secondary"
-                    className="min-h-11 min-w-11 shrink-0"
-                    onClick={share}
-                    aria-label="Compartir"
+                    className="min-h-11 w-full"
+                    onClick={addToCart}
                   >
-                    <Share2 className="h-5 w-5" />
+                    Agregar al carrito
                   </Button>
                 ) : null}
-                <Button
-                  type="button"
-                  className="min-h-11 flex-1"
-                  onClick={addToCart}
-                >
-                  Agregar al carrito
-                </Button>
               </div>
             </div>
           </>

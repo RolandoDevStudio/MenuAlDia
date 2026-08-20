@@ -16,6 +16,7 @@ import {
 import { formatMxn } from "@/lib/money";
 import { MxLocationFields } from "@/components/location/mx-location-fields";
 import { normalizeLegacyState } from "@/lib/mx-locations";
+import { compressImage } from "@/lib/compress-image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -77,6 +78,9 @@ export function TenantEditModal({
   const [periodDays, setPeriodDays] = useState("30");
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
+  const [needsInvoice, setNeedsInvoice] = useState(false);
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
+  const [receiptBusy, setReceiptBusy] = useState(false);
   const [payBusy, setPayBusy] = useState(false);
 
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -134,6 +138,8 @@ export function TenantEditModal({
     setPeriodDays("30");
     setReference("");
     setNotes("");
+    setNeedsInvoice(false);
+    setReceiptUrl(null);
     setConfirmSlug("");
   }, [restaurant, ownerEmail, open]);
 
@@ -239,8 +245,40 @@ export function TenantEditModal({
     onDeleted?.();
   }
 
+  async function uploadReceipt(file: File) {
+    if (!restaurant) return;
+    setReceiptBusy(true);
+    setPaymentsError(null);
+    try {
+      const compressed = await compressImage(file, "product");
+      const form = new FormData();
+      form.set("restaurant_id", restaurant.id);
+      form.set("file", compressed);
+      const res = await fetch("/api/super-admin/payment-receipt", {
+        method: "POST",
+        body: form,
+      });
+      const json = (await res.json()) as { url?: string; error?: string };
+      if (!res.ok || !json.url) {
+        setPaymentsError(json.error ?? "No se pudo subir el comprobante");
+        return;
+      }
+      setReceiptUrl(json.url);
+    } catch {
+      setPaymentsError("Error al subir comprobante");
+    } finally {
+      setReceiptBusy(false);
+    }
+  }
+
   async function registerPayment() {
     if (!restaurant) return;
+    if (method === "transfer" && reference.trim().length < 4) {
+      setPaymentsError(
+        "Para SPEI indica la clave de rastreo (mín. 4 caracteres)",
+      );
+      return;
+    }
     setPayBusy(true);
     setPaymentsError(null);
     const res = await fetch("/api/super-admin/payments", {
@@ -257,6 +295,8 @@ export function TenantEditModal({
         period_days: Number(periodDays) || 30,
         reference,
         notes,
+        receipt_url: receiptUrl,
+        needs_invoice: needsInvoice,
       }),
     });
     const json = (await res.json()) as {
@@ -270,6 +310,8 @@ export function TenantEditModal({
     }
     setReference("");
     setNotes("");
+    setNeedsInvoice(false);
+    setReceiptUrl(null);
     await loadPayments();
     onSaved(json.restaurant);
   }
@@ -448,7 +490,8 @@ export function TenantEditModal({
                       <th className="px-2 py-2 font-semibold">Método</th>
                       <th className="px-2 py-2 font-semibold">Plan</th>
                       <th className="px-2 py-2 font-semibold">Días</th>
-                      <th className="px-2 py-2 font-semibold">Ref</th>
+                      <th className="px-2 py-2 font-semibold">SPEI</th>
+                      <th className="px-2 py-2 font-semibold">Fact.</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -463,7 +506,25 @@ export function TenantEditModal({
                           {PLAN_LABELS[p.plan_type] ?? p.plan_type}
                         </td>
                         <td className="px-2 py-2">{p.period_days}</td>
-                        <td className="px-2 py-2">{p.reference || "—"}</td>
+                        <td className="max-w-[6rem] truncate px-2 py-2 font-mono">
+                          {p.reference || "—"}
+                          {p.receipt_url ? (
+                            <>
+                              {" "}
+                              <a
+                                href={p.receipt_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="font-sans font-semibold text-brand"
+                              >
+                                ver
+                              </a>
+                            </>
+                          ) : null}
+                        </td>
+                        <td className="px-2 py-2">
+                          {p.needs_invoice ? "Sí" : "—"}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -525,13 +586,77 @@ export function TenantEditModal({
                     onChange={(e) => setPeriodDays(e.target.value)}
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Referencia</Label>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>
+                    {method === "transfer"
+                      ? "Clave de rastreo SPEI *"
+                      : "Referencia"}
+                  </Label>
                   <Input
                     value={reference}
                     onChange={(e) => setReference(e.target.value)}
+                    placeholder={
+                      method === "transfer"
+                        ? "Ej. 202603201234567890"
+                        : "Opcional"
+                    }
+                    required={method === "transfer"}
                   />
+                  {method === "transfer" ? (
+                    <p className="text-xs text-muted">
+                      Obligatoria para transferencias (mín. 4 caracteres).
+                    </p>
+                  ) : null}
                 </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Comprobante (opcional)</Label>
+                <Input
+                  type="file"
+                  accept="image/webp,image/jpeg,image/png"
+                  disabled={receiptBusy || !restaurant}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    if (file) void uploadReceipt(file);
+                  }}
+                />
+                {receiptBusy ? (
+                  <p className="text-xs text-muted">Subiendo…</p>
+                ) : null}
+                {receiptUrl ? (
+                  <p className="text-xs text-accent">
+                    Comprobante listo.{" "}
+                    <a
+                      href={receiptUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-semibold text-brand"
+                    >
+                      Ver
+                    </a>{" "}
+                    ·{" "}
+                    <button
+                      type="button"
+                      className="font-semibold text-muted underline"
+                      onClick={() => setReceiptUrl(null)}
+                    >
+                      Quitar
+                    </button>
+                  </p>
+                ) : null}
+              </div>
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-black/5 bg-background/50 px-3 py-2">
+                <div>
+                  <Label>Cliente pide factura</Label>
+                  <p className="text-xs text-muted">
+                    Marca para cola CFDI (el resto va a factura global).
+                  </p>
+                </div>
+                <Switch
+                  checked={needsInvoice}
+                  onCheckedChange={setNeedsInvoice}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>Notas</Label>
@@ -546,7 +671,7 @@ export function TenantEditModal({
               <Button
                 type="button"
                 className="w-full"
-                disabled={payBusy || !amount}
+                disabled={payBusy || receiptBusy || !amount}
                 onClick={() => void registerPayment()}
               >
                 {payBusy ? "Registrando…" : "Registrar pago"}

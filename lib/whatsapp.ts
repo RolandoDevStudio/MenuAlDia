@@ -135,5 +135,60 @@ export function buildWaMeUrl(phone: string, message: string): string {
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
 }
 
+/** Status / listas de difusión: link al menú (+ opcionales de hoy). */
+export function buildBroadcastMessage(params: {
+  businessName: string;
+  menuUrl: string;
+  dailyLabel?: string;
+  itemNames?: string[];
+  packagePrice?: number | null;
+}): string {
+  const lines: string[] = [];
+  lines.push(`✨ *${params.businessName}*`);
+  lines.push("");
+  if (params.itemNames && params.itemNames.length > 0) {
+    lines.push(`📋 *${params.dailyLabel || "Hoy"}*`);
+    for (const name of params.itemNames.slice(0, 8)) {
+      lines.push(`• ${name}`);
+    }
+    if (
+      typeof params.packagePrice === "number" &&
+      params.packagePrice > 0
+    ) {
+      lines.push(`💰 Paquete desde ${formatMxn(params.packagePrice)}`);
+    }
+    lines.push("");
+  }
+  lines.push("Mira el menú y pide aquí 👉");
+  lines.push(params.menuUrl);
+  return lines.join("\n");
+}
+
+/** Cita Express (giro servicios): mensaje al WhatsApp del negocio. */
+export function buildAppointmentMessage(params: {
+  businessName: string;
+  serviceName: string;
+  price?: number;
+  dateLabel: string;
+  timeLabel: string;
+  customerNote?: string;
+}): string {
+  const lines: string[] = [
+    `Hola, me gustaría agendar *${params.serviceName}* en *${params.businessName}*.`,
+    "",
+    `📅 Día tentativo: ${params.dateLabel}`,
+    `⏰ Hora: ${params.timeLabel}`,
+  ];
+  if (typeof params.price === "number" && params.price > 0) {
+    lines.push(`💰 Precio ref.: ${formatMxn(params.price)}`);
+  }
+  if (params.customerNote?.trim()) {
+    lines.push(`📝 ${params.customerNote.trim()}`);
+  }
+  lines.push("");
+  lines.push("¿Me confirmas disponibilidad?");
+  return lines.join("\n");
+}
+
 /** Sales WhatsApp (landing FAB / contact). */
 export const SALES_WHATSAPP = "5218130947324";

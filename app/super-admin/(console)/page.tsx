@@ -66,6 +66,9 @@ export default async function SuperAdminHomePage() {
           <Link href="/super-admin/tenants">Crear / ver tenants</Link>
         </Button>
         <Button asChild size="sm" variant="secondary" className="min-h-11">
+          <Link href="/super-admin/finanzas">Finanzas</Link>
+        </Button>
+        <Button asChild size="sm" variant="secondary" className="min-h-11">
           <Link href="/super-admin/settings">CMS Landing</Link>
         </Button>
         {CANONICAL_DEMOS.map((d) => (
@@ -137,7 +140,15 @@ export default async function SuperAdminHomePage() {
       </section>
 
       <section>
-        <h2 className="text-sm font-semibold">Vencen en 7 días</h2>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-sm font-semibold">Vencen en 7 días</h2>
+          <Link
+            href="/super-admin/finanzas"
+            className="text-xs font-semibold text-brand hover:underline"
+          >
+            Ver pagos SPEI →
+          </Link>
+        </div>
         {expiring.length === 0 ? (
           <p className="mt-2 text-sm text-muted">Nadie por vencer.</p>
         ) : (

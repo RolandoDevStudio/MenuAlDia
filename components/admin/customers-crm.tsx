@@ -316,11 +316,18 @@ export function CustomersCrm({
               const pct = Math.min(100, Math.round((toward / goalN) * 100));
               return (
                 <li key={c.id}>
-                  <button
-                    type="button"
+                  <div
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setSelectedId(c.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setSelectedId(c.id);
+                      }
+                    }}
                     className={cn(
-                      "w-full rounded-xl border px-3 py-3 text-left transition",
+                      "w-full cursor-pointer rounded-xl border px-3 py-3 text-left transition",
                       selectedId === c.id
                         ? "border-brand bg-brand/5"
                         : "border-black/5 bg-surface",
@@ -369,7 +376,7 @@ export function CustomersCrm({
                       Lealtad {toward}/{goalN}
                       {toward >= goalN ? " · ¡Listo para canjear!" : ""}
                     </p>
-                  </button>
+                  </div>
                 </li>
               );
             })

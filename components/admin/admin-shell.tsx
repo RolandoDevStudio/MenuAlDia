@@ -9,6 +9,7 @@ import {
   ImageIcon,
   LayoutGrid,
   LogOut,
+  Megaphone,
   Package,
   Settings,
   ShoppingBag,
@@ -75,6 +76,12 @@ export function AdminShell({
       feature: "combos",
     },
     { href: "/admin/flyer", label: "Flyer", icon: ImageIcon, feature: "flyer" },
+    {
+      href: "/admin/difusion",
+      label: "Difundir",
+      icon: Megaphone,
+      feature: "flyer",
+    },
     { href: "/admin/orders", label: "Pedidos", icon: ShoppingBag, feature: "crm" },
     { href: "/admin/customers", label: "Clientes PRO", icon: Users, feature: "crm" },
     {
@@ -100,12 +107,9 @@ export function AdminShell({
 
   return (
     <div
-      className="mx-auto flex min-h-full w-full max-w-lg flex-col"
-      style={{
-        paddingBottom: "calc(6rem + env(safe-area-inset-bottom))",
-      }}
+      className="mx-auto flex min-h-full w-full max-w-lg flex-col pb-[calc(6rem+env(safe-area-inset-bottom))] print:max-w-none print:pb-0"
     >
-      <header className="sticky top-0 z-20 border-b border-black/5 bg-background/95 px-4 py-3 backdrop-blur">
+      <header className="sticky top-0 z-20 border-b border-black/5 bg-background/95 px-4 py-3 backdrop-blur print:hidden">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <BrandLogo variant="lockup" size="sm" href="/admin" />
@@ -146,9 +150,9 @@ export function AdminShell({
           </p>
         ) : null}
       </header>
-      <div className="flex-1 px-4 py-4">{children}</div>
+      <div className="flex-1 px-4 py-4 print:px-0 print:py-0">{children}</div>
       <nav
-        className="fixed bottom-0 left-0 right-0 z-30 border-t border-black/10 bg-surface/95 backdrop-blur"
+        className="fixed bottom-0 left-0 right-0 z-30 border-t border-black/10 bg-surface/95 backdrop-blur print:hidden"
         style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
       >
         <div className="mx-auto flex max-w-lg justify-around overflow-x-auto px-1 pt-2">

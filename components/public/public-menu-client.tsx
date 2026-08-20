@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Plus, CalendarClock } from "lucide-react";
 import type {
   Category,
   ComboWithItems,
@@ -14,9 +14,11 @@ import type { PhotoFrame } from "@/lib/theme";
 import { photoFrameClass } from "@/lib/theme";
 import { formatMxn } from "@/lib/money";
 import { comboDisplayPrice } from "@/lib/combo";
+import { normalizeBusinessType } from "@/lib/business-labels";
 import { useCartStore } from "@/stores/cart-store";
 import { ProductBottomSheet } from "@/components/public/product-bottom-sheet";
 import { ComboBottomSheet } from "@/components/public/combo-bottom-sheet";
+import { CitaExpressDialog } from "@/components/public/cita-express-dialog";
 import { StorageImage } from "@/components/ui/storage-image";
 import { cn } from "@/lib/utils";
 
@@ -36,6 +38,7 @@ type Props = {
 
 export function PublicMenuClient({
   slug,
+  restaurant,
   categories,
   dishes,
   addonsByDishId,
@@ -59,6 +62,14 @@ export function PublicMenuClient({
   );
   const [activeCat, setActiveCat] = useState<string | null>(null);
   const [flashDishId, setFlashDishId] = useState<string | null>(null);
+  const [citaDishId, setCitaDishId] = useState<string | null>(null);
+
+  const isServicios =
+    normalizeBusinessType(restaurant.business_type) === "servicios";
+  const citaDish = useMemo(
+    () => dishes.find((d) => d.id === citaDishId) ?? null,
+    [dishes, citaDishId],
+  );
 
   useEffect(() => {
     if (initialComboSlug) setComboSlug(initialComboSlug);
@@ -135,6 +146,10 @@ export function PublicMenuClient({
 
   function quickAdd(dish: Dish, e: React.MouseEvent) {
     e.stopPropagation();
+    if (isServicios) {
+      setCitaDishId(dish.id);
+      return;
+    }
     const addons = (addonsByDishId[dish.id] ?? []).filter(
       (a) => a.is_active && !a.archived_at,
     );
@@ -302,9 +317,17 @@ export function PublicMenuClient({
                             "absolute bottom-3 right-3 flex h-11 w-11 items-center justify-center rounded-full bg-brand text-white shadow-md transition hover:bg-brand-dark active:scale-95",
                             flashDishId === dish.id && "menu-quick-flash",
                           )}
-                          aria-label={`Añadir ${dish.name}`}
+                          aria-label={
+                            isServicios
+                              ? `Solicitar cita para ${dish.name}`
+                              : `Añadir ${dish.name}`
+                          }
                         >
-                          <Plus className="h-5 w-5" />
+                          {isServicios ? (
+                            <CalendarClock className="h-5 w-5" />
+                          ) : (
+                            <Plus className="h-5 w-5" />
+                          )}
                         </button>
                       </div>
                     </li>
@@ -333,6 +356,24 @@ export function PublicMenuClient({
             ? `${origin}/${slug}?p=${product.id}`
             : undefined
         }
+        citaMode={isServicios}
+        onRequestCita={() => {
+          if (product) {
+            setCitaDishId(product.id);
+            setProductId(null);
+            clearQuery();
+          }
+        }}
+      />
+
+      <CitaExpressDialog
+        open={Boolean(citaDish)}
+        onOpenChange={(o) => {
+          if (!o) setCitaDishId(null);
+        }}
+        dish={citaDish}
+        businessName={restaurant.name}
+        phoneWhatsapp={restaurant.phone_whatsapp || ""}
       />
 
       <ComboBottomSheet
