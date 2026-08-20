@@ -127,7 +127,7 @@ async function fetchPublicMenuBySlug(
     supabase
       .from("dishes")
       .select(
-        "id, restaurant_id, category_id, name, description, photo_url, price, is_side, is_active, sort_order",
+        "id, restaurant_id, category_id, name, description, photo_url, price, is_side, is_active, is_popular, sort_order",
       )
       .eq("restaurant_id", r.id)
       .eq("is_active", true)

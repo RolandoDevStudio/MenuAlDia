@@ -102,6 +102,7 @@ export interface Dish {
   price: number;
   is_side: boolean;
   is_active: boolean;
+  is_popular?: boolean;
   sort_order: number;
   archived_at?: string | null;
 }

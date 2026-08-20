@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ShoppingBag } from "lucide-react";
 import type { Restaurant } from "@/lib/types";
 import { useCartStore } from "@/stores/cart-store";
 import { CartSheet } from "@/components/public/cart-sheet";
 import { Button } from "@/components/ui/button";
+import { formatMxn } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
 export function FloatingCart({ restaurant }: { restaurant: Restaurant }) {
@@ -20,6 +21,18 @@ export function FloatingCart({ restaurant }: { restaurant: Restaurant }) {
   }, [restaurant.slug, setSlug]);
 
   const count = items.reduce((n, i) => n + i.quantity, 0);
+  const itemsSubtotal = useMemo(
+    () =>
+      items.reduce((sum, i) => {
+        const addons = (i.addons ?? []).reduce(
+          (a, x) => a + Number(x.priceDelta),
+          0,
+        );
+        return sum + (Number(i.unitPrice) + addons) * i.quantity;
+      }, 0),
+    [items],
+  );
+
   if (!hydrated || count === 0) return null;
 
   const shipping =
@@ -43,7 +56,7 @@ export function FloatingCart({ restaurant }: { restaurant: Restaurant }) {
             aria-live="polite"
           >
             <ShoppingBag className="h-5 w-5" />
-            Ver pedido ({count})
+            Ver pedido ({count}) · {formatMxn(itemsSubtotal)}
           </Button>
         </div>
       </div>

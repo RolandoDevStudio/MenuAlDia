@@ -93,7 +93,7 @@ Cobro: manual vía super-admin (`plan_type`, `subscription_end_date`, `is_active
 
 ## Checklist producción
 
-- [ ] Migraciones `001` … `008` aplicadas (incluye `007` social y `008` seed categorías)
+- [ ] Migraciones `001` … `009` aplicadas (`007` social, `008` seed categorías, `009` is_popular)
 - [ ] CORS Storage aplicado
 - [ ] Env en Vercel (`NEXT_PUBLIC_*`)
 - [ ] Smoke RLS: anon no ve tenants con `is_active=false` o suscripción vencida

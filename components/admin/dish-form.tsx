@@ -42,6 +42,7 @@ export function DishForm({
   const [categoryId, setCategoryId] = useState(dish?.category_id ?? "");
   const [isSide, setIsSide] = useState(dish?.is_side ?? false);
   const [isActive, setIsActive] = useState(dish?.is_active ?? true);
+  const [isPopular, setIsPopular] = useState(dish?.is_popular ?? false);
   const [photoUrl, setPhotoUrl] = useState<string | null>(dish?.photo_url ?? null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -123,6 +124,7 @@ export function DishForm({
       category_id: parsed.data.category_id || null,
       is_side: parsed.data.is_side,
       is_active: parsed.data.is_active,
+      is_popular: isPopular,
       photo_url: parsed.data.photo_url || null,
     };
 
@@ -288,6 +290,17 @@ export function DishForm({
       <div className="flex min-h-14 items-center justify-between rounded-xl border border-black/5 bg-surface px-3 py-3">
         <Label htmlFor="isActive">Activo en catálogo</Label>
         <Switch id="isActive" checked={isActive} onCheckedChange={setIsActive} />
+      </div>
+      <div className="flex min-h-14 items-center justify-between rounded-xl border border-black/5 bg-surface px-3 py-3">
+        <div>
+          <Label htmlFor="isPopular">Lo más pedido</Label>
+          <p className="text-xs text-muted">Badge en el menú público</p>
+        </div>
+        <Switch
+          id="isPopular"
+          checked={isPopular}
+          onCheckedChange={setIsPopular}
+        />
       </div>
 
       {dish ? (
