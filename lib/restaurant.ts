@@ -29,6 +29,8 @@ function normalizeRestaurant(raw: Restaurant): Restaurant {
   r.offers_delivery = r.offers_delivery ?? true;
   r.terms_version_accepted = r.terms_version_accepted ?? null;
   r.terms_accepted_at = r.terms_accepted_at ?? null;
+  r.loyalty_goal = r.loyalty_goal ?? 10;
+  r.loyalty_reward_label = r.loyalty_reward_label ?? "Recompensa gratis";
   return r;
 }
 

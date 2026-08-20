@@ -38,6 +38,8 @@ export interface Restaurant {
   offers_delivery?: boolean;
   terms_version_accepted?: string | null;
   terms_accepted_at?: string | null;
+  loyalty_goal?: number;
+  loyalty_reward_label?: string;
 }
 
 export interface TenantPayment {
@@ -180,6 +182,32 @@ export interface Customer {
   orders_count: number;
   last_order_at: string | null;
   created_at: string;
+  notes?: string;
+  allergies_alert?: string;
+  favorite_service?: string;
+  birthday?: string | null;
+  tags?: string[];
+  visit_count?: number;
+  visits_toward_reward?: number;
+  last_visit_at?: string | null;
+  rewards_redeemed?: number;
+}
+
+export interface CustomerPhoto {
+  id: string;
+  restaurant_id: string;
+  customer_id: string;
+  storage_path: string;
+  created_at: string;
+  signed_url?: string | null;
+}
+
+export interface CustomerVisit {
+  id: string;
+  restaurant_id: string;
+  customer_id: string;
+  created_at: string;
+  note: string;
 }
 
 export interface Order {

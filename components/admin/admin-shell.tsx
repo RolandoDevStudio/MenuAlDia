@@ -76,7 +76,7 @@ export function AdminShell({
     },
     { href: "/admin/flyer", label: "Flyer", icon: ImageIcon, feature: "flyer" },
     { href: "/admin/orders", label: "Pedidos", icon: ShoppingBag, feature: "crm" },
-    { href: "/admin/customers", label: "Clientes", icon: Users, feature: "crm" },
+    { href: "/admin/customers", label: "Clientes PRO", icon: Users, feature: "crm" },
     {
       href: "/admin/analytics",
       label: "Métricas",

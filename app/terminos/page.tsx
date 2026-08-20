@@ -327,7 +327,28 @@ export default function TerminosPage() {
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-brand-dark">13. Contacto</h2>
+          <h2 className="text-lg font-semibold text-brand-dark">
+            13. Tratamiento de datos de clientes finales (terceros)
+          </h2>
+          <p>
+            El Administrador/Usuario reconoce y acepta que es el único
+            Responsable de recabar los datos personales de sus clientes finales
+            (tales como números telefónicos, notas, preferencias y fotografías
+            de servicio) de conformidad con las leyes aplicables, incluyendo la
+            LFPDPPP. Menú al Día actúa únicamente como Encargado del
+            procesamiento de dicha información y no utilizará ni compartirá los
+            datos de los clientes finales para ningún fin ajeno a la prestación
+            del servicio al Administrador.
+          </p>
+          <p>
+            El Usuario se compromete a obtener, cuando corresponda, el
+            consentimiento o autorización verbal/escrita de sus clientes finales
+            antes de registrar sus datos o fotografías en la Plataforma.
+          </p>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold text-brand-dark">14. Contacto</h2>
           <p>
             Para cualquier duda, aclaración o comentario relativo a estos
             Términos y Condiciones, favor de ponerse en contacto a través de:
