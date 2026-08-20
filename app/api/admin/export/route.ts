@@ -2,13 +2,21 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionRestaurant } from "@/lib/restaurant";
 import { can } from "@/lib/plans";
+import { getLifecyclePhase } from "@/lib/subscription-lifecycle";
 
 export async function GET(request: Request) {
   const session = await getSessionRestaurant();
   if (!session) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  if (!can(session.restaurant.plan_type, "csv_export")) {
+
+  const phase = getLifecyclePhase(session.restaurant);
+  const inGraceExport =
+    phase === "expired_grace" ||
+    phase === "expired_pre_purge" ||
+    phase === "purge_due";
+
+  if (!can(session.restaurant.plan_type, "csv_export") && !inGraceExport) {
     return NextResponse.json({ error: "plan required: pro" }, { status: 403 });
   }
 

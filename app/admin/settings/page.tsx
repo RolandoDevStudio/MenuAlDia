@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { PLAN_LABELS } from "@/lib/plans";
 import { normalizeBusinessType } from "@/lib/business-labels";
+import { PlanRequestPanel } from "@/components/admin/plan-request-panel";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -198,6 +199,8 @@ export default function SettingsPage() {
           · Plan {PLAN_LABELS[restaurant.plan_type || "catalog"]}
         </p>
       </div>
+
+      <PlanRequestPanel currentPlan={restaurant.plan_type || "catalog"} />
 
       <ThemeEditor
         value={theme}

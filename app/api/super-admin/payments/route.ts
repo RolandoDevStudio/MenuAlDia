@@ -155,6 +155,10 @@ export async function POST(request: Request) {
 
   const restaurantUpdate: Record<string, unknown> = {
     subscription_end_date: newEnd,
+    is_active: true,
+    grace_ends_at: null,
+    purge_scheduled_at: null,
+    purged_at: null,
   };
   if (planType) restaurantUpdate.plan_type = planType;
 

@@ -21,6 +21,10 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import type { PlanType } from "@/lib/plans";
 import { can, PLAN_LABELS, isSubscriptionActive } from "@/lib/plans";
+import {
+  daysUntil,
+  getLifecyclePhase,
+} from "@/lib/subscription-lifecycle";
 import { label } from "@/lib/business-labels";
 import type { BusinessType } from "@/lib/types";
 import { BrandLogo } from "@/components/brand/brand-logo";
@@ -38,6 +42,9 @@ export function AdminShell({
   planType,
   isActive,
   subscriptionEndDate,
+  graceEndsAt = null,
+  purgeScheduledAt = null,
+  purgedAt = null,
   businessType = "restaurante",
   children,
 }: {
@@ -46,6 +53,9 @@ export function AdminShell({
   planType: PlanType;
   isActive: boolean;
   subscriptionEndDate: string;
+  graceEndsAt?: string | null;
+  purgeScheduledAt?: string | null;
+  purgedAt?: string | null;
   businessType?: BusinessType | string | null;
   children: React.ReactNode;
 }) {
@@ -55,6 +65,19 @@ export function AdminShell({
     is_active: isActive,
     subscription_end_date: subscriptionEndDate,
   });
+  const phase = getLifecyclePhase({
+    is_active: isActive,
+    subscription_end_date: subscriptionEndDate,
+    grace_ends_at: graceEndsAt,
+    purge_scheduled_at: purgeScheduledAt,
+    purged_at: purgedAt,
+  });
+  const graceDaysLeft = daysUntil(graceEndsAt);
+  const purgeDaysLeft = daysUntil(purgeScheduledAt);
+  const showExport =
+    phase === "expired_grace" ||
+    phase === "expired_pre_purge" ||
+    phase === "purge_due";
 
   const dailyMenuLabel = label(businessType, "dailyMenu");
   const catalogLabel = label(businessType, "catalog");
@@ -144,10 +167,51 @@ export function AdminShell({
           </div>
         </div>
         {!subOk ? (
-          <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">
-            Suscripción inactiva o vencida. Tu menú público está oculto. Contacta
-            a soporte para renovar.
-          </p>
+          <div className="mt-2 space-y-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-950">
+            {phase === "expired_grace" ? (
+              <p>
+                Suscripción inactiva. Menú público oculto.{" "}
+                {graceDaysLeft != null && graceDaysLeft > 0
+                  ? `Te quedan ~${graceDaysLeft} días de gracia para exportar datos.`
+                  : "Estás en periodo de gracia: exporta tus datos pronto."}
+              </p>
+            ) : phase === "purge_due" || phase === "expired_pre_purge" ? (
+              <p>
+                Periodo de gracia terminado.{" "}
+                {purgeDaysLeft != null && purgeDaysLeft > 0
+                  ? `Purga programada en ~${purgeDaysLeft} días.`
+                  : "Tus datos pueden purgarse pronto."}{" "}
+                Renueva con soporte o exporta lo que puedas.
+              </p>
+            ) : (
+              <p>
+                Suscripción inactiva o vencida. Tu menú público está oculto.
+                Contacta a soporte para renovar.
+              </p>
+            )}
+            {showExport ? (
+              <p className="flex flex-wrap gap-x-3 gap-y-1">
+                <a
+                  href="/api/admin/export?type=customers"
+                  className="font-semibold underline-offset-2 hover:underline"
+                >
+                  Exportar clientes CSV
+                </a>
+                <a
+                  href="/api/admin/export?type=orders"
+                  className="font-semibold underline-offset-2 hover:underline"
+                >
+                  Exportar pedidos CSV
+                </a>
+                <Link
+                  href="/admin/settings"
+                  className="font-semibold underline-offset-2 hover:underline"
+                >
+                  Solicitar plan
+                </Link>
+              </p>
+            ) : null}
+          </div>
         ) : null}
       </header>
       <div className="flex-1 px-4 py-4 print:px-0 print:py-0">{children}</div>

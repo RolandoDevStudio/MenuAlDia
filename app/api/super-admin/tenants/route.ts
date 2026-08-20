@@ -141,6 +141,19 @@ export async function PATCH(request: Request) {
   if (body.subscription_end_date !== undefined) {
     updates.subscription_end_date = body.subscription_end_date;
   }
+
+  // Reactivating / extending clears grace-purge window
+  const reactivating =
+    (typeof body.is_active === "boolean" && body.is_active === true) ||
+    (body.subscription_end_date !== undefined &&
+      body.subscription_end_date &&
+      new Date(String(body.subscription_end_date)).getTime() > Date.now());
+  if (reactivating) {
+    updates.grace_ends_at = null;
+    updates.purge_scheduled_at = null;
+    updates.purged_at = null;
+    if (typeof body.is_active !== "boolean") updates.is_active = true;
+  }
   if (typeof body.phone_whatsapp === "string") {
     updates.phone_whatsapp = body.phone_whatsapp.replace(/\D/g, "");
   }

@@ -7,7 +7,11 @@ export type AuditAction =
   | "payment"
   | "clone"
   | "sync_template"
-  | "delete";
+  | "delete"
+  | "plan_request"
+  | "plan_approve"
+  | "plan_reject"
+  | "lifecycle";
 
 export async function writeAuditLog(params: {
   restaurantId: string;

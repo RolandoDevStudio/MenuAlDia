@@ -40,6 +40,10 @@ export interface Restaurant {
   terms_accepted_at?: string | null;
   loyalty_goal?: number;
   loyalty_reward_label?: string;
+  /** Lifecycle after cancel/expiry */
+  grace_ends_at?: string | null;
+  purge_scheduled_at?: string | null;
+  purged_at?: string | null;
 }
 
 export interface TenantPayment {
