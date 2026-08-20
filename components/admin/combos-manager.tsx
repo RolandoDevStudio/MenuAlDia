@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { Minus, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Combo, Dish, Restaurant } from "@/lib/types";
 import { slugifyCombo, comboDisplayPrice } from "@/lib/combo";
@@ -13,11 +14,48 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 
 type ComboRow = Combo & {
   items: Array<{ dish_id: string; quantity: number; dish?: Dish }>;
 };
+
+function QtyStepper({
+  value,
+  onChange,
+  label: ariaLabel,
+}: {
+  value: number;
+  onChange: (n: number) => void;
+  label: string;
+}) {
+  return (
+    <div className="flex items-center gap-1">
+      <Button
+        type="button"
+        variant="secondary"
+        size="icon"
+        className="h-9 w-9 shrink-0"
+        aria-label={`Quitar ${ariaLabel}`}
+        onClick={() => onChange(Math.max(0, value - 1))}
+      >
+        <Minus className="h-4 w-4" />
+      </Button>
+      <span className="w-8 text-center text-sm font-semibold tabular-nums">
+        {value}
+      </span>
+      <Button
+        type="button"
+        variant="secondary"
+        size="icon"
+        className="h-9 w-9 shrink-0"
+        aria-label={`Añadir ${ariaLabel}`}
+        onClick={() => onChange(value + 1)}
+      >
+        <Plus className="h-4 w-4" />
+      </Button>
+    </div>
+  );
+}
 
 export function CombosManager({
   restaurant,
@@ -27,15 +65,21 @@ export function CombosManager({
   const combosLabel = label(restaurant.business_type, "combos");
   const comboLabel = label(restaurant.business_type, "combo");
   const dishesLabel = label(restaurant.business_type, "dishes");
+  const dishLabel = label(restaurant.business_type, "dish");
+  const sidesLabel = label(restaurant.business_type, "sides");
+  const sideLabel = label(restaurant.business_type, "side");
 
-  const [dishes, setDishes] = useState<Dish[]>([]);
+  const [mains, setMains] = useState<Dish[]>([]);
+  const [sides, setSides] = useState<Dish[]>([]);
+  const [allDishMap, setAllDishMap] = useState<Map<string, Dish>>(new Map());
   const [combos, setCombos] = useState<ComboRow[]>([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [slug, setSlug] = useState("");
   const [fixedPrice, setFixedPrice] = useState("");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
-  const [selected, setSelected] = useState<Record<string, boolean>>({});
+  /** dishId → quantity (0 = not included) */
+  const [qtyById, setQtyById] = useState<Record<string, number>>({});
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -52,7 +96,6 @@ export function CombosManager({
         .eq("restaurant_id", restaurant.id)
         .eq("is_active", true)
         .is("archived_at", null)
-        .eq("is_side", false)
         .order("sort_order"),
       supabase
         .from("combos")
@@ -61,7 +104,11 @@ export function CombosManager({
         .is("archived_at", null)
         .order("sort_order"),
     ]);
-    setDishes((dishRows ?? []) as Dish[]);
+    const dishes = (dishRows ?? []) as Dish[];
+    setMains(dishes.filter((d) => !d.is_side));
+    setSides(dishes.filter((d) => d.is_side));
+    setAllDishMap(new Map(dishes.map((d) => [d.id, d])));
+
     const list = (comboRows ?? []) as Combo[];
     const ids = list.map((c) => c.id);
     let items: Array<{ combo_id: string; dish_id: string; quantity: number }> =
@@ -73,7 +120,7 @@ export function CombosManager({
         .in("combo_id", ids);
       items = data ?? [];
     }
-    const dishMap = new Map(((dishRows ?? []) as Dish[]).map((d) => [d.id, d]));
+    const dishMap = new Map(dishes.map((d) => [d.id, d]));
     setCombos(
       list.map((c) => ({
         ...c,
@@ -88,10 +135,48 @@ export function CombosManager({
     void load();
   }, [load]);
 
-  const selectedIds = useMemo(
-    () => Object.keys(selected).filter((id) => selected[id]),
-    [selected],
+  const lines = useMemo(
+    () =>
+      Object.entries(qtyById)
+        .filter(([, q]) => q > 0)
+        .map(([dish_id, quantity]) => ({ dish_id, quantity })),
+    [qtyById],
   );
+
+  const totalUnits = useMemo(
+    () => lines.reduce((s, l) => s + l.quantity, 0),
+    [lines],
+  );
+
+  const hasMain = useMemo(
+    () =>
+      lines.some((l) => {
+        const d = allDishMap.get(l.dish_id);
+        return d && !d.is_side;
+      }),
+    [lines, allDishMap],
+  );
+
+  const preventiveHint = useMemo(() => {
+    if (totalUnits < 2) {
+      return `Agrega al menos 2 ítems para completar el ${comboLabel.toLowerCase()}.`;
+    }
+    if (!hasMain) {
+      return `Añade un ${dishLabel.toLowerCase()} (no solo ${sidesLabel.toLowerCase()}).`;
+    }
+    return null;
+  }, [totalUnits, hasMain, comboLabel, dishLabel, sidesLabel]);
+
+  const canCreate = !preventiveHint && Boolean(title.trim()) && !saving;
+
+  function setQty(dishId: string, n: number) {
+    setQtyById((prev) => {
+      const next = { ...prev };
+      if (n <= 0) delete next[dishId];
+      else next[dishId] = n;
+      return next;
+    });
+  }
 
   async function revalidate() {
     await fetch("/api/revalidate", {
@@ -104,8 +189,8 @@ export function CombosManager({
   async function createCombo() {
     setError(null);
     setMessage(null);
-    if (selectedIds.length < 2) {
-      setError("Selecciona al menos 2 productos.");
+    if (preventiveHint) {
+      setError(preventiveHint);
       return;
     }
     if (!title.trim()) {
@@ -134,10 +219,10 @@ export function CombosManager({
       return;
     }
     const { error: itemsError } = await supabase.from("combo_items").insert(
-      selectedIds.map((dish_id, i) => ({
+      lines.map((l, i) => ({
         combo_id: data.id,
-        dish_id,
-        quantity: 1,
+        dish_id: l.dish_id,
+        quantity: l.quantity,
         sort_order: i,
       })),
     );
@@ -151,7 +236,7 @@ export function CombosManager({
     setSlug("");
     setFixedPrice("");
     setPhotoUrl(null);
-    setSelected({});
+    setQtyById({});
     setMessage(`${comboLabel} creado`);
     await revalidate();
     await load();
@@ -177,7 +262,12 @@ export function CombosManager({
   }
 
   async function copyWaText(c: ComboRow) {
-    const names = c.items.map((i) => i.dish?.name ?? "Ítem").filter(Boolean);
+    const names = c.items
+      .map((i) => {
+        const n = i.dish?.name ?? "Ítem";
+        return i.quantity > 1 ? `${i.quantity}× ${n}` : n;
+      })
+      .filter(Boolean);
     const price =
       c.fixed_price != null
         ? Number(c.fixed_price)
@@ -197,13 +287,49 @@ export function CombosManager({
     setMessage("Texto para WhatsApp copiado");
   }
 
+  function renderDishList(list: Dish[], sectionLabel: string) {
+    if (list.length === 0) {
+      return (
+        <p className="text-xs text-muted">
+          No hay {sectionLabel.toLowerCase()} activos.
+        </p>
+      );
+    }
+    return (
+      <ul className="max-h-40 space-y-1 overflow-y-auto">
+        {list.map((d) => {
+          const q = qtyById[d.id] ?? 0;
+          return (
+            <li
+              key={d.id}
+              className="flex min-h-11 items-center gap-2 rounded-lg px-2"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm">{d.name}</p>
+                <p className="text-xs text-muted">
+                  {formatMxn(Number(d.price))}
+                </p>
+              </div>
+              <QtyStepper
+                value={q}
+                onChange={(n) => setQty(d.id, n)}
+                label={d.name}
+              />
+            </li>
+          );
+        })}
+      </ul>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-lg font-semibold">{combosLabel} Express</h1>
         <p className="text-sm text-muted">
-          Empaqueta 2+ {dishesLabel.toLowerCase()} con link viral{" "}
-          <code className="text-xs">?c=</code> y Open Graph.
+          Empaqueta {dishesLabel.toLowerCase()} y{" "}
+          {sidesLabel.toLowerCase()} con cantidades y link viral{" "}
+          <code className="text-xs">?c=</code>.
         </p>
       </div>
 
@@ -252,33 +378,34 @@ export function CombosManager({
           label="Imagen promo"
           kind="banner"
         />
+
         <div className="space-y-2">
-          <Label>Incluye (≥2)</Label>
-          <ul className="max-h-48 space-y-1 overflow-y-auto">
-            {dishes.map((d) => (
-              <li key={d.id}>
-                <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg px-2">
-                  <Checkbox
-                    checked={Boolean(selected[d.id])}
-                    onCheckedChange={() =>
-                      setSelected((p) => ({ ...p, [d.id]: !p[d.id] }))
-                    }
-                  />
-                  <span className="flex-1 text-sm">{d.name}</span>
-                  <span className="text-xs text-muted">
-                    {formatMxn(Number(d.price))}
-                  </span>
-                </label>
-              </li>
-            ))}
-          </ul>
+          <Label>{dishesLabel}</Label>
+          {renderDishList(mains, dishesLabel)}
         </div>
+        <div className="space-y-2">
+          <Label>
+            {sidesLabel} ({sideLabel.toLowerCase()}s incluidas)
+          </Label>
+          {renderDishList(sides, sidesLabel)}
+        </div>
+
+        {preventiveHint ? (
+          <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            {preventiveHint}
+          </p>
+        ) : (
+          <p className="text-xs text-muted">
+            {totalUnits} unidad{totalUnits === 1 ? "" : "es"} en el paquete.
+          </p>
+        )}
+
         {error ? <p className="text-sm text-red-600">{error}</p> : null}
         {message ? <p className="text-sm text-green-700">{message}</p> : null}
         <Button
           type="button"
           className="min-h-11 w-full"
-          disabled={saving}
+          disabled={!canCreate}
           onClick={() => void createCombo()}
         >
           {saving ? "Guardando…" : `Crear ${comboLabel.toLowerCase()}`}
@@ -300,7 +427,7 @@ export function CombosManager({
               })),
           };
           const price =
-            withItems.items.length >= 2
+            withItems.items.length >= 1
               ? comboDisplayPrice(withItems)
               : Number(c.fixed_price ?? 0);
           return (
@@ -314,7 +441,7 @@ export function CombosManager({
                   <p className="text-xs text-muted">
                     /{restaurant.slug}?c={c.slug}
                   </p>
-                  <p className="mt-1 text-sm text-brand font-semibold">
+                  <p className="mt-1 text-sm font-semibold text-brand">
                     {formatMxn(price)}
                   </p>
                 </div>
@@ -328,7 +455,14 @@ export function CombosManager({
                 </Button>
               </div>
               <p className="text-xs text-muted">
-                {c.items.map((i) => i.dish?.name).filter(Boolean).join(" · ")}
+                {c.items
+                  .map((i) => {
+                    const n = i.dish?.name;
+                    if (!n) return null;
+                    return i.quantity > 1 ? `${i.quantity}× ${n}` : n;
+                  })
+                  .filter(Boolean)
+                  .join(" · ")}
               </p>
               <div className="flex flex-wrap gap-2">
                 <Button

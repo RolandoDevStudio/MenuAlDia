@@ -137,6 +137,12 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
   const labels = labelsFor(data.restaurant.business_type);
   const place = formatPlaceLine(data.restaurant.city, data.restaurant.state);
 
+  const hasDaily =
+    (data.dailyDishes?.length ?? 0) > 0 || (data.dailySides?.length ?? 0) > 0;
+  const hasCatalog = (data.dishes?.length ?? 0) > 0;
+  const hasCombos = (data.combos?.length ?? 0) > 0;
+  const menuEmpty = !hasDaily && !hasCatalog && !hasCombos;
+
   const bgStyle =
     theme.useBackgroundImage && theme.backgroundImageUrl
       ? {
@@ -165,36 +171,51 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
         />
       ) : null}
       <RestaurantHeader restaurant={data.restaurant} placeLine={place} />
-      <DailyMenuHero
-        dishes={data.dailyDishes}
-        sides={data.dailySides}
-        packagePrice={packagePrice}
-        maxSides={maxSides}
-        photoFrame={theme.photoFrame}
-        dailyMenuLabel={labels.dailyMenu}
-        sidesLabel={labels.sides}
-        dishesLabel={labels.dishes}
-      />
-      <Suspense fallback={null}>
-        <PublicMenuClient
-          slug={slug}
-          restaurant={data.restaurant}
-          categories={data.categories}
-          dishes={data.dishes}
-          addonsByDishId={data.addonsByDishId}
-          combos={data.combos}
-          photoFrame={theme.photoFrame}
-          sidesLabel={labels.sides}
-          combosLabel={labels.combos}
-          initialDishId={sp.p ?? null}
-          initialComboSlug={sp.c ?? null}
-        />
-      </Suspense>
+      {menuEmpty ? (
+        <div className="mx-auto max-w-lg px-4 py-16 text-center">
+          <p className="text-lg font-semibold text-brand-dark">
+            {data.restaurant.name} está preparando su menú.
+          </p>
+          <p className="mt-2 text-sm text-muted">¡Vuelve pronto!</p>
+        </div>
+      ) : (
+        <>
+          <DailyMenuHero
+            dishes={data.dailyDishes}
+            sides={data.dailySides}
+            packagePrice={packagePrice}
+            maxSides={maxSides}
+            photoFrame={theme.photoFrame}
+            dailyMenuLabel={labels.dailyMenu}
+            sidesLabel={labels.sides}
+            dishesLabel={labels.dishes}
+          />
+          <Suspense fallback={null}>
+            <PublicMenuClient
+              slug={slug}
+              restaurant={data.restaurant}
+              categories={data.categories}
+              dishes={data.dishes}
+              addonsByDishId={data.addonsByDishId}
+              combos={data.combos}
+              photoFrame={theme.photoFrame}
+              sidesLabel={labels.sides}
+              combosLabel={labels.combos}
+              initialDishId={sp.p ?? null}
+              initialComboSlug={sp.c ?? null}
+            />
+          </Suspense>
+        </>
+      )}
       <div className="mx-auto max-w-lg px-4 pb-4 pt-2 text-center">
         <PoweredByMenuAlDia />
       </div>
-      <CartBottomSpacer />
-      <FloatingCart restaurant={data.restaurant} />
+      {!menuEmpty ? (
+        <>
+          <CartBottomSpacer />
+          <FloatingCart restaurant={data.restaurant} />
+        </>
+      ) : null}
     </main>
   );
 }

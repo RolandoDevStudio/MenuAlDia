@@ -9,7 +9,9 @@ export type LabelKey =
   | "catalog"
   | "business"
   | "combo"
-  | "combos";
+  | "combos"
+  | "category"
+  | "categories";
 
 const LABELS: Record<BusinessType, Record<LabelKey, string>> = {
   restaurante: {
@@ -22,6 +24,8 @@ const LABELS: Record<BusinessType, Record<LabelKey, string>> = {
     catalog: "Catálogo",
     combo: "Combo",
     combos: "Combos",
+    category: "Categoría",
+    categories: "Categorías",
   },
   servicios: {
     business: "Servicios",
@@ -33,6 +37,8 @@ const LABELS: Record<BusinessType, Record<LabelKey, string>> = {
     catalog: "Servicios",
     combo: "Paquete",
     combos: "Paquetes",
+    category: "Categoría",
+    categories: "Categorías",
   },
   productos: {
     business: "Tienda",
@@ -44,6 +50,8 @@ const LABELS: Record<BusinessType, Record<LabelKey, string>> = {
     catalog: "Catálogo",
     combo: "Colección",
     combos: "Colecciones",
+    category: "Categoría",
+    categories: "Categorías",
   },
 };
 

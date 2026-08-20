@@ -20,7 +20,9 @@ export default async function HistoryPage() {
   const [{ data: auditRows }, { data: paymentRows }] = await Promise.all([
     supabase
       .from("audit_logs")
-      .select("*")
+      .select(
+        "id, restaurant_id, action, field_name, old_value, new_value, summary, created_at",
+      )
       .eq("restaurant_id", restaurantId)
       .order("created_at", { ascending: false })
       .limit(50),
@@ -65,9 +67,6 @@ export default async function HistoryPage() {
                     {new Date(log.created_at).toLocaleString("es-MX")}
                   </p>
                 </div>
-                {log.actor_label ? (
-                  <p className="mt-1 text-xs text-muted">{log.actor_label}</p>
-                ) : null}
                 {log.field_name ? (
                   <p className="mt-1 text-xs text-muted">
                     Campo: {log.field_name}

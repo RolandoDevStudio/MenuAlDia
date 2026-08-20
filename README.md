@@ -93,11 +93,12 @@ Cobro: manual vía super-admin (`plan_type`, `subscription_end_date`, `is_active
 
 ## Checklist producción
 
-- [ ] Migraciones `001` + `002` aplicadas
+- [ ] Migraciones `001` … `008` aplicadas (incluye `007` social y `008` seed categorías)
 - [ ] CORS Storage aplicado
 - [ ] Env en Vercel (`NEXT_PUBLIC_*`)
 - [ ] Smoke RLS: anon no ve tenants con `is_active=false` o suscripción vencida
 - [ ] Usuario `super_admin` creado
+- [ ] Owner demo (`cocina@…`) distinto del SA
 - [ ] Demos `/demo-restaurante`, `/demo-servicios`, `/demo-tienda` en móvil
 - [ ] Flyer export con fotos del bucket (CORS)
 

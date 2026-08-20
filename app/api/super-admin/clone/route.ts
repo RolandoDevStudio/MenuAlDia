@@ -274,6 +274,19 @@ export async function POST(request: Request) {
     );
   }
 
+  const { error: seedErr } = await admin.rpc("seed_default_categories", {
+    p_restaurant_id: restaurantId,
+  });
+  if (seedErr) {
+    await admin.from("restaurants").delete().eq("id", restaurantId);
+    return NextResponse.json(
+      {
+        error: `No se pudieron crear categorías base: ${seedErr.message}. El tenant no se creó.`,
+      },
+      { status: 500 },
+    );
+  }
+
   await writeAuditLog({
     restaurantId,
     actorUserId: actor?.id,

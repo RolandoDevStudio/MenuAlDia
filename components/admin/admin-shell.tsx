@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   BarChart3,
+  ExternalLink,
   History,
   ImageIcon,
   LayoutGrid,
@@ -32,6 +33,7 @@ type NavItem = {
 
 export function AdminShell({
   restaurantName,
+  restaurantSlug,
   planType,
   isActive,
   subscriptionEndDate,
@@ -39,6 +41,7 @@ export function AdminShell({
   children,
 }: {
   restaurantName: string;
+  restaurantSlug: string;
   planType: PlanType;
   isActive: boolean;
   subscriptionEndDate: string;
@@ -110,9 +113,31 @@ export function AdminShell({
               {restaurantName} · {PLAN_LABELS[planType]}
             </p>
           </div>
-          <Button variant="ghost" size="icon" onClick={signOut} aria-label="Salir">
-            <LogOut className="h-5 w-5" />
-          </Button>
+          <div className="flex shrink-0 items-center gap-1">
+            <Button variant="ghost" size="sm" className="min-h-11 gap-1.5 px-2" asChild>
+              <a
+                href={`/${restaurantSlug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={
+                  subOk
+                    ? "Ver menú como el cliente"
+                    : "Menú público oculto (suscripción inactiva)"
+                }
+              >
+                <ExternalLink className="h-4 w-4" />
+                <span className="hidden sm:inline">Ver menú</span>
+              </a>
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={signOut}
+              aria-label="Salir"
+            >
+              <LogOut className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
         {!subOk ? (
           <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">

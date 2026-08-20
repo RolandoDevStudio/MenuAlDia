@@ -186,8 +186,15 @@ export default function SettingsPage() {
       <div>
         <h1 className="text-lg font-semibold">Ajustes</h1>
         <p className="text-sm text-muted">
-          /{restaurant.slug} · Plan{" "}
-          {PLAN_LABELS[restaurant.plan_type || "catalog"]}
+          <a
+            href={`/${restaurant.slug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-brand underline-offset-2 hover:underline"
+          >
+            /{restaurant.slug}
+          </a>{" "}
+          · Plan {PLAN_LABELS[restaurant.plan_type || "catalog"]}
         </p>
       </div>
 

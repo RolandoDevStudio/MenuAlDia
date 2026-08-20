@@ -2,10 +2,11 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireTenantSession } from "@/lib/admin-session";
-import { dishLimit } from "@/lib/plans";
+import { dishLimit, type PlanType } from "@/lib/plans";
 import { formatMxn } from "@/lib/money";
 import { label, labelsFor } from "@/lib/business-labels";
 import { Button } from "@/components/ui/button";
+import { CategoriesManager } from "@/components/admin/categories-manager";
 import type { Dish } from "@/lib/types";
 
 export default async function CatalogPage() {
@@ -13,6 +14,7 @@ export default async function CatalogPage() {
 
   const businessType = session.restaurant.business_type;
   const labels = labelsFor(businessType);
+  const planType = (session.restaurant.plan_type as PlanType) || "catalog";
 
   const supabase = await createClient();
   const { data: dishes } = await supabase
@@ -50,6 +52,13 @@ export default async function CatalogPage() {
         )}
       </div>
 
+      <CategoriesManager
+        restaurantId={session.restaurant.id}
+        restaurantSlug={session.restaurant.slug}
+        businessType={businessType}
+        planType={planType}
+      />
+
       {atLimit ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-brand-dark">
           Alcanzaste el máximo de {limit} productos del plan Catálogo. Mejora a
@@ -67,7 +76,9 @@ export default async function CatalogPage() {
             flyer.
           </p>
           <Button asChild className="mt-4">
-            <Link href="/admin/catalog/new">Nuevo {labels.dish.toLowerCase()}</Link>
+            <Link href="/admin/catalog/new">
+              Nuevo {labels.dish.toLowerCase()}
+            </Link>
           </Button>
         </div>
       ) : (
