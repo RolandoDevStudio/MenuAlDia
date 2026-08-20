@@ -6,7 +6,8 @@ export type AuditAction =
   | "password_reset"
   | "payment"
   | "clone"
-  | "sync_template";
+  | "sync_template"
+  | "delete";
 
 export async function writeAuditLog(params: {
   restaurantId: string;

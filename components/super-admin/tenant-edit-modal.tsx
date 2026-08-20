@@ -36,6 +36,7 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSaved: (restaurant?: Restaurant) => void;
+  onDeleted?: () => void;
 };
 
 const selectClass =
@@ -47,6 +48,7 @@ export function TenantEditModal({
   open,
   onOpenChange,
   onSaved,
+  onDeleted,
 }: Props) {
   const [tab, setTab] = useState<Tab>("datos");
   const [name, setName] = useState("");
@@ -81,6 +83,8 @@ export function TenantEditModal({
   const [logsError, setLogsError] = useState<string | null>(null);
   const [planPrices, setPlanPrices] =
     useState<PlanPricesMap>(FALLBACK_PLAN_PRICES);
+  const [confirmSlug, setConfirmSlug] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -130,6 +134,7 @@ export function TenantEditModal({
     setPeriodDays("30");
     setReference("");
     setNotes("");
+    setConfirmSlug("");
   }, [restaurant, ownerEmail, open]);
 
   const loadPayments = useCallback(async () => {
@@ -209,6 +214,29 @@ export function TenantEditModal({
     setPassword("");
     setMessage("Guardado");
     onSaved(json.restaurant);
+  }
+
+  async function deleteTenant() {
+    if (!restaurant) return;
+    setDeleting(true);
+    setError(null);
+    setMessage(null);
+    const res = await fetch("/api/super-admin/tenants", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: restaurant.id,
+        confirmSlug: confirmSlug.trim(),
+      }),
+    });
+    const json = (await res.json()) as { error?: string };
+    setDeleting(false);
+    if (!res.ok) {
+      setError(json.error ?? "No se pudo eliminar");
+      return;
+    }
+    onOpenChange(false);
+    onDeleted?.();
   }
 
   async function registerPayment() {
@@ -568,6 +596,42 @@ export function TenantEditModal({
                 </table>
               )}
             </div>
+          </div>
+        ) : null}
+
+        {tab === "datos" && restaurant ? (
+          <div className="mt-6 space-y-3 rounded-xl border border-red-200 bg-red-50/80 p-4">
+            <p className="text-sm font-semibold text-red-800">
+              Zona peligrosa
+            </p>
+            <p className="text-xs text-red-900/80">
+              Para pausar un cliente usa el switch <strong>Activo</strong>{" "}
+              arriba. Eliminar borra el negocio, menú, pedidos y el login del
+              dueño (si no tiene otros negocios). No se puede deshacer.
+            </p>
+            <div className="space-y-1.5">
+              <Label htmlFor="confirm-slug">
+                Escribe el slug <code>{restaurant.slug}</code> para confirmar
+              </Label>
+              <Input
+                id="confirm-slug"
+                value={confirmSlug}
+                onChange={(e) => setConfirmSlug(e.target.value)}
+                placeholder={restaurant.slug}
+                autoComplete="off"
+              />
+            </div>
+            <Button
+              type="button"
+              variant="destructive"
+              className="min-h-11 w-full bg-red-700 hover:bg-red-800"
+              disabled={
+                deleting || confirmSlug.trim() !== restaurant.slug || busy
+              }
+              onClick={() => void deleteTenant()}
+            >
+              {deleting ? "Eliminando…" : "Eliminar permanentemente"}
+            </Button>
           </div>
         ) : null}
       </DialogContent>

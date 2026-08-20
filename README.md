@@ -29,26 +29,33 @@ Completa `NEXT_PUBLIC_SUPABASE_*`, `SUPABASE_SERVICE_ROLE_KEY` (super-admin: clo
 - Dashboard → Storage → Configuration → CORS
 - Usa los orígenes de [`supabase/storage-cors.json`](supabase/storage-cors.json) (`localhost:3000`, `menualdia.app`, `*.vercel.app`)
 
-4. Vincula un owner al demo restaurante:
+4. Vincula un **owner** al demo restaurante (cuenta distinta del super-admin).
+   Tras crear el usuario en Authentication (p. ej. `cocina@gmail.com`):
 
 ```sql
 insert into public.restaurant_members (user_id, restaurant_id, role)
-values ('<AUTH_USER_UUID>', 'a0000000-0000-4000-8000-000000000001', 'owner');
+select u.id, r.id, 'owner'
+from auth.users u
+cross join public.restaurants r
+where lower(u.email) = 'cocina@gmail.com'
+  and r.slug = 'demo-restaurante'
+on conflict (user_id, restaurant_id) do update set role = 'owner';
 ```
 
-5. (Opcional) Crea un super-admin de plataforma:
+Ese login entra a `/admin` del demo. No uses la misma cuenta para `super_admin`.
+
+5. Crea el **super-admin** de plataforma (otra cuenta Auth):
 
 ```sql
--- Tras crear el usuario en Auth:
+-- Tras crear el usuario SA en Auth:
 insert into public.restaurant_members (user_id, restaurant_id, role)
-values (
-  '<AUTH_USER_UUID>',
-  'a0000000-0000-4000-8000-000000000001',
-  'super_admin'
-);
+select u.id, 'a0000000-0000-4000-8000-000000000001'::uuid, 'super_admin'
+from auth.users u
+where lower(u.email) = '<TU_EMAIL_SA>'
+on conflict (user_id, restaurant_id) do update set role = 'super_admin';
 ```
 
-`is_super_admin()` permite acceso a `/super-admin` (tenants, plan, fechas, clonado).
+`is_super_admin()` permite acceso a `/super-admin`. El ancla en `demo-restaurante` es solo membership de plataforma; el login Admin del demo es el `owner`.
 
 6. Instala y corre:
 

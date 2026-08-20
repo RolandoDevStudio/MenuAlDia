@@ -49,3 +49,48 @@ export async function deleteStoragePublicUrl(
     );
   }
 }
+
+/** Best-effort remove all objects under a restaurant folder. */
+export async function purgeRestaurantStorageFolder(
+  client: {
+    storage: {
+      from: (bucket: string) => {
+        list: (
+          path?: string,
+          options?: { limit?: number; offset?: number },
+        ) => Promise<{
+          data: { name: string }[] | null;
+          error: { message: string } | null;
+        }>;
+        remove: (
+          paths: string[],
+        ) => Promise<{ error: { message: string } | null }>;
+      };
+    };
+  },
+  restaurantId: string,
+): Promise<void> {
+  try {
+    const folder = restaurantId;
+    const { data, error } = await client.storage.from(BUCKET).list(folder, {
+      limit: 1000,
+    });
+    if (error) {
+      console.warn("[storage-cleanup] list", folder, error.message);
+      return;
+    }
+    const paths = (data ?? [])
+      .map((f) => `${folder}/${f.name}`)
+      .filter(Boolean);
+    if (paths.length === 0) return;
+    const { error: remErr } = await client.storage.from(BUCKET).remove(paths);
+    if (remErr) {
+      console.warn("[storage-cleanup] remove", remErr.message);
+    }
+  } catch (e) {
+    console.warn(
+      "[storage-cleanup] purge folder",
+      e instanceof Error ? e.message : e,
+    );
+  }
+}

@@ -3,5 +3,5 @@ import { isCurrentUserSuperAdmin } from "@/lib/restaurant";
 
 export async function requireSuperAdmin() {
   const ok = await isCurrentUserSuperAdmin();
-  if (!ok) redirect("/admin");
+  if (!ok) redirect("/super-admin/login");
 }

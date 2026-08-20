@@ -649,10 +649,12 @@ select sa.user_id, 'a0000000-0000-4000-8000-000000000001'::uuid, 'super_admin'
 from public._seed_super_admins sa
 on conflict (user_id, restaurant_id) do update set role = 'super_admin';
 
--- Owner en demos principales (mismo usuario local, si existe)
+-- Owner en demos principales (mismo usuario local, si existe).
+-- Incluye demo-restaurante (…0001): login Admin ≠ cuenta super_admin.
 insert into public.restaurant_members (user_id, restaurant_id, role)
 select 'f230e363-82a5-4ee6-acc8-a58272986d60'::uuid, r.id, 'owner'
 from (values
+  ('a0000000-0000-4000-8000-000000000001'::uuid),
   ('a0000000-0000-4000-8000-000000000002'::uuid),
   ('a0000000-0000-4000-8000-000000000003'::uuid),
   ('a0000000-0000-4000-8000-000000000005'::uuid)

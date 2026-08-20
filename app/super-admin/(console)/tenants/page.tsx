@@ -191,6 +191,11 @@ export default function TenantsPage() {
           if (!open) setEditing(null);
         }}
         onSaved={handleSaved}
+        onDeleted={() => {
+          setEditing(null);
+          setMessage("Tenant eliminado");
+          void load();
+        }}
       />
     </div>
   );

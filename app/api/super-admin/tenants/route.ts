@@ -5,6 +5,10 @@ import { isCurrentUserSuperAdmin } from "@/lib/restaurant";
 import { writeAuditLog, logFieldChanges } from "@/lib/audit";
 import { normalizeSlug } from "@/lib/plan-templates";
 import { isMxStateCode, normalizeLegacyState } from "@/lib/mx-locations";
+import { CANONICAL_DEMOS } from "@/lib/canonical-demos";
+import { purgeRestaurantStorageFolder } from "@/lib/storage-cleanup";
+import { menuCacheTag } from "@/lib/restaurant";
+import { revalidateTag } from "next/cache";
 
 /** List tenants with owner login email (service role for auth lookup). */
 export async function GET() {
@@ -33,10 +37,11 @@ export async function GET() {
     });
   }
 
+  // Only real owners — never surface super_admin as the tenant login.
   const { data: members } = await admin
     .from("restaurant_members")
     .select("user_id, restaurant_id, role")
-    .in("role", ["owner", "super_admin"]);
+    .eq("role", "owner");
 
   const owners: Record<
     string,
@@ -44,9 +49,7 @@ export async function GET() {
   > = {};
 
   for (const m of members ?? []) {
-    if (owners[m.restaurant_id] && m.role !== "owner") continue;
-    if (owners[m.restaurant_id]?.role === "owner" && m.role !== "owner")
-      continue;
+    if (owners[m.restaurant_id]) continue;
     const { data } = await admin.auth.admin.getUserById(m.user_id);
     owners[m.restaurant_id] = {
       user_id: m.user_id,
@@ -209,16 +212,16 @@ export async function PATCH(request: Request) {
       );
     }
 
-    const { data: members } = await admin
+    // Never fall back to super_admin — that would rewrite the platform login.
+    const { data: ownerRow } = await admin
       .from("restaurant_members")
       .select("user_id, role")
       .eq("restaurant_id", body.id)
-      .in("role", ["owner", "super_admin"]);
+      .eq("role", "owner")
+      .limit(1)
+      .maybeSingle();
 
-    const owner =
-      members?.find((m) => m.role === "owner") ?? members?.[0] ?? null;
-
-    if (owner) {
+    if (ownerRow) {
       const authUpdates: { password?: string; email?: string } = {};
       if (password) {
         if (password.length < 6) {
@@ -234,13 +237,13 @@ export async function PATCH(request: Request) {
       let previousEmail: string | null = null;
       if (email) {
         const { data: existing } = await admin.auth.admin.getUserById(
-          owner.user_id,
+          ownerRow.user_id,
         );
         previousEmail = existing.user?.email ?? null;
       }
 
       const { error: updErr } = await admin.auth.admin.updateUserById(
-        owner.user_id,
+        ownerRow.user_id,
         authUpdates,
       );
       if (updErr) {
@@ -278,20 +281,50 @@ export async function PATCH(request: Request) {
           { status: 400 },
         );
       }
+
+      let userId: string | null = null;
       const { data: created, error: createErr } =
         await admin.auth.admin.createUser({
           email,
           password,
           email_confirm: true,
         });
-      if (createErr || !created.user) {
-        return NextResponse.json(
-          { error: createErr?.message ?? "No se pudo crear el usuario" },
-          { status: 500 },
+
+      if (created?.user) {
+        userId = created.user.id;
+      } else {
+        // Auth user may already exist (e.g. created in Dashboard) — link it.
+        const { data: listed } = await admin.auth.admin.listUsers({
+          page: 1,
+          perPage: 200,
+        });
+        const existing = listed.users.find(
+          (u) => (u.email ?? "").toLowerCase() === email,
         );
+        if (!existing) {
+          return NextResponse.json(
+            {
+              error:
+                createErr?.message ??
+                "No se pudo crear ni encontrar el usuario Auth",
+            },
+            { status: 500 },
+          );
+        }
+        userId = existing.id;
+        if (password) {
+          const { error: pwErr } = await admin.auth.admin.updateUserById(
+            userId,
+            { password, email_confirm: true },
+          );
+          if (pwErr) {
+            return NextResponse.json({ error: pwErr.message }, { status: 500 });
+          }
+        }
       }
+
       const { error: memErr } = await admin.from("restaurant_members").insert({
-        user_id: created.user.id,
+        user_id: userId,
         restaurant_id: body.id,
         role: "owner",
       });
@@ -306,7 +339,7 @@ export async function PATCH(request: Request) {
         fieldName: "owner",
         oldValue: null,
         newValue: email,
-        summary: "Creó owner y acceso",
+        summary: "Creó o enlazó owner y acceso",
       });
     } else {
       return NextResponse.json(
@@ -320,4 +353,147 @@ export async function PATCH(request: Request) {
   }
 
   return NextResponse.json({ ok: true, restaurant: after });
+}
+
+/**
+ * Permanent tenant delete. Requires confirmSlug === restaurant.slug.
+ * Cascades app data; deletes Auth users only if they have no other memberships
+ * and are not super_admin elsewhere.
+ */
+export async function DELETE(request: Request) {
+  if (!(await isCurrentUserSuperAdmin())) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+
+  const body = (await request.json()) as {
+    id?: string;
+    confirmSlug?: string;
+    forceDemo?: boolean;
+  };
+
+  if (!body.id || !body.confirmSlug?.trim()) {
+    return NextResponse.json(
+      { error: "id y confirmSlug requeridos" },
+      { status: 400 },
+    );
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user: actor },
+  } = await supabase.auth.getUser();
+
+  const { data: restaurant, error: loadErr } = await supabase
+    .from("restaurants")
+    .select("id, slug, name")
+    .eq("id", body.id)
+    .maybeSingle();
+
+  if (loadErr || !restaurant) {
+    return NextResponse.json(
+      { error: loadErr?.message ?? "restaurant not found" },
+      { status: loadErr ? 500 : 404 },
+    );
+  }
+
+  if (restaurant.slug !== body.confirmSlug.trim()) {
+    return NextResponse.json(
+      { error: "El slug no coincide. Escribe el slug exacto para confirmar." },
+      { status: 400 },
+    );
+  }
+
+  const isDemo = CANONICAL_DEMOS.some((d) => d.slug === restaurant.slug);
+  if (isDemo && !body.forceDemo) {
+    return NextResponse.json(
+      {
+        error:
+          "No se pueden borrar demos canónicos. Usa forceDemo solo en casos excepcionales.",
+      },
+      { status: 400 },
+    );
+  }
+
+  let admin;
+  try {
+    admin = createServiceClient();
+  } catch (e) {
+    return NextResponse.json(
+      {
+        error:
+          e instanceof Error
+            ? e.message
+            : "Configura SUPABASE_SERVICE_ROLE_KEY",
+      },
+      { status: 500 },
+    );
+  }
+
+  const { data: members } = await admin
+    .from("restaurant_members")
+    .select("user_id, role")
+    .eq("restaurant_id", restaurant.id);
+
+  const memberIds = [...new Set((members ?? []).map((m) => m.user_id))];
+
+  console.info("[tenant-delete]", {
+    id: restaurant.id,
+    slug: restaurant.slug,
+    name: restaurant.name,
+    actor: actor?.email ?? actor?.id,
+    memberCount: memberIds.length,
+  });
+
+  await writeAuditLog({
+    restaurantId: restaurant.id,
+    actorUserId: actor?.id,
+    actorLabel: actor?.email ?? "super_admin",
+    action: "delete",
+    fieldName: "restaurant",
+    oldValue: `${restaurant.slug}:${restaurant.name}`,
+    newValue: null,
+    summary: `Eliminación permanente de /${restaurant.slug}`,
+  });
+
+  await purgeRestaurantStorageFolder(admin, restaurant.id);
+
+  const { error: delErr } = await admin
+    .from("restaurants")
+    .delete()
+    .eq("id", restaurant.id);
+
+  if (delErr) {
+    return NextResponse.json({ error: delErr.message }, { status: 500 });
+  }
+
+  const deletedUsers: string[] = [];
+  for (const userId of memberIds) {
+    if (actor?.id && userId === actor.id) continue;
+
+    const { data: other } = await admin
+      .from("restaurant_members")
+      .select("restaurant_id, role")
+      .eq("user_id", userId);
+
+    if ((other ?? []).length > 0) continue;
+
+    const { error: userErr } = await admin.auth.admin.deleteUser(userId);
+    if (userErr) {
+      console.warn("[tenant-delete] auth user", userId, userErr.message);
+    } else {
+      deletedUsers.push(userId);
+    }
+  }
+
+  try {
+    revalidateTag(menuCacheTag(restaurant.slug), "max");
+  } catch {
+    /* ignore */
+  }
+
+  return NextResponse.json({
+    ok: true,
+    deletedSlug: restaurant.slug,
+    deletedAuthUsers: deletedUsers.length,
+  });
 }
