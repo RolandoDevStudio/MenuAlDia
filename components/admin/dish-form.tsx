@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { BusinessType, Category, Dish, DishAddon, PlanType } from "@/lib/types";
 import { dishLimit } from "@/lib/plans";
@@ -229,6 +231,13 @@ export function DishForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-4 pb-4">
+      <Link
+        href="/admin/catalog"
+        className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-brand"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Catálogo
+      </Link>
       <DishPhotoUpload
         restaurantId={restaurantId}
         value={photoUrl}

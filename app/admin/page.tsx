@@ -85,7 +85,8 @@ export default async function AdminDashboardPage() {
         <div>
           <h1 className="text-lg font-semibold">{labels.dailyMenu}</h1>
           <p className="text-sm text-muted">
-            Activa {labels.dishes.toLowerCase()} en un toque.
+            Elige qué ofreces <strong>hoy</strong> como paquete. El catálogo
+            completo sigue visible abajo en el menú público.
           </p>
         </div>
         {can(plan, "flyer") ? (

@@ -71,7 +71,7 @@ export function FlyerExportButton({ slug, targetId = "flyer-canvas" }: Props) {
       if (canShare) {
         await navigator.share({
           files: [file],
-          title: "Menú del día",
+          title: "Especiales de hoy",
         });
         notify("Flyer listo para compartir");
       } else {

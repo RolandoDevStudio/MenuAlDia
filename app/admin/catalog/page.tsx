@@ -3,11 +3,11 @@ import { Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireTenantSession } from "@/lib/admin-session";
 import { dishLimit, type PlanType } from "@/lib/plans";
-import { formatMxn } from "@/lib/money";
-import { label, labelsFor } from "@/lib/business-labels";
+import { labelsFor } from "@/lib/business-labels";
 import { Button } from "@/components/ui/button";
 import { CategoriesManager } from "@/components/admin/categories-manager";
-import type { Dish } from "@/lib/types";
+import { CatalogDishList } from "@/components/admin/catalog-dish-list";
+import type { Category, Dish } from "@/lib/types";
 
 export default async function CatalogPage() {
   const session = await requireTenantSession();
@@ -17,14 +17,24 @@ export default async function CatalogPage() {
   const planType = (session.restaurant.plan_type as PlanType) || "catalog";
 
   const supabase = await createClient();
-  const { data: dishes } = await supabase
-    .from("dishes")
-    .select("id, name, photo_url, price, is_side, is_active, sort_order")
-    .eq("restaurant_id", session.restaurant.id)
-    .is("archived_at", null)
-    .order("sort_order");
+  const [{ data: dishes }, { data: categories }] = await Promise.all([
+    supabase
+      .from("dishes")
+      .select(
+        "id, name, photo_url, price, is_side, is_active, sort_order, category_id",
+      )
+      .eq("restaurant_id", session.restaurant.id)
+      .is("archived_at", null)
+      .order("sort_order"),
+    supabase
+      .from("categories")
+      .select("id, restaurant_id, name, sort_order, is_fixed_catalog")
+      .eq("restaurant_id", session.restaurant.id)
+      .order("sort_order"),
+  ]);
 
   const list = (dishes ?? []) as Dish[];
+  const cats = (categories ?? []) as Category[];
   const limit = dishLimit(session.restaurant.plan_type);
   const atLimit = limit != null && list.length >= limit;
 
@@ -72,7 +82,7 @@ export default async function CatalogPage() {
             Sin {labels.dishes.toLowerCase()} todavía
           </p>
           <p className="mt-1 text-sm text-muted">
-            Crea el primero para armar el {labels.dailyMenu.toLowerCase()} y el
+            Crea el primero para armar los {labels.dailyMenu.toLowerCase()} y el
             flyer.
           </p>
           <Button asChild className="mt-4">
@@ -82,37 +92,13 @@ export default async function CatalogPage() {
           </Button>
         </div>
       ) : (
-        <ul className="space-y-2">
-          {list.map((dish) => (
-            <li key={dish.id}>
-              <Link
-                href={`/admin/catalog/${dish.id}`}
-                className="flex min-h-14 items-center gap-3 rounded-xl border border-black/5 bg-surface p-3 transition hover:bg-white"
-              >
-                {dish.photo_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={dish.photo_url}
-                    alt={dish.name}
-                    className="h-14 w-14 rounded-lg object-cover"
-                  />
-                ) : (
-                  <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-black/5 font-[family-name:var(--font-display)] text-lg text-brand/50">
-                    {dish.name.slice(0, 1)}
-                  </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">{dish.name}</p>
-                  <p className="text-xs text-muted">
-                    {dish.is_side ? `${label(businessType, "side")} · ` : ""}
-                    {formatMxn(Number(dish.price))}
-                    {!dish.is_active ? " · Inactivo" : ""}
-                  </p>
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <CatalogDishList
+          restaurantId={session.restaurant.id}
+          restaurantSlug={session.restaurant.slug}
+          businessType={businessType}
+          initialDishes={list}
+          categories={cats}
+        />
       )}
     </div>
   );

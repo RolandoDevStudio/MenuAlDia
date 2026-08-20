@@ -163,7 +163,7 @@ export function BrandLogo({
 export function PoweredByMenuAlDia({ className }: { className?: string }) {
   return (
     <a
-      href="https://menualdia.app"
+      href="https://menualdia.com.mx"
       target="_blank"
       rel="noopener noreferrer"
       className={cn(

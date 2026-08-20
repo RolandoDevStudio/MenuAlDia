@@ -18,7 +18,7 @@ export function FlyerCanvas({
   sides,
   packagePrice,
   id = "flyer-canvas",
-  headline = "MENÚ DEL DÍA",
+  headline = "ESPECIALES DE HOY",
   sidesTitle = "Incluye guarniciones",
 }: Props) {
   return (

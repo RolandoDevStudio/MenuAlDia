@@ -19,7 +19,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Pencil, Plus, Trash2 } from "lucide-react";
+import { GripVertical, ChevronDown, Pencil, Plus, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { can, type PlanType } from "@/lib/plans";
 import { label } from "@/lib/business-labels";
@@ -220,6 +220,7 @@ export function CategoriesManager({
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -401,86 +402,114 @@ export function CategoriesManager({
 
   return (
     <section className="space-y-3 rounded-2xl border border-black/5 bg-surface p-4">
-      <div>
-        <h2 className="text-sm font-semibold">{categoriesLabel}</h2>
-        <p className="text-xs text-muted">
-          Arrastra el ícono para reordenar. Así aparecen en el menú público.
-        </p>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="new-cat">Nueva {categoryLabel.toLowerCase()}</Label>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Input
-            id="new-cat"
-            className="min-h-11 flex-1"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            placeholder="Ej. Entradas"
-          />
-          <Button
-            type="button"
-            className="min-h-11"
-            disabled={busy}
-            onClick={() => void createCategory()}
-          >
-            <Plus className="h-4 w-4" />
-            Añadir
-          </Button>
+      <button
+        type="button"
+        className="flex w-full min-h-11 items-center justify-between gap-2 text-left"
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+      >
+        <div>
+          <h2 className="text-sm font-semibold">{categoriesLabel}</h2>
+          <p className="text-xs text-muted">
+            {rows.length}{" "}
+            {rows.length === 1
+              ? categoryLabel.toLowerCase()
+              : categoriesLabel.toLowerCase()}
+            {!expanded ? " · toca para gestionar" : ""}
+          </p>
         </div>
-        {showFixedToggle ? (
-          <div className="flex items-center justify-between gap-2">
-            <Label htmlFor="new-fixed" className="text-xs font-normal">
-              Fija de catálogo (vs menú del día)
-            </Label>
-            <Switch
-              id="new-fixed"
-              checked={newFixed}
-              onCheckedChange={setNewFixed}
-            />
-          </div>
-        ) : null}
-      </div>
+        <ChevronDown
+          className={cn(
+            "h-5 w-5 shrink-0 text-muted transition-transform",
+            expanded && "rotate-180",
+          )}
+        />
+      </button>
 
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
-      {message ? <p className="text-sm text-green-700">{message}</p> : null}
+      {expanded ? (
+        <>
+          <p className="text-xs text-muted">
+            Arrastra el ícono para reordenar. Así aparecen en el menú público.
+          </p>
 
-      {rows.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-black/10 px-3 py-6 text-center text-sm text-muted">
-          Aún no hay {categoriesLabel.toLowerCase()}. Crea la primera arriba.
-        </p>
-      ) : (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={(e) => void onDragEnd(e)}
-        >
-          <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-            <ul className="space-y-2">
-              {rows.map((cat) => (
-                <SortableRow
-                  key={cat.id}
-                  cat={cat}
-                  dishLabel={dishLabel}
-                  dishesLabel={dishesLabel}
-                  editingId={editingId}
-                  editName={editName}
-                  setEditName={setEditName}
-                  onStartEdit={(c) => {
-                    setEditingId(c.id);
-                    setEditName(c.name);
-                  }}
-                  onSaveEdit={(id) => void saveEdit(id)}
-                  onCancelEdit={() => setEditingId(null)}
-                  onDelete={(c) => void deleteCategory(c)}
-                  showFixedToggle={showFixedToggle}
-                  onToggleFixed={(c, v) => void toggleFixed(c, v)}
+          <div className="space-y-2">
+            <Label htmlFor="new-cat">Nueva {categoryLabel.toLowerCase()}</Label>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input
+                id="new-cat"
+                className="min-h-11 flex-1"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="Ej. Entradas"
+              />
+              <Button
+                type="button"
+                className="min-h-11"
+                disabled={busy}
+                onClick={() => void createCategory()}
+              >
+                <Plus className="h-4 w-4" />
+                Añadir
+              </Button>
+            </div>
+            {showFixedToggle ? (
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="new-fixed" className="text-xs font-normal">
+                  Fija de catálogo (vs especiales de hoy)
+                </Label>
+                <Switch
+                  id="new-fixed"
+                  checked={newFixed}
+                  onCheckedChange={setNewFixed}
                 />
-              ))}
-            </ul>
-          </SortableContext>
-        </DndContext>
-      )}
+              </div>
+            ) : null}
+          </div>
+
+          {error ? <p className="text-sm text-red-600">{error}</p> : null}
+          {message ? <p className="text-sm text-green-700">{message}</p> : null}
+
+          {rows.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-black/10 px-3 py-6 text-center text-sm text-muted">
+              Aún no hay {categoriesLabel.toLowerCase()}. Crea la primera arriba.
+            </p>
+          ) : (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={(e) => void onDragEnd(e)}
+            >
+              <SortableContext
+                items={ids}
+                strategy={verticalListSortingStrategy}
+              >
+                <ul className="space-y-2">
+                  {rows.map((cat) => (
+                    <SortableRow
+                      key={cat.id}
+                      cat={cat}
+                      dishLabel={dishLabel}
+                      dishesLabel={dishesLabel}
+                      editingId={editingId}
+                      editName={editName}
+                      setEditName={setEditName}
+                      onStartEdit={(c) => {
+                        setEditingId(c.id);
+                        setEditName(c.name);
+                      }}
+                      onSaveEdit={(id) => void saveEdit(id)}
+                      onCancelEdit={() => setEditingId(null)}
+                      onDelete={(c) => void deleteCategory(c)}
+                      showFixedToggle={showFixedToggle}
+                      onToggleFixed={(c, v) => void toggleFixed(c, v)}
+                    />
+                  ))}
+                </ul>
+              </SortableContext>
+            </DndContext>
+          )}
+        </>
+      ) : null}
     </section>
   );
 }
