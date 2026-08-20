@@ -25,6 +25,8 @@ const nextConfig: NextConfig = {
     contentDispositionType: "attachment",
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
     minimumCacheTTL: 86400,
+    // Must include every quality used by next/image (StorageImage default 80)
+    qualities: [70, 75, 80],
     remotePatterns: [
       {
         protocol: "https",

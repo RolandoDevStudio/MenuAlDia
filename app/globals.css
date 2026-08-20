@@ -74,6 +74,116 @@ body {
   }
 }
 
+/* Public menu micro-interactions */
+@keyframes menu-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes menu-dialog-in {
+  /* Opacity only — do not touch transform/translate (Tailwind v4 uses
+     the individual `translate` property for centering; animating
+     `transform` double-offsets the dialog off-screen). */
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes menu-sheet-in {
+  from {
+    opacity: 0.96;
+    translate: 0 100%;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@keyframes menu-cart-bar-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes menu-badge-pop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes menu-hero-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes menu-quick-flash {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand) 55%, transparent);
+    transform: scale(1);
+  }
+  40% {
+    box-shadow: 0 0 0 8px transparent;
+    transform: scale(1.08);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .menu-overlay-in {
+    animation: menu-overlay-in 200ms ease-out both;
+  }
+
+  .menu-dialog-in {
+    animation: menu-dialog-in 220ms ease-out both;
+  }
+
+  .menu-sheet-in {
+    animation: menu-sheet-in 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .menu-cart-bar-in {
+    animation: menu-cart-bar-in 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .menu-badge-pop {
+    animation: menu-badge-pop 320ms ease-out;
+  }
+
+  .menu-hero-fade {
+    animation: menu-hero-fade 220ms ease-out both;
+  }
+
+  .menu-quick-flash {
+    animation: menu-quick-flash 380ms ease-out;
+  }
+}
+
 .landing-aurora {
   background:
     radial-gradient(ellipse 80% 50% at 15% 0%, #f0d4b8 0%, transparent 55%),
@@ -122,7 +232,14 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .landing-aurora,
-  .landing-fab-pulse {
+  .landing-fab-pulse,
+  .menu-overlay-in,
+  .menu-dialog-in,
+  .menu-sheet-in,
+  .menu-cart-bar-in,
+  .menu-badge-pop,
+  .menu-hero-fade,
+  .menu-quick-flash {
     animation: none !important;
   }
 

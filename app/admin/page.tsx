@@ -91,7 +91,7 @@ export default async function AdminDashboardPage() {
         </div>
         {can(plan, "flyer") ? (
           <Button asChild variant="secondary" size="sm">
-            <Link href="/admin/flyer">Generar Flyer</Link>
+            <Link href="/admin/flyer?from=today">Generar Flyer</Link>
           </Button>
         ) : null}
       </div>

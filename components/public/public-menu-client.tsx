@@ -58,6 +58,7 @@ export function PublicMenuClient({
     initialComboSlug ?? null,
   );
   const [activeCat, setActiveCat] = useState<string | null>(null);
+  const [flashDishId, setFlashDishId] = useState<string | null>(null);
 
   useEffect(() => {
     if (initialComboSlug) setComboSlug(initialComboSlug);
@@ -147,6 +148,10 @@ export function PublicMenuClient({
       unitPrice: Number(dish.price),
       quantity: 1,
     });
+    setFlashDishId(dish.id);
+    window.setTimeout(() => {
+      setFlashDishId((id) => (id === dish.id ? null : id));
+    }, 400);
   }
 
   const origin =
@@ -207,9 +212,9 @@ export function PublicMenuClient({
                   type="button"
                   onClick={() => jumpToCategory(category.id)}
                   className={cn(
-                    "min-h-11 shrink-0 rounded-full px-4 text-sm font-semibold transition",
+                    "min-h-11 shrink-0 rounded-full px-4 text-sm font-semibold transition-[background-color,color,transform] duration-200",
                     activeCat === category.id
-                      ? "bg-brand text-white"
+                      ? "scale-[1.03] bg-brand text-white"
                       : "bg-surface text-muted",
                   )}
                 >
@@ -293,7 +298,10 @@ export function PublicMenuClient({
                         <button
                           type="button"
                           onClick={(e) => quickAdd(dish, e)}
-                          className="absolute bottom-3 right-3 flex h-11 w-11 items-center justify-center rounded-full bg-brand text-white shadow-md transition hover:bg-brand-dark active:scale-95"
+                          className={cn(
+                            "absolute bottom-3 right-3 flex h-11 w-11 items-center justify-center rounded-full bg-brand text-white shadow-md transition hover:bg-brand-dark active:scale-95",
+                            flashDishId === dish.id && "menu-quick-flash",
+                          )}
                           aria-label={`Añadir ${dish.name}`}
                         >
                           <Plus className="h-5 w-5" />

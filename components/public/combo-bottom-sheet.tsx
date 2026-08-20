@@ -120,7 +120,7 @@ export function ComboBottomSheet({
     >
       <DialogContent
         className={cn(
-          "fixed inset-x-0 bottom-0 top-auto left-0 max-h-[88dvh] w-full max-w-none translate-x-0 translate-y-0 rounded-b-none rounded-t-3xl p-0",
+          "menu-sheet-in fixed inset-x-0 bottom-0 top-auto left-0 max-h-[88dvh] w-full max-w-none translate-x-0 translate-y-0 rounded-b-none rounded-t-3xl p-0",
           "pb-[max(1rem,env(safe-area-inset-bottom))]",
         )}
       >

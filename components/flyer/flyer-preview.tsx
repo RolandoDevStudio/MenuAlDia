@@ -3,13 +3,17 @@
 import { useEffect, useRef, useState } from "react";
 import type { Dish, Restaurant } from "@/lib/types";
 import { FlyerCanvas } from "@/components/flyer/flyer-canvas";
+import {
+  FLYER_ASPECT_SIZE,
+  type FlyerEditorOptions,
+} from "@/lib/flyer-types";
 
 type Props = {
   restaurant: Restaurant;
   dishes: Dish[];
   sides: Dish[];
   packagePrice: number;
-  headline?: string;
+  options: FlyerEditorOptions;
   sidesTitle?: string;
 };
 
@@ -18,26 +22,26 @@ export function FlyerPreview({
   dishes,
   sides,
   packagePrice,
-  headline,
+  options,
   sidesTitle,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.3);
+  const { w, h } = FLYER_ASPECT_SIZE[options.aspect];
 
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const update = () => {
-      const w = el.clientWidth;
-      setScale(Math.min(1, w / 1080));
+      setScale(Math.min(1, el.clientWidth / w));
     };
     update();
     const ro = new ResizeObserver(update);
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [w]);
 
-  const previewHeight = 1350 * scale;
+  const previewHeight = h * scale;
 
   return (
     <>
@@ -50,7 +54,7 @@ export function FlyerPreview({
           dishes={dishes}
           sides={sides}
           packagePrice={packagePrice}
-          headline={headline}
+          options={options}
           sidesTitle={sidesTitle}
         />
       </div>
@@ -63,7 +67,7 @@ export function FlyerPreview({
           <div
             className="origin-top-left"
             style={{
-              width: 1080,
+              width: w,
               transform: `scale(${scale})`,
             }}
           >
@@ -72,7 +76,7 @@ export function FlyerPreview({
               dishes={dishes}
               sides={sides}
               packagePrice={packagePrice}
-              headline={headline}
+              options={options}
               sidesTitle={sidesTitle}
               id="flyer-preview"
             />

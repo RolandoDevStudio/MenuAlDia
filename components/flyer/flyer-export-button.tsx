@@ -1,17 +1,32 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { toPng } from "html-to-image";
-import { Copy, Download } from "lucide-react";
+import { toPng, getFontEmbedCSS } from "html-to-image";
+import { Copy, Download, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { FLYER_ASPECT_SIZE, type FlyerAspect } from "@/lib/flyer-types";
+
+export type FlyerExportAction = "download" | "share" | "copy";
 
 type Props = {
   slug: string;
+  restaurantId: string;
+  aspect: FlyerAspect;
   targetId?: string;
+  backgroundColor?: string;
+  /** Fired after a successful local export (download/share/copy). */
+  onAfterLocalExport?: (action: FlyerExportAction, dataUrl: string) => void;
 };
 
-export function FlyerExportButton({ slug, targetId = "flyer-canvas" }: Props) {
+export function FlyerExportButton({
+  slug,
+  restaurantId,
+  aspect,
+  targetId = "flyer-canvas",
+  backgroundColor = "#f7e6c8",
+  onAfterLocalExport,
+}: Props) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [isError, setIsError] = useState(false);
@@ -22,10 +37,23 @@ export function FlyerExportButton({ slug, targetId = "flyer-canvas" }: Props) {
     setIsError(error);
   }
 
-  async function capture() {
+  async function track(action: FlyerExportAction) {
+    try {
+      await fetch("/api/admin/flyer-events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ restaurant_id: restaurantId, action }),
+      });
+    } catch {
+      /* ignore */
+    }
+  }
+
+  async function capture(): Promise<string> {
     const node = document.getElementById(targetId);
     if (!node) throw new Error("No se encontró el flyer");
     await document.fonts.ready;
+    await new Promise((r) => requestAnimationFrame(() => r(undefined)));
     const imgs = Array.from(node.querySelectorAll("img"));
     await Promise.all(
       imgs.map(
@@ -40,73 +68,79 @@ export function FlyerExportButton({ slug, targetId = "flyer-canvas" }: Props) {
           }),
       ),
     );
+    const size = FLYER_ASPECT_SIZE[aspect];
+    const fontEmbedCSS = await getFontEmbedCSS(node);
     return toPng(node, {
       cacheBust: true,
       pixelRatio: 2,
-      backgroundColor: "#f7e6c8",
+      backgroundColor,
+      width: size.w,
+      height: size.h,
+      fontEmbedCSS,
+      skipFonts: false,
     });
   }
 
-  async function dataUrlToFile(dataUrl: string, filename: string) {
+  async function dataUrlToFile(dataUrl: string, name: string) {
     const blob = await (await fetch(dataUrl)).blob();
-    return new File([blob], filename, { type: "image/png" });
+    return new File([blob], name, { type: "image/png" });
   }
 
-  async function download() {
+  function filename() {
+    const date = new Date().toISOString().slice(0, 10);
+    return `especiales-${slug}-${date}.png`;
+  }
+
+  async function run(action: FlyerExportAction) {
     if (lock.current) return;
     lock.current = true;
     setBusy(true);
     setMessage(null);
     try {
       const dataUrl = await capture();
-      const date = new Date().toISOString().slice(0, 10);
-      const filename = `menu-del-dia-${slug}-${date}.png`;
-      const file = await dataUrlToFile(dataUrl, filename);
+      const name = filename();
 
-      const canShare =
-        typeof navigator !== "undefined" &&
-        !!navigator.share &&
-        !!navigator.canShare?.({ files: [file] });
-
-      if (canShare) {
+      if (action === "download") {
+        const a = document.createElement("a");
+        a.download = name;
+        a.href = dataUrl;
+        a.click();
+        notify("Flyer descargado");
+      } else if (action === "share") {
+        const file = await dataUrlToFile(dataUrl, name);
+        const canShare =
+          typeof navigator !== "undefined" &&
+          !!navigator.share &&
+          !!navigator.canShare?.({ files: [file] });
+        if (!canShare) {
+          notify("Compartir no disponible aquí; usa Descargar o Copiar", true);
+          return;
+        }
         await navigator.share({
           files: [file],
           title: "Especiales de hoy",
         });
-        notify("Flyer listo para compartir");
+        notify("Listo para WhatsApp");
       } else {
-        const a = document.createElement("a");
-        a.download = filename;
-        a.href = dataUrl;
-        a.click();
-        notify("Flyer descargado");
+        const blob = await (await fetch(dataUrl)).blob();
+        if (!navigator.clipboard || !window.ClipboardItem) {
+          notify("Copia no soportada; usa Descargar", true);
+          return;
+        }
+        await navigator.clipboard.write([
+          new ClipboardItem({ "image/png": blob }),
+        ]);
+        notify("Copiado — pégalo en WhatsApp Web (Ctrl+V)");
       }
-    } catch (err) {
-      notify(err instanceof Error ? err.message : "Error al exportar", true);
-    } finally {
-      setBusy(false);
-      lock.current = false;
-    }
-  }
 
-  async function copy() {
-    if (lock.current) return;
-    lock.current = true;
-    setBusy(true);
-    setMessage(null);
-    try {
-      const dataUrl = await capture();
-      const blob = await (await fetch(dataUrl)).blob();
-      if (!navigator.clipboard || !window.ClipboardItem) {
-        notify("Copia no soportada; usa Descargar", true);
-        return;
+      void track(action);
+      onAfterLocalExport?.(action, dataUrl);
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") {
+        notify("Compartir cancelado");
+      } else {
+        notify(err instanceof Error ? err.message : "Error al exportar", true);
       }
-      await navigator.clipboard.write([
-        new ClipboardItem({ "image/png": blob }),
-      ]);
-      notify("Flyer copiado al portapapeles");
-    } catch {
-      notify("No se pudo copiar (prueba Descargar en iOS)", true);
     } finally {
       setBusy(false);
       lock.current = false;
@@ -115,15 +149,28 @@ export function FlyerExportButton({ slug, targetId = "flyer-canvas" }: Props) {
 
   return (
     <div className="space-y-2">
-      <div className="flex gap-2">
-        <Button className="flex-1" onClick={download} disabled={busy}>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          className="min-h-11 flex-1"
+          onClick={() => void run("download")}
+          disabled={busy}
+        >
           <Download className="h-4 w-4" />
-          {busy ? "Generando…" : "Descargar / Compartir"}
+          {busy ? "…" : "Descargar"}
         </Button>
         <Button
-          className="flex-1"
+          className="min-h-11 flex-1"
           variant="secondary"
-          onClick={copy}
+          onClick={() => void run("share")}
+          disabled={busy}
+        >
+          <Share2 className="h-4 w-4" />
+          Compartir
+        </Button>
+        <Button
+          className="min-h-11 flex-1"
+          variant="secondary"
+          onClick={() => void run("copy")}
           disabled={busy}
         >
           <Copy className="h-4 w-4" />
@@ -132,10 +179,7 @@ export function FlyerExportButton({ slug, targetId = "flyer-canvas" }: Props) {
       </div>
       {message ? (
         <p
-          className={cn(
-            "text-xs",
-            isError ? "text-red-600" : "text-accent",
-          )}
+          className={cn("text-xs", isError ? "text-red-600" : "text-accent")}
           role="status"
         >
           {message}

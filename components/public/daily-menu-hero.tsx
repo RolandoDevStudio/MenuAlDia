@@ -83,7 +83,10 @@ export function DailyMenuHero({
             {dailyMenuLabel}
           </p>
           <div className="mt-3 flex items-start justify-between gap-3">
-            <h2 className="font-[family-name:var(--font-display)] text-4xl leading-none">
+            <h2
+              key={`title-${active.id}`}
+              className="menu-hero-fade font-[family-name:var(--font-display)] text-4xl leading-none"
+            >
               {active.name}
             </h2>
             <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--color-card)_92%,var(--color-primary))] text-center font-[family-name:var(--font-display)] text-xl leading-none text-brand-dark shadow">
@@ -91,15 +94,21 @@ export function DailyMenuHero({
             </div>
           </div>
           {active.description ? (
-            <p className="mt-2 text-sm text-white/85">{active.description}</p>
+            <p
+              key={`desc-${active.id}`}
+              className="menu-hero-fade mt-2 text-sm text-white/85"
+            >
+              {active.description}
+            </p>
           ) : null}
         </div>
       </div>
 
       {active.photo_url ? (
         <div
+          key={active.id}
           className={cn(
-            "relative mt-4 h-48 w-full overflow-hidden",
+            "menu-hero-fade relative mt-4 h-48 w-full overflow-hidden",
             photoFrameClass(photoFrame).replace("object-cover", ""),
           )}
         >
@@ -112,8 +121,9 @@ export function DailyMenuHero({
         </div>
       ) : (
         <div
+          key={active.id}
           className={cn(
-            "mt-4 flex h-36 items-center justify-center bg-gradient-to-br from-[color-mix(in_srgb,var(--color-primary)_25%,transparent)] to-[color-mix(in_srgb,var(--color-primary)_40%,transparent)] font-[family-name:var(--font-display)] text-5xl text-brand-dark/40",
+            "menu-hero-fade mt-4 flex h-36 items-center justify-center bg-gradient-to-br from-[color-mix(in_srgb,var(--color-primary)_25%,transparent)] to-[color-mix(in_srgb,var(--color-primary)_40%,transparent)] font-[family-name:var(--font-display)] text-5xl text-brand-dark/40",
             photoFrameClass(photoFrame).replace("object-cover", ""),
           )}
         >
@@ -128,11 +138,12 @@ export function DailyMenuHero({
               key={d.id}
               type="button"
               onClick={() => setActiveDishId(d.id)}
-              className={`min-h-11 shrink-0 rounded-full px-4 text-sm font-medium ${
+              className={cn(
+                "min-h-11 shrink-0 rounded-full px-4 text-sm font-medium transition-[background-color,color,transform] duration-200",
                 d.id === active.id
-                  ? "bg-brand text-white"
-                  : "border border-black/10 bg-surface text-foreground"
-              }`}
+                  ? "scale-[1.03] bg-brand text-white"
+                  : "border border-black/10 bg-surface text-foreground",
+              )}
             >
               {d.name}
             </button>

@@ -162,7 +162,7 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90dvh] gap-3 overflow-y-auto">
+      <DialogContent className="menu-dialog-in max-h-[90dvh] gap-3 overflow-y-auto">
         {step === "review" ? (
           <>
             <DialogHeader>

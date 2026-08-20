@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ShoppingBag } from "lucide-react";
 import type { Restaurant } from "@/lib/types";
 import { useCartStore } from "@/stores/cart-store";
@@ -14,6 +14,8 @@ export function FloatingCart({ restaurant }: { restaurant: Restaurant }) {
   const items = useCartStore((s) => s.items);
   const [open, setOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [badgePop, setBadgePop] = useState(false);
+  const prevCount = useRef(0);
 
   useEffect(() => {
     setSlug(restaurant.slug);
@@ -33,6 +35,20 @@ export function FloatingCart({ restaurant }: { restaurant: Restaurant }) {
     [items],
   );
 
+  useEffect(() => {
+    if (!hydrated) {
+      prevCount.current = count;
+      return;
+    }
+    if (count > prevCount.current && count > 0) {
+      setBadgePop(true);
+      const t = window.setTimeout(() => setBadgePop(false), 360);
+      prevCount.current = count;
+      return () => window.clearTimeout(t);
+    }
+    prevCount.current = count;
+  }, [count, hydrated]);
+
   if (!hydrated || count === 0) return null;
 
   const shipping =
@@ -44,7 +60,7 @@ export function FloatingCart({ restaurant }: { restaurant: Restaurant }) {
     <>
       <div
         className={cn(
-          "fixed inset-x-0 bottom-0 z-40 px-4",
+          "menu-cart-bar-in fixed inset-x-0 bottom-0 z-40 px-4",
           "pb-[max(1rem,env(safe-area-inset-bottom))]",
         )}
       >
@@ -55,8 +71,12 @@ export function FloatingCart({ restaurant }: { restaurant: Restaurant }) {
             onClick={() => setOpen(true)}
             aria-live="polite"
           >
-            <ShoppingBag className="h-5 w-5" />
-            Ver pedido ({count}) · {formatMxn(itemsSubtotal)}
+            <ShoppingBag
+              className={cn("h-5 w-5", badgePop && "menu-badge-pop")}
+            />
+            <span className={cn("inline-flex", badgePop && "menu-badge-pop")}>
+              Ver pedido ({count}) · {formatMxn(itemsSubtotal)}
+            </span>
           </Button>
         </div>
       </div>
