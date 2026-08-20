@@ -28,7 +28,7 @@ export function DailyMenuHero({
   packagePrice,
   maxSides,
   photoFrame = "rounded_modern",
-  dailyMenuLabel = "Menú del día",
+  dailyMenuLabel = "Especiales de hoy",
   sidesLabel = "Guarniciones",
   dishesLabel = "Platillos",
 }: Props) {
