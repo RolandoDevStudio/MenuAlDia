@@ -523,7 +523,13 @@ export function TenantEditModal({
                           ) : null}
                         </td>
                         <td className="px-2 py-2">
-                          {p.needs_invoice ? "Sí" : "—"}
+                          {p.invoice_status === "issued"
+                            ? "Emitida"
+                            : p.invoice_status === "cancelled"
+                              ? "Cancelada"
+                              : p.invoice_status === "pending" || p.needs_invoice
+                                ? "Pendiente"
+                                : "Global"}
                         </td>
                       </tr>
                     ))}

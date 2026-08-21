@@ -61,6 +61,11 @@ export interface TenantPayment {
   created_at: string;
   receipt_url?: string | null;
   needs_invoice?: boolean;
+  invoice_status?: "global" | "pending" | "issued" | "cancelled";
+  invoice_folio?: string;
+  invoice_at?: string | null;
+  voided_at?: string | null;
+  void_reason?: string;
 }
 
 export interface AuditLog {

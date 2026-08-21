@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { BusinessType, Restaurant } from "@/lib/types";
 import type { PlanType } from "@/lib/plans";
 import { PLAN_LABELS } from "@/lib/plans";
@@ -19,9 +20,22 @@ const selectClass =
   "h-11 rounded-lg border border-black/10 bg-surface px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-brand";
 
 export default function TenantsPage() {
+  return (
+    <Suspense fallback={<p className="text-sm text-muted">Cargando…</p>}>
+      <TenantsPageInner />
+    </Suspense>
+  );
+}
+
+function TenantsPageInner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const editParam = searchParams.get("edit");
+  const qParam = searchParams.get("q") ?? "";
+
   const [rows, setRows] = useState<Restaurant[]>([]);
   const [owners, setOwners] = useState<Record<string, OwnerInfo>>({});
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(qParam);
   const [planFilter, setPlanFilter] = useState<string>("all");
   const [giroFilter, setGiroFilter] = useState<string>("all");
   const [stateFilter, setStateFilter] = useState("all");
@@ -31,6 +45,7 @@ export default function TenantsPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Restaurant | null>(null);
+  const [deepLinkHandled, setDeepLinkHandled] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
@@ -53,6 +68,22 @@ export default function TenantsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    setQ(qParam);
+  }, [qParam]);
+
+  useEffect(() => {
+    if (deepLinkHandled || !editParam || rows.length === 0) return;
+    const target =
+      rows.find((r) => r.id === editParam) ||
+      rows.find((r) => r.slug === editParam);
+    if (target) {
+      setEditing(target);
+      setDeepLinkHandled(true);
+      router.replace("/super-admin/tenants", { scroll: false });
+    }
+  }, [editParam, rows, deepLinkHandled, router]);
 
   const filtered = useMemo(() => {
     return rows.filter((r) => {

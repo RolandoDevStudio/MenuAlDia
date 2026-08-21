@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { isCurrentUserSuperAdmin } from "@/lib/restaurant";
 import { writeAuditLog, logFieldChanges } from "@/lib/audit";
+import {
+  isInvoiceStatus,
+  needsInvoiceFromStatus,
+  type InvoiceStatus,
+} from "@/lib/finance-invoice";
 
 export async function GET(request: Request) {
   if (!(await isCurrentUserSuperAdmin())) {
@@ -11,15 +16,20 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const restaurantId = searchParams.get("restaurant_id");
   const month = searchParams.get("month"); // YYYY-MM
+  const includeVoided = searchParams.get("include_voided") === "1";
 
   const supabase = await createClient();
 
   if (restaurantId) {
-    const { data, error } = await supabase
+    let query = supabase
       .from("tenant_payments")
       .select("*")
       .eq("restaurant_id", restaurantId)
       .order("paid_at", { ascending: false });
+    if (!includeVoided) {
+      query = query.is("voided_at", null);
+    }
+    const { data, error } = await query;
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
@@ -27,12 +37,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ payments: data ?? [] });
   }
 
-  // Month list for finance console
   let query = supabase
     .from("tenant_payments")
-    .select(
-      "*, restaurants ( id, name, slug, owner_name )",
-    )
+    .select("*, restaurants ( id, name, slug, owner_name )")
     .order("paid_at", { ascending: false });
 
   if (month && /^\d{4}-\d{2}$/.test(month)) {
@@ -90,6 +97,7 @@ export async function POST(request: Request) {
   const notes = body.notes?.trim() ?? "";
   const receiptUrl = body.receipt_url?.trim() || null;
   const needsInvoice = Boolean(body.needs_invoice);
+  const invoiceStatus: InvoiceStatus = needsInvoice ? "pending" : "global";
 
   if (method === "transfer" && reference.length < 4) {
     return NextResponse.json(
@@ -132,6 +140,7 @@ export async function POST(request: Request) {
       notes,
       receipt_url: receiptUrl,
       needs_invoice: needsInvoice,
+      invoice_status: invoiceStatus,
       created_by: actor?.id ?? null,
     })
     .select("*")
@@ -201,4 +210,157 @@ export async function POST(request: Request) {
     payment,
     restaurant: updated,
   });
+}
+
+export async function PATCH(request: Request) {
+  if (!(await isCurrentUserSuperAdmin())) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+
+  const body = (await request.json()) as {
+    id?: string;
+    action?: "update_invoice" | "clear_receipt" | "void";
+    invoice_status?: string;
+    invoice_folio?: string;
+    void_reason?: string;
+  };
+
+  if (!body.id || !body.action) {
+    return NextResponse.json({ error: "payload inválido" }, { status: 400 });
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user: actor },
+  } = await supabase.auth.getUser();
+
+  const { data: payment, error: loadErr } = await supabase
+    .from("tenant_payments")
+    .select("*")
+    .eq("id", body.id)
+    .maybeSingle();
+
+  if (loadErr || !payment) {
+    return NextResponse.json(
+      { error: loadErr?.message ?? "pago no encontrado" },
+      { status: loadErr ? 500 : 404 },
+    );
+  }
+
+  if (payment.voided_at && body.action !== "update_invoice") {
+    return NextResponse.json(
+      { error: "El pago ya está anulado" },
+      { status: 409 },
+    );
+  }
+
+  if (body.action === "clear_receipt") {
+    if (!payment.receipt_url) {
+      return NextResponse.json({ ok: true, payment });
+    }
+    const { data: updated, error } = await supabase
+      .from("tenant_payments")
+      .update({ receipt_url: null })
+      .eq("id", body.id)
+      .select("*")
+      .single();
+    if (error || !updated) {
+      return NextResponse.json(
+        { error: error?.message ?? "No se pudo quitar el comprobante" },
+        { status: 500 },
+      );
+    }
+    await writeAuditLog({
+      restaurantId: payment.restaurant_id,
+      actorUserId: actor?.id,
+      actorLabel: actor?.email ?? "super_admin",
+      action: "payment_update",
+      fieldName: "receipt_url",
+      oldValue: payment.receipt_url,
+      newValue: null,
+      summary: "Quitó comprobante de pago",
+    });
+    return NextResponse.json({ ok: true, payment: updated });
+  }
+
+  if (body.action === "void") {
+    if (payment.voided_at) {
+      return NextResponse.json({ ok: true, payment });
+    }
+    const reason = (body.void_reason ?? "").trim().slice(0, 500);
+    const { data: updated, error } = await supabase
+      .from("tenant_payments")
+      .update({
+        voided_at: new Date().toISOString(),
+        void_reason: reason,
+      })
+      .eq("id", body.id)
+      .select("*")
+      .single();
+    if (error || !updated) {
+      return NextResponse.json(
+        { error: error?.message ?? "No se pudo anular" },
+        { status: 500 },
+      );
+    }
+    await writeAuditLog({
+      restaurantId: payment.restaurant_id,
+      actorUserId: actor?.id,
+      actorLabel: actor?.email ?? "super_admin",
+      action: "payment_void",
+      fieldName: "voided_at",
+      oldValue: null,
+      newValue: updated.voided_at,
+      summary: `Anuló pago ${payment.amount} (no revierte vigencia; ${reason || "sin motivo"})`,
+    });
+    return NextResponse.json({ ok: true, payment: updated });
+  }
+
+  if (body.action === "update_invoice") {
+    if (!isInvoiceStatus(body.invoice_status)) {
+      return NextResponse.json(
+        { error: "estatus de factura inválido" },
+        { status: 400 },
+      );
+    }
+    const folio = (body.invoice_folio ?? "").trim().slice(0, 120);
+    const updates: Record<string, unknown> = {
+      invoice_status: body.invoice_status,
+      needs_invoice: needsInvoiceFromStatus(body.invoice_status),
+      invoice_folio: folio,
+    };
+    if (body.invoice_status === "issued") {
+      updates.invoice_at = payment.invoice_at ?? new Date().toISOString();
+    }
+    if (body.invoice_status === "global") {
+      updates.invoice_at = null;
+      updates.invoice_folio = "";
+    }
+
+    const { data: updated, error } = await supabase
+      .from("tenant_payments")
+      .update(updates)
+      .eq("id", body.id)
+      .select("*")
+      .single();
+    if (error || !updated) {
+      return NextResponse.json(
+        { error: error?.message ?? "No se pudo actualizar factura" },
+        { status: 500 },
+      );
+    }
+    await writeAuditLog({
+      restaurantId: payment.restaurant_id,
+      actorUserId: actor?.id,
+      actorLabel: actor?.email ?? "super_admin",
+      action: "payment_update",
+      fieldName: "invoice_status",
+      oldValue: payment.invoice_status ?? null,
+      newValue: body.invoice_status,
+      summary: `Factura → ${body.invoice_status}${folio ? ` (${folio})` : ""}`,
+    });
+    return NextResponse.json({ ok: true, payment: updated });
+  }
+
+  return NextResponse.json({ error: "acción desconocida" }, { status: 400 });
 }

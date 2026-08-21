@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { isCurrentUserSuperAdmin } from "@/lib/restaurant";
 import { PLAN_LABELS, type PlanType } from "@/lib/plans";
+import {
+  INVOICE_STATUS_LABELS,
+  resolveInvoiceStatus,
+} from "@/lib/finance-invoice";
 
 function csvCell(v: unknown) {
   const s = String(v ?? "");
@@ -9,7 +13,7 @@ function csvCell(v: unknown) {
   return s;
 }
 
-/** Monthly accountant export: CSV of tenant_payments. */
+/** Monthly accountant export: CSV of tenant_payments (excludes voided). */
 export async function GET(request: Request) {
   if (!(await isCurrentUserSuperAdmin())) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
@@ -33,6 +37,7 @@ export async function GET(request: Request) {
     .select("*, restaurants ( name, slug, owner_name )")
     .gte("paid_at", start)
     .lt("paid_at", end)
+    .is("voided_at", null)
     .order("paid_at", { ascending: true });
 
   if (error) {
@@ -54,6 +59,7 @@ export async function GET(request: Request) {
     "Requiere Factura",
     "RFC Cliente",
     "Estatus Factura",
+    "Folio CFDI",
     "Comprobante URL",
     "Notas",
   ].join(",");
@@ -64,9 +70,9 @@ export async function GET(request: Request) {
         | { name?: string; slug?: string; owner_name?: string }
         | null
         | undefined;
-      const needs = p.needs_invoice ? "Sí" : "No";
-      const invoiceStatus = p.needs_invoice ? "Pendiente" : "Global";
-      const rfc = p.needs_invoice ? "" : "XAXX010101000";
+      const status = resolveInvoiceStatus(p);
+      const needs = status === "global" ? "No" : "Sí";
+      const rfc = status === "global" ? "XAXX010101000" : "";
       return [
         new Date(p.paid_at).toLocaleDateString("es-MX"),
         csvCell(r?.name),
@@ -80,7 +86,8 @@ export async function GET(request: Request) {
         csvCell(p.reference),
         needs,
         rfc,
-        invoiceStatus,
+        csvCell(INVOICE_STATUS_LABELS[status]),
+        csvCell(p.invoice_folio ?? ""),
         csvCell(p.receipt_url),
         csvCell(p.notes),
       ].join(",");

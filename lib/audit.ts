@@ -11,7 +11,9 @@ export type AuditAction =
   | "plan_request"
   | "plan_approve"
   | "plan_reject"
-  | "lifecycle";
+  | "lifecycle"
+  | "payment_void"
+  | "payment_update";
 
 export async function writeAuditLog(params: {
   restaurantId: string;

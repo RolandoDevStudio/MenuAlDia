@@ -156,22 +156,17 @@ export function PlanRequestsConsole() {
         <ul className="divide-y divide-black/5 rounded-xl border border-black/5 bg-surface">
           {rows.map((r) => {
             const name = r.restaurants?.name ?? r.restaurant_id.slice(0, 8);
-            const slug = r.restaurants?.slug;
             return (
               <li key={r.id} className="space-y-2 px-4 py-3">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="font-medium">
-                      {slug ? (
-                        <Link
-                          href={`/super-admin/tenants?q=${encodeURIComponent(slug)}`}
-                          className="text-brand hover:underline"
-                        >
-                          {name}
-                        </Link>
-                      ) : (
-                        name
-                      )}
+                      <Link
+                        href={`/super-admin/tenants?edit=${encodeURIComponent(r.restaurant_id)}`}
+                        className="text-brand hover:underline"
+                      >
+                        {name}
+                      </Link>
                     </p>
                     <p className="text-xs text-muted">
                       {new Date(r.created_at).toLocaleString("es-MX")} ·{" "}
