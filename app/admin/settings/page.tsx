@@ -23,6 +23,7 @@ import { PlanRequestPanel } from "@/components/admin/plan-request-panel";
 import { SubscriptionPanel } from "@/components/admin/subscription-panel";
 import { AdminFaqsPanel } from "@/components/admin/admin-faqs-panel";
 import { DailyMenuVisibilitySwitch } from "@/components/admin/daily-menu-visibility-switch";
+import { toast } from "sonner";
 import {
   StoreHoursEditor,
   scheduleHoursFromRestaurant,
@@ -205,6 +206,7 @@ export default function SettingsPage() {
     setSaving(false);
     if (dbError) {
       setError(dbError.message);
+      toast.error(dbError.message);
       return;
     }
     await fetch("/api/revalidate", {
@@ -213,11 +215,12 @@ export default function SettingsPage() {
       body: JSON.stringify({ slug: restaurant.slug }),
     });
     setMessage("Ajustes guardados");
+    toast.success("Ajustes guardados");
     router.refresh();
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 pb-24 md:pb-8">
       <div>
         <h1 className="text-lg font-semibold">Ajustes</h1>
         <p className="text-sm text-muted">
@@ -233,218 +236,254 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <PlanRequestPanel currentPlan={restaurant.plan_type || "catalog"} />
+      <div className="md:grid md:grid-cols-[11rem_minmax(0,1fr)] md:gap-6 lg:grid-cols-[13rem_minmax(0,1fr)]">
+        <nav className="mb-2 hidden md:sticky md:top-16 md:block md:self-start">
+          <ul className="space-y-1 text-sm">
+            {(
+              [
+                ["#negocio", "Negocio"],
+                ["#horario", "Horario"],
+                ["#apariencia", "Apariencia"],
+                ["#faqs", "FAQs"],
+                ["#plan", "Plan y suscripción"],
+              ] as const
+            ).map(([href, lab]) => (
+              <li key={href}>
+                <a
+                  href={href}
+                  className="block rounded-lg px-2 py-2 text-muted hover:bg-black/[0.04] hover:text-foreground"
+                >
+                  {lab}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
 
-      <DailyMenuVisibilitySwitch
-        restaurantId={restaurant.id}
-        publicSlug={restaurant.slug}
-        planType={restaurant.plan_type || "catalog"}
-        businessType={restaurant.business_type}
-      />
-
-      <SubscriptionPanel
-        planType={(restaurant.plan_type as PlanType) || "catalog"}
-      />
-
-      <AdminFaqsPanel businessType={restaurant.business_type} />
-
-      <ThemeEditor
-        value={theme}
-        onChange={setTheme}
-        restaurantId={restaurant.id}
-      />
-
-      {normalizeBusinessType(restaurant.business_type) === "servicios" ? (
-        <div className="rounded-xl border border-black/5 bg-surface px-3 py-3 text-sm">
-          <p className="font-semibold">Citas por WhatsApp</p>
-          <p className="mt-1 text-xs text-muted">
-            Las solicitudes de cita del menú público llegan a tu WhatsApp
-            (nombre, teléfono y horario). En el catálogo marca cada servicio
-            como Agendar y/o Compra. La agenda visual completa llega en Pro
-            más adelante.
-          </p>
-        </div>
-      ) : null}
-
-      <form onSubmit={onSubmit} className="space-y-4">
-        <DishPhotoUpload
-          restaurantId={restaurant.id}
-          value={logoUrl}
-          onChange={setLogoUrl}
-          label="Logo del negocio"
-          kind="product"
-        />
-
-        {(
-          [
-            ["name", "Nombre", restaurant.name],
-            ["slogan", "Eslogan", restaurant.slogan],
-            ["phone_whatsapp", "WhatsApp (521…)", restaurant.phone_whatsapp],
-          ] as const
-        ).map(([id, label, value]) => (
-          <div key={id} className="space-y-1.5">
-            <Label htmlFor={id}>{label}</Label>
-            <Input
-              id={id}
-              name={id}
-              defaultValue={value}
-              aria-invalid={!!fieldErrors[id]}
-            />
-            {fieldErrors[id] ? (
-              <p className="text-xs text-red-600">{fieldErrors[id]}</p>
-            ) : null}
-          </div>
-        ))}
-
-        <StoreHoursEditor
-          value={scheduleHours}
-          onChange={setScheduleHours}
-          scheduleAuto={scheduleAuto}
-          onScheduleAutoChange={setScheduleAuto}
-          closedMessage={closedMessage}
-          onClosedMessageChange={setClosedMessage}
-        />
-
-        <MxLocationFields
-          state={stateCode}
-          city={city}
-          onStateChange={setStateCode}
-          onCityChange={setCity}
-          stateError={fieldErrors.state}
-          cityError={fieldErrors.city}
-        />
-
-        <div className="space-y-1.5">
-          <Label htmlFor="address">Dirección (opcional)</Label>
-          <Input
-            id="address"
-            name="address"
-            defaultValue={restaurant.address}
-            aria-invalid={!!fieldErrors.address}
-          />
-          {fieldErrors.address ? (
-            <p className="text-xs text-red-600">{fieldErrors.address}</p>
-          ) : null}
-        </div>
-
-        <div className="space-y-1.5">
-          <Label htmlFor="maps_url">Link de Google Maps (opcional)</Label>
-          <Input
-            id="maps_url"
-            name="maps_url"
-            type="url"
-            defaultValue={restaurant.maps_url ?? ""}
-            placeholder="https://maps.app.goo.gl/…"
-            aria-invalid={!!fieldErrors.maps_url}
-          />
-          <p className="text-[11px] text-muted">
-            En Maps: Compartir → Copiar enlace. Aparece como “Cómo llegar”.
-          </p>
-          {fieldErrors.maps_url ? (
-            <p className="text-xs text-red-600">{fieldErrors.maps_url}</p>
-          ) : null}
-        </div>
-
-        <div className="space-y-3 rounded-xl border border-black/5 bg-surface p-3">
-          <p className="text-sm font-semibold">Redes sociales</p>
-          {(
-            [
-              ["instagram_url", "Instagram", restaurant.instagram_url],
-              ["facebook_url", "Facebook", restaurant.facebook_url],
-              ["tiktok_url", "TikTok", restaurant.tiktok_url],
-            ] as const
-          ).map(([id, label, value]) => (
-            <div key={id} className="space-y-1.5">
-              <Label htmlFor={id}>{label}</Label>
-              <Input
-                id={id}
-                name={id}
-                type="url"
-                defaultValue={value ?? ""}
-                placeholder="https://…"
+        <div className="min-w-0 space-y-3">
+          <details open className="rounded-xl border border-black/5 bg-surface">
+            <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold marker:content-none [&::-webkit-details-marker]:hidden">
+              Negocio
+            </summary>
+            <div className="space-y-4 border-t border-black/5 px-4 pb-4 pt-3" id="negocio">
+              <DailyMenuVisibilitySwitch
+                restaurantId={restaurant.id}
+                publicSlug={restaurant.slug}
+                planType={restaurant.plan_type || "catalog"}
+                businessType={restaurant.business_type}
               />
-              {fieldErrors[id] ? (
-                <p className="text-xs text-red-600">{fieldErrors[id]}</p>
+              {normalizeBusinessType(restaurant.business_type) === "servicios" ? (
+                <div className="rounded-xl border border-black/5 bg-background/60 px-3 py-3 text-sm">
+                  <p className="font-semibold">Citas por WhatsApp</p>
+                  <p className="mt-1 text-xs text-muted">
+                    Las solicitudes de cita del menú público llegan a tu WhatsApp.
+                  </p>
+                </div>
               ) : null}
+              <form id="settings-form" onSubmit={onSubmit} className="space-y-4">
+                <DishPhotoUpload
+                  restaurantId={restaurant.id}
+                  value={logoUrl}
+                  onChange={setLogoUrl}
+                  label="Logo del negocio"
+                  kind="product"
+                />
+
+                {(
+                  [
+                    ["name", "Nombre", restaurant.name],
+                    ["slogan", "Eslogan", restaurant.slogan],
+                    ["phone_whatsapp", "WhatsApp (521…)", restaurant.phone_whatsapp],
+                  ] as const
+                ).map(([id, label, value]) => (
+                  <div key={id} className="space-y-1.5">
+                    <Label htmlFor={id}>{label}</Label>
+                    <Input
+                      id={id}
+                      name={id}
+                      defaultValue={value}
+                      aria-invalid={!!fieldErrors[id]}
+                    />
+                    {fieldErrors[id] ? (
+                      <p className="text-xs text-red-600">{fieldErrors[id]}</p>
+                    ) : null}
+                  </div>
+                ))}
+
+                <StoreHoursEditor
+                  value={scheduleHours}
+                  onChange={setScheduleHours}
+                  scheduleAuto={scheduleAuto}
+                  onScheduleAutoChange={setScheduleAuto}
+                  closedMessage={closedMessage}
+                  onClosedMessageChange={setClosedMessage}
+                />
+
+                <MxLocationFields
+                  state={stateCode}
+                  city={city}
+                  onStateChange={setStateCode}
+                  onCityChange={setCity}
+                  stateError={fieldErrors.state}
+                  cityError={fieldErrors.city}
+                />
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="address">Dirección (opcional)</Label>
+                  <Input
+                    id="address"
+                    name="address"
+                    defaultValue={restaurant.address}
+                    aria-invalid={!!fieldErrors.address}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="maps_url">Link de Google Maps (opcional)</Label>
+                  <Input
+                    id="maps_url"
+                    name="maps_url"
+                    type="url"
+                    defaultValue={restaurant.maps_url ?? ""}
+                    placeholder="https://maps.app.goo.gl/…"
+                  />
+                </div>
+
+                <div className="space-y-3 rounded-xl border border-black/5 bg-background/60 p-3">
+                  <p className="text-sm font-semibold">Redes sociales</p>
+                  {(
+                    [
+                      ["instagram_url", "Instagram", restaurant.instagram_url],
+                      ["facebook_url", "Facebook", restaurant.facebook_url],
+                      ["tiktok_url", "TikTok", restaurant.tiktok_url],
+                    ] as const
+                  ).map(([id, label, value]) => (
+                    <div key={id} className="space-y-1.5">
+                      <Label htmlFor={id}>{label}</Label>
+                      <Input
+                        id={id}
+                        name={id}
+                        type="url"
+                        defaultValue={value ?? ""}
+                        placeholder="https://…"
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex min-h-14 items-center justify-between rounded-xl border border-black/5 bg-background/60 px-3 py-3">
+                  <Label htmlFor="offers_delivery">Acepto pedidos a domicilio</Label>
+                  <Switch
+                    id="offers_delivery"
+                    checked={offersDelivery}
+                    onCheckedChange={setOffersDelivery}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="shipping_cost">Costo de envío</Label>
+                  <Input
+                    id="shipping_cost"
+                    name="shipping_cost"
+                    defaultValue={String(restaurant.shipping_cost)}
+                    inputMode="decimal"
+                    disabled={!offersDelivery}
+                  />
+                </div>
+
+                <div className="flex min-h-14 items-center justify-between rounded-xl border border-black/5 bg-background/60 px-3 py-3">
+                  <Label htmlFor="free_shipping">Envío gratis</Label>
+                  <Switch
+                    id="free_shipping"
+                    checked={freeShipping}
+                    onCheckedChange={setFreeShipping}
+                    disabled={!offersDelivery}
+                  />
+                </div>
+
+                <div className="space-y-2 rounded-xl border border-black/5 bg-background/60 p-4">
+                  <h2 className="text-sm font-semibold">Legal</h2>
+                  {restaurant.terms_version_accepted &&
+                  restaurant.terms_accepted_at ? (
+                    <p className="text-sm text-muted">
+                      Términos: Aceptados v{restaurant.terms_version_accepted}.
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted">Términos: Pendiente.</p>
+                  )}
+                  <p className="text-sm">
+                    <a
+                      href="/terminos"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-semibold text-brand underline-offset-2 hover:underline"
+                    >
+                      Ver Términos
+                    </a>
+                    {" · "}
+                    <a
+                      href="/privacidad"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-semibold text-brand underline-offset-2 hover:underline"
+                    >
+                      Ver Privacidad
+                    </a>
+                  </p>
+                </div>
+
+                {error ? <p className="text-sm text-red-600">{error}</p> : null}
+                {message ? <p className="text-sm text-accent">{message}</p> : null}
+              </form>
             </div>
-          ))}
-        </div>
+          </details>
 
-        <div className="flex min-h-14 items-center justify-between rounded-xl border border-black/5 bg-surface px-3 py-3">
-          <Label htmlFor="offers_delivery">Acepto pedidos a domicilio</Label>
-          <Switch
-            id="offers_delivery"
-            checked={offersDelivery}
-            onCheckedChange={setOffersDelivery}
-          />
-        </div>
+          <details className="rounded-xl border border-black/5 bg-surface" id="apariencia">
+            <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold marker:content-none [&::-webkit-details-marker]:hidden">
+              Apariencia
+            </summary>
+            <div className="border-t border-black/5 px-4 pb-4 pt-3">
+              <ThemeEditor
+                value={theme}
+                onChange={setTheme}
+                restaurantId={restaurant.id}
+              />
+            </div>
+          </details>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="shipping_cost">Costo de envío</Label>
-          <Input
-            id="shipping_cost"
-            name="shipping_cost"
-            defaultValue={String(restaurant.shipping_cost)}
-            inputMode="decimal"
-            disabled={!offersDelivery}
-          />
-        </div>
+          <details className="rounded-xl border border-black/5 bg-surface" id="faqs">
+            <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold marker:content-none [&::-webkit-details-marker]:hidden">
+              Preguntas frecuentes
+            </summary>
+            <div className="border-t border-black/5 px-4 pb-4 pt-3">
+              <AdminFaqsPanel businessType={restaurant.business_type} />
+            </div>
+          </details>
 
-        <div className="flex min-h-14 items-center justify-between rounded-xl border border-black/5 bg-surface px-3 py-3">
-          <Label htmlFor="free_shipping">Envío gratis</Label>
-          <Switch
-            id="free_shipping"
-            checked={freeShipping}
-            onCheckedChange={setFreeShipping}
-            disabled={!offersDelivery}
-          />
+          <details className="rounded-xl border border-black/5 bg-surface" id="plan">
+            <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold marker:content-none [&::-webkit-details-marker]:hidden">
+              Plan y suscripción
+            </summary>
+            <div className="space-y-4 border-t border-black/5 px-4 pb-4 pt-3">
+              <PlanRequestPanel currentPlan={restaurant.plan_type || "catalog"} />
+              <SubscriptionPanel
+                planType={(restaurant.plan_type as PlanType) || "catalog"}
+              />
+            </div>
+          </details>
         </div>
+      </div>
 
-        <div className="space-y-2 rounded-xl border border-black/5 bg-surface p-4">
-          <h2 className="text-sm font-semibold">Legal</h2>
-          {restaurant.terms_version_accepted &&
-          restaurant.terms_accepted_at ? (
-            <p className="text-sm text-muted">
-              Términos y Condiciones: Aceptados v
-              {restaurant.terms_version_accepted} el{" "}
-              {new Date(restaurant.terms_accepted_at).toLocaleString("es-MX", {
-                dateStyle: "long",
-                timeStyle: "short",
-              })}
-              .
-            </p>
-          ) : (
-            <p className="text-sm text-muted">
-              Términos y Condiciones: Pendiente de aceptación.
-            </p>
-          )}
-          <p className="text-sm">
-            <a
-              href="/terminos"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-semibold text-brand underline-offset-2 hover:underline"
-            >
-              Ver Términos
-            </a>
-            {" · "}
-            <a
-              href="/privacidad"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-semibold text-brand underline-offset-2 hover:underline"
-            >
-              Ver Privacidad
-            </a>
-          </p>
-        </div>
-
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
-        {message ? <p className="text-sm text-accent">{message}</p> : null}
-        <Button type="submit" className="w-full" disabled={saving}>
-          {saving ? "Guardando…" : "Guardar"}
+      <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 border-t border-black/10 bg-surface/95 px-4 py-3 backdrop-blur md:sticky md:bottom-0 md:inset-x-auto md:mx-0 md:rounded-xl md:border">
+        <Button
+          type="submit"
+          form="settings-form"
+          className="w-full min-h-11"
+          disabled={saving}
+        >
+          {saving ? "Guardando…" : "Guardar cambios"}
         </Button>
-      </form>
+      </div>
     </div>
   );
 }

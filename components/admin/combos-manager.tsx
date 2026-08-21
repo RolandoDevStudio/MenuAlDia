@@ -366,108 +366,12 @@ export function CombosManager({
         </p>
       </div>
 
-      <div className="space-y-3 rounded-2xl border border-black/5 bg-surface p-4">
-        <h2 className="text-sm font-semibold">Nuevo {comboLabel.toLowerCase()}</h2>
-        <div className="space-y-1.5">
-          <Label>Título</Label>
-          <Input
-            className="min-h-11"
-            value={title}
-            onChange={(e) => {
-              setTitle(e.target.value);
-              if (!slug) setSlug(slugifyCombo(e.target.value));
-            }}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Slug (URL)</Label>
-          <Input
-            className="min-h-11"
-            value={slug}
-            onChange={(e) => setSlug(slugifyCombo(e.target.value))}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Descripción</Label>
-          <Textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Precio paquete (opcional)</Label>
-          <Input
-            className="min-h-11"
-            inputMode="decimal"
-            value={fixedPrice}
-            onChange={(e) => setFixedPrice(e.target.value)}
-            placeholder="Vacío = suma de productos"
-          />
-        </div>
-        <DishPhotoUpload
-          restaurantId={restaurant.id}
-          value={photoUrl}
-          onChange={setPhotoUrl}
-          label="Imagen promo"
-          kind="banner"
-        />
-
-        {isServicios ? (
-          <div className="space-y-2 rounded-xl border border-black/5 bg-background/60 p-3">
-            <p className="text-xs font-semibold">Cómo lo pide el cliente</p>
-            <div className="flex min-h-11 items-center justify-between gap-3">
-              <Label htmlFor="combo-booking">Se puede agendar</Label>
-              <Switch
-                id="combo-booking"
-                checked={allowBooking}
-                onCheckedChange={setAllowBooking}
-              />
-            </div>
-            <div className="flex min-h-11 items-center justify-between gap-3">
-              <Label htmlFor="combo-purchase">Se puede comprar</Label>
-              <Switch
-                id="combo-purchase"
-                checked={allowPurchase}
-                onCheckedChange={setAllowPurchase}
-              />
-            </div>
-          </div>
-        ) : null}
-
-        <div className="space-y-2">
-          <Label>{dishesLabel}</Label>
-          {renderDishList(mains, dishesLabel)}
-        </div>
-        <div className="space-y-2">
-          <Label>
-            {sidesLabel} ({sideLabel.toLowerCase()}s incluidas)
-          </Label>
-          {renderDishList(sides, sidesLabel)}
-        </div>
-
-        {preventiveHint ? (
-          <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
-            {preventiveHint}
-          </p>
-        ) : (
-          <p className="text-xs text-muted">
-            {totalUnits} unidad{totalUnits === 1 ? "" : "es"} en el paquete.
-          </p>
-        )}
-
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
-        {message ? <p className="text-sm text-green-700">{message}</p> : null}
-        <Button
-          type="button"
-          className="min-h-11 w-full"
-          disabled={!canCreate}
-          onClick={() => void createCombo()}
-        >
-          {saving ? "Guardando…" : `Crear ${comboLabel.toLowerCase()}`}
-        </Button>
-      </div>
-
       <ul className="space-y-3">
+        {combos.length === 0 ? (
+          <li className="rounded-xl border border-dashed border-black/10 px-4 py-8 text-center text-sm text-muted">
+            Aún no hay {combosLabel.toLowerCase()}. Crea el primero abajo.
+          </li>
+        ) : null}
         {combos.map((c) => {
           const withItems = {
             ...c,
@@ -566,6 +470,111 @@ export function CombosManager({
           );
         })}
       </ul>
+
+      <details className="space-y-3 rounded-2xl border border-black/5 bg-surface p-4">
+        <summary className="cursor-pointer list-none text-sm font-semibold marker:content-none [&::-webkit-details-marker]:hidden">
+          Nuevo {comboLabel.toLowerCase()} ▸
+        </summary>
+        <div className="mt-3 space-y-3 border-t border-black/5 pt-3">
+        <div className="space-y-1.5">
+          <Label>Título</Label>
+          <Input
+            className="min-h-11"
+            value={title}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              if (!slug) setSlug(slugifyCombo(e.target.value));
+            }}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Slug (URL)</Label>
+          <Input
+            className="min-h-11"
+            value={slug}
+            onChange={(e) => setSlug(slugifyCombo(e.target.value))}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Descripción</Label>
+          <Textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Precio paquete (opcional)</Label>
+          <Input
+            className="min-h-11"
+            inputMode="decimal"
+            value={fixedPrice}
+            onChange={(e) => setFixedPrice(e.target.value)}
+            placeholder="Vacío = suma de productos"
+          />
+        </div>
+        <DishPhotoUpload
+          restaurantId={restaurant.id}
+          value={photoUrl}
+          onChange={setPhotoUrl}
+          label="Imagen promo"
+          kind="banner"
+        />
+
+        {isServicios ? (
+          <div className="space-y-2 rounded-xl border border-black/5 bg-background/60 p-3">
+            <p className="text-xs font-semibold">Cómo lo pide el cliente</p>
+            <div className="flex min-h-11 items-center justify-between gap-3">
+              <Label htmlFor="combo-booking">Se puede agendar</Label>
+              <Switch
+                id="combo-booking"
+                checked={allowBooking}
+                onCheckedChange={setAllowBooking}
+              />
+            </div>
+            <div className="flex min-h-11 items-center justify-between gap-3">
+              <Label htmlFor="combo-purchase">Se puede comprar</Label>
+              <Switch
+                id="combo-purchase"
+                checked={allowPurchase}
+                onCheckedChange={setAllowPurchase}
+              />
+            </div>
+          </div>
+        ) : null}
+
+        <div className="space-y-2">
+          <Label>{dishesLabel}</Label>
+          {renderDishList(mains, dishesLabel)}
+        </div>
+        <div className="space-y-2">
+          <Label>
+            {sidesLabel} ({sideLabel.toLowerCase()}s incluidas)
+          </Label>
+          {renderDishList(sides, sidesLabel)}
+        </div>
+
+        {preventiveHint ? (
+          <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            {preventiveHint}
+          </p>
+        ) : (
+          <p className="text-xs text-muted">
+            {totalUnits} unidad{totalUnits === 1 ? "" : "es"} en el paquete.
+          </p>
+        )}
+
+        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        {message ? <p className="text-sm text-green-700">{message}</p> : null}
+        <Button
+          type="button"
+          className="min-h-11 w-full"
+          disabled={!canCreate}
+          onClick={() => void createCombo()}
+        >
+          {saving ? "Guardando…" : `Crear ${comboLabel.toLowerCase()}`}
+        </Button>
+        </div>
+      </details>
     </div>
   );
 }

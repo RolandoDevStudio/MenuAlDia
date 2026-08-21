@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireTenantSession } from "@/lib/admin-session";
 import { FlyerStudio } from "@/components/flyer/flyer-studio";
 import { PlanGate } from "@/components/admin/plan-gate";
+import { DifusionSubnav } from "@/components/admin/difusion-subnav";
 import { can } from "@/lib/plans";
 import type { Dish } from "@/lib/types";
 
@@ -127,25 +128,31 @@ export default async function FlyerPage({ searchParams }: Props) {
 
   if (dailyDishes.length === 0 && dailySides.length === 0) {
     return (
-      <p className="text-sm text-muted">
-        Elige al menos un platillo o guarnición en Especiales de hoy para generar
-        el flyer.
-      </p>
+      <div>
+        <DifusionSubnav />
+        <p className="text-sm text-muted">
+          Elige al menos un platillo o guarnición en Especiales de hoy para generar
+          el flyer.
+        </p>
+      </div>
     );
   }
 
   return (
-    <FlyerStudio
-      restaurant={session.restaurant}
-      dishes={dailyDishes}
-      sides={dailySides}
-      packagePrice={Number(selection.package_price)}
-      fromToday={fromToday || !sp.combo}
-      sourceLabel={
-        fromToday
-          ? "Precargado desde Especiales de hoy. Ajusta solo si quieres y descarga."
-          : "Vista previa del volante con el menú del día. Descarga en alta resolución."
-      }
-    />
+    <div>
+      <DifusionSubnav />
+      <FlyerStudio
+        restaurant={session.restaurant}
+        dishes={dailyDishes}
+        sides={dailySides}
+        packagePrice={Number(selection.package_price)}
+        fromToday={fromToday || !sp.combo}
+        sourceLabel={
+          fromToday
+            ? "Precargado desde Especiales de hoy. Ajusta solo si quieres y descarga."
+            : "Vista previa del volante con el menú del día. Descarga en alta resolución."
+        }
+      />
+    </div>
   );
 }

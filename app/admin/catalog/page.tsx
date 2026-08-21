@@ -62,13 +62,19 @@ export default async function CatalogPage() {
         )}
       </div>
 
-      <CategoriesManager
-        restaurantId={session.restaurant.id}
-        restaurantSlug={session.restaurant.slug}
-        businessType={businessType}
-        planType={planType}
-      />
-
+      <details className="rounded-xl border border-black/5 bg-surface">
+        <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold marker:content-none [&::-webkit-details-marker]:hidden">
+          Categorías ▸
+        </summary>
+        <div className="border-t border-black/5 px-3 pb-3 pt-2">
+          <CategoriesManager
+            restaurantId={session.restaurant.id}
+            restaurantSlug={session.restaurant.slug}
+            businessType={businessType}
+            planType={planType}
+          />
+        </div>
+      </details>
       {atLimit ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-brand-dark">
           Alcanzaste el máximo de {limit} productos del plan Catálogo. Mejora a

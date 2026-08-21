@@ -1,18 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { Toaster } from "sonner";
 import {
-  BarChart3,
   ExternalLink,
-  History,
-  ImageIcon,
   LayoutGrid,
   LogOut,
   Megaphone,
   Package,
-  Settings,
-  ShoppingBag,
   Users,
   UtensilsCrossed,
 } from "lucide-react";
@@ -30,12 +27,16 @@ import type { BusinessType } from "@/lib/types";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { NotificationBell } from "@/components/admin/notification-bell";
 import { PwaInstallBanner } from "@/components/admin/pwa-install-banner";
+import {
+  AdminMoreMenu,
+  MoreNavButton,
+} from "@/components/admin/admin-more-menu";
 
-type NavItem = {
+type PrimaryItem = {
   href: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  feature?: "daily_menu" | "flyer" | "combos" | "crm" | "analytics";
+  match?: (pathname: string) => boolean;
 };
 
 export function AdminShell({
@@ -63,6 +64,8 @@ export function AdminShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [moreOpen, setMoreOpen] = useState(false);
+
   const subOk = isSubscriptionActive({
     is_active: isActive,
     subscription_end_date: subscriptionEndDate,
@@ -83,52 +86,99 @@ export function AdminShell({
 
   const dailyMenuLabel = label(businessType, "dailyMenu");
   const catalogLabel = label(businessType, "catalog");
-  // Bottom nav needs a short label; full dailyMenu strings are too long.
   const todayNavLabel = dailyMenuLabel.length <= 8 ? dailyMenuLabel : "Hoy";
+  const hasDaily = can(planType, "daily_menu");
+  const hasFlyer = can(planType, "flyer");
+  const hasCrm = can(planType, "crm");
+  const hasCombos = can(planType, "combos");
 
-  const links: NavItem[] = [
-    {
+  const primary: PrimaryItem[] = [];
+
+  if (hasDaily) {
+    primary.push({
       href: "/admin",
       label: todayNavLabel,
       icon: UtensilsCrossed,
-      feature: "daily_menu",
-    },
-    { href: "/admin/catalog", label: catalogLabel, icon: LayoutGrid },
-    {
+      match: (p) => p === "/admin",
+    });
+  }
+
+  primary.push({
+    href: "/admin/catalog",
+    label: catalogLabel,
+    icon: LayoutGrid,
+    match: (p) => p.startsWith("/admin/catalog"),
+  });
+
+  if (hasFlyer) {
+    primary.push({
+      href: "/admin/difusion",
+      label: "Difusión",
+      icon: Megaphone,
+      match: (p) =>
+        p.startsWith("/admin/difusion") ||
+        p.startsWith("/admin/flyer"),
+    });
+  } else if (hasCombos) {
+    primary.push({
       href: "/admin/combos",
       label: label(businessType, "combos"),
       icon: Package,
-      feature: "combos",
-    },
-    { href: "/admin/flyer", label: "Flyer", icon: ImageIcon, feature: "flyer" },
-    {
-      href: "/admin/flyers",
-      label: "Galería",
-      icon: ImageIcon,
-      feature: "flyer",
-    },
-    {
-      href: "/admin/difusion",
-      label: "Difundir",
+      match: (p) => p.startsWith("/admin/combos"),
+    });
+  } else {
+    primary.push({
+      href: "/admin/promociones",
+      label: "Promos",
       icon: Megaphone,
-      feature: "flyer",
-    },
-    { href: "/admin/orders", label: "Pedidos", icon: ShoppingBag, feature: "crm" },
-    { href: "/admin/customers", label: "Clientes PRO", icon: Users, feature: "crm" },
-    {
-      href: "/admin/analytics",
-      label: "Métricas",
-      icon: BarChart3,
-      feature: "analytics",
-    },
-    { href: "/admin/history", label: "Historial", icon: History },
-    { href: "/admin/promociones", label: "Promos", icon: Megaphone },
-    { href: "/admin/settings", label: "Ajustes", icon: Settings },
-  ];
+      match: (p) => p.startsWith("/admin/promociones"),
+    });
+  }
 
-  const visible = links.filter(
-    (l) => !l.feature || can(planType, l.feature),
-  );
+  if (hasCrm) {
+    primary.push({
+      href: "/admin/customers",
+      label: "Clientes",
+      icon: Users,
+      match: (p) => p.startsWith("/admin/customers"),
+    });
+  } else if (hasCombos && hasFlyer) {
+    primary.push({
+      href: "/admin/combos",
+      label: label(businessType, "combos"),
+      icon: Package,
+      match: (p) => p.startsWith("/admin/combos"),
+    });
+  } else if (!hasFlyer) {
+    /* already used promos/combos in slot 3 */
+  } else {
+    primary.push({
+      href: "/admin/promociones",
+      label: "Promos",
+      icon: Megaphone,
+      match: (p) => p.startsWith("/admin/promociones"),
+    });
+  }
+
+  // Cap at 4 primary + Más
+  const primarySlots = primary.slice(0, 4);
+
+  const moreActive =
+    moreOpen ||
+    [
+      "/admin/combos",
+      "/admin/orders",
+      "/admin/history",
+      "/admin/promociones",
+      "/admin/analytics",
+      "/admin/settings",
+    ].some((h) => {
+      // Don't highlight Más if that route is already a primary slot
+      if (primarySlots.some((p) => p.href === h && pathname.startsWith(h))) {
+        return false;
+      }
+      return pathname.startsWith(h);
+    });
 
   async function signOut() {
     const supabase = createClient();
@@ -138,9 +188,8 @@ export function AdminShell({
   }
 
   return (
-    <div
-      className="mx-auto flex min-h-full w-full max-w-lg flex-col pb-[calc(6rem+env(safe-area-inset-bottom))] print:max-w-none print:pb-0"
-    >
+    <div className="mx-auto flex min-h-full w-full max-w-lg flex-col pb-[calc(6rem+env(safe-area-inset-bottom))] md:max-w-2xl lg:max-w-5xl print:max-w-none print:pb-0">
+      <Toaster richColors position="top-center" closeButton />
       <header className="sticky top-0 z-20 border-b border-black/5 bg-background/95 px-4 py-3 backdrop-blur print:hidden">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
@@ -232,10 +281,9 @@ export function AdminShell({
         className="fixed bottom-0 left-0 right-0 z-30 border-t border-black/10 bg-surface/95 backdrop-blur print:hidden"
         style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
       >
-        <div className="mx-auto flex max-w-lg justify-around overflow-x-auto px-1 pt-2">
-          {visible.map(({ href, label: navLabel, icon: Icon }) => {
-            const active =
-              href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
+        <div className="mx-auto flex max-w-lg justify-around px-1 pt-2 md:max-w-2xl lg:max-w-5xl">
+          {primarySlots.map(({ href, label: navLabel, icon: Icon, match }) => {
+            const active = match ? match(pathname) : pathname.startsWith(href);
             return (
               <Link
                 key={href}
@@ -250,8 +298,19 @@ export function AdminShell({
               </Link>
             );
           })}
+          <MoreNavButton
+            active={moreActive}
+            onClick={() => setMoreOpen((v) => !v)}
+          />
         </div>
       </nav>
+      <AdminMoreMenu
+        open={moreOpen}
+        onOpenChange={setMoreOpen}
+        planType={planType}
+        businessType={businessType}
+        hideHrefs={primarySlots.map((p) => p.href)}
+      />
     </div>
   );
 }

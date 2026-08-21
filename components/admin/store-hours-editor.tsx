@@ -78,7 +78,7 @@ export function StoreHoursEditor({
   const preview = formatScheduleText(hours);
 
   return (
-    <div className="space-y-4 rounded-xl border border-black/5 bg-surface p-4">
+    <div className="space-y-4 rounded-xl border border-black/5 bg-surface p-4" id="horario">
       <div>
         <h2 className="text-sm font-semibold">Horario y apertura</h2>
         <p className="mt-1 text-xs text-muted">

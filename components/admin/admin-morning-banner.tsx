@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -126,10 +127,12 @@ export function AdminMorningBanner({
       if (json.closed_message !== undefined) {
         setCloseMsg(json.closed_message);
       }
+      toast.success(accepting ? "Negocio abierto" : "Negocio cerrado");
       await revalidatePublic();
       return true;
     } catch {
       setError("Error de red");
+      toast.error("Error de red");
       return false;
     } finally {
       setBusy(false);
@@ -175,6 +178,7 @@ export function AdminMorningBanner({
       setOverride(null);
       setOpen(Boolean(json.accepting_orders));
       setStoredAccepting(Boolean(json.accepting_orders));
+      toast.success("Siguiendo horario automático");
       await revalidatePublic();
     } finally {
       setBusy(false);

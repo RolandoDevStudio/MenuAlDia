@@ -8,9 +8,11 @@ import { ImpactCard } from "@/components/admin/impact-card";
 import { PlanGate } from "@/components/admin/plan-gate";
 import { AdminMorningBanner } from "@/components/admin/admin-morning-banner";
 import { AdminOpsKpis } from "@/components/admin/admin-ops-kpis";
+import { AdminQuickActions } from "@/components/admin/admin-quick-actions";
 import { Button } from "@/components/ui/button";
 import { can } from "@/lib/plans";
 import { labelsFor } from "@/lib/business-labels";
+import { effectiveAcceptingOrders } from "@/lib/store-hours";
 import type { Dish } from "@/lib/types";
 
 export default async function AdminDashboardPage() {
@@ -20,6 +22,7 @@ export default async function AdminDashboardPage() {
   const businessType = session.restaurant.business_type;
   const labels = labelsFor(businessType);
   const restaurantId = session.restaurant.id;
+  const isOpen = effectiveAcceptingOrders(session.restaurant);
 
   const [impact, ops] = await Promise.all([
     getAdminImpactStats(restaurantId, plan),
@@ -30,46 +33,26 @@ export default async function AdminDashboardPage() {
     ),
   ]);
 
-  const header = (
-    <>
-      <AdminMorningBanner
-        restaurantName={session.restaurant.name}
-        publicSlug={session.restaurant.slug}
-        initialAcceptingOrders={session.restaurant.accepting_orders !== false}
-        logoUrl={session.restaurant.logo_url}
-        scheduleAuto={Boolean(session.restaurant.schedule_auto)}
-        scheduleHours={session.restaurant.schedule_hours}
-        initialOverride={session.restaurant.orders_override ?? null}
-        initialClosedMessage={session.restaurant.closed_message ?? ""}
-      />
-      <AdminOpsKpis stats={ops} businessType={businessType} />
-      <div className="flex flex-wrap gap-2">
-        {can(plan, "flyer") ? (
-          <Button asChild size="sm" variant="secondary">
-            <Link href="/admin/difusion">Compartir menú en WhatsApp</Link>
-          </Button>
-        ) : (
-          <Button asChild size="sm" variant="secondary">
-            <Link href="/admin/settings">Ver mi plan</Link>
-          </Button>
-        )}
-        <Button asChild size="sm" variant="outline">
-          <Link href="/admin/catalog/new">
-            Agregar {labels.dish.toLowerCase()}
-          </Link>
-        </Button>
-        <Button asChild size="sm" variant="outline">
-          <Link href="/admin/promociones">Crear cupón del día</Link>
-        </Button>
-      </div>
-      <ImpactCard stats={impact} plan={plan} />
-    </>
+  const banner = (
+    <AdminMorningBanner
+      restaurantName={session.restaurant.name}
+      publicSlug={session.restaurant.slug}
+      initialAcceptingOrders={session.restaurant.accepting_orders !== false}
+      logoUrl={session.restaurant.logo_url}
+      scheduleAuto={Boolean(session.restaurant.schedule_auto)}
+      scheduleHours={session.restaurant.schedule_hours}
+      initialOverride={session.restaurant.orders_override ?? null}
+      initialClosedMessage={session.restaurant.closed_message ?? ""}
+    />
   );
 
   if (!can(plan, "daily_menu")) {
     return (
       <div className="space-y-4">
-        {header}
+        {banner}
+        <AdminOpsKpis stats={ops} businessType={businessType} />
+        <AdminQuickActions plan={plan} dishLabel={labels.dish} />
+        <ImpactCard stats={impact} plan={plan} />
         <PlanGate
           plan={plan}
           feature="daily_menu"
@@ -105,7 +88,7 @@ export default async function AdminDashboardPage() {
   if (!selection) {
     return (
       <div className="space-y-4">
-        {header}
+        {banner}
         <p className="text-sm text-red-600">
           No se pudo crear el {labels.dailyMenu.toLowerCase()}.
         </p>
@@ -135,27 +118,14 @@ export default async function AdminDashboardPage() {
   const mains = all.filter((d) => !d.is_side);
   const sides = all.filter((d) => d.is_side);
 
-  return (
-    <div className="space-y-4">
-      {header}
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-semibold">{labels.dailyMenu}</h1>
-          <p className="text-sm text-muted">
-            Marca las <strong>opciones</strong> de hoy. El cliente elige una y
-            (si aplica) {labels.sides.toLowerCase()}.
-          </p>
-        </div>
-        {can(plan, "flyer") ? (
-          <div className="flex shrink-0 flex-col gap-2 sm:items-end">
-            <Button asChild variant="secondary" size="sm">
-              <Link href="/admin/flyer?from=today">Generar Flyer</Link>
-            </Button>
-            <Button asChild variant="outline" size="sm">
-              <Link href="/admin/flyers">Galería</Link>
-            </Button>
-          </div>
-        ) : null}
+  const dailyBlock = (
+    <>
+      <div>
+        <h1 className="text-lg font-semibold">{labels.dailyMenu}</h1>
+        <p className="text-sm text-muted">
+          Marca las <strong>opciones</strong> de hoy. El cliente elige una y
+          (si aplica) {labels.sides.toLowerCase()}.
+        </p>
       </div>
       <DailyMenuToggles
         restaurantId={restaurantId}
@@ -173,6 +143,31 @@ export default async function AdminDashboardPage() {
         publicSlug={session.restaurant.slug}
         businessType={businessType}
       />
+    </>
+  );
+
+  return (
+    <div className="space-y-4">
+      {banner}
+
+      {!isOpen ? (
+        <div className="rounded-xl border border-stone-300 bg-stone-100 px-3 py-3 text-sm text-stone-800">
+          <p className="font-semibold">Negocio cerrado</p>
+          <p className="mt-1 text-xs text-stone-600">
+            Puedes seguir preparando el menú de hoy o de mañana. Ajusta horario
+            automático cuando quieras.
+          </p>
+          <Button asChild size="sm" variant="secondary" className="mt-2">
+            <Link href="/admin/settings#horario">Ir a horario</Link>
+          </Button>
+        </div>
+      ) : null}
+
+      {dailyBlock}
+
+      <AdminOpsKpis stats={ops} businessType={businessType} />
+      <ImpactCard stats={impact} plan={plan} />
+      <AdminQuickActions plan={plan} dishLabel={labels.dish} />
     </div>
   );
 }

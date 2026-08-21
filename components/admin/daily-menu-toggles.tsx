@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import type { BusinessType, Dish } from "@/lib/types";
 import { formatMxn } from "@/lib/money";
@@ -56,7 +57,18 @@ export function DailyMenuToggles({
   const [savingId, setSavingId] = useState<string | null>(null);
   const [savingMeta, setSavingMeta] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<"all" | "on" | "off">("all");
+
+  const q = query.trim().toLowerCase();
+  function matchesDish(dish: Dish, selected: boolean) {
+    if (q && !dish.name.toLowerCase().includes(q)) return false;
+    if (filter === "on" && !selected) return false;
+    if (filter === "off" && selected) return false;
+    return true;
+  }
+  const filteredMains = mains.filter((d) => matchesDish(d, mainIds.has(d.id)));
+  const filteredSides = sides.filter((d) => matchesDish(d, sideIds.has(d.id)));
 
   async function revalidate() {
     await fetch("/api/revalidate", {
@@ -108,10 +120,13 @@ export function DailyMenuToggles({
     setSavingId(`main-${id}`);
     try {
       await persistMains(next);
+      toast.success(on ? "Agregado al menú de hoy" : "Quitado del menú de hoy");
       router.refresh();
     } catch (e) {
       setMainIds(prev);
-      setError(e instanceof Error ? e.message : "No se pudo guardar");
+      const msg = e instanceof Error ? e.message : "No se pudo guardar";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSavingId(null);
     }
@@ -127,10 +142,13 @@ export function DailyMenuToggles({
     setSavingId(`side-${id}`);
     try {
       await persistSides(next);
+      toast.success(on ? "Guarnición activa" : "Guarnición desactivada");
       router.refresh();
     } catch (e) {
       setSideIds(prev);
-      setError(e instanceof Error ? e.message : "No se pudo guardar");
+      const msg = e instanceof Error ? e.message : "No se pudo guardar";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSavingId(null);
     }
@@ -138,7 +156,6 @@ export function DailyMenuToggles({
 
   async function saveMeta() {
     setError(null);
-    setSuccess(null);
     setSavingMeta(true);
     const supabase = createClient();
     const { error: dbError } = await supabase
@@ -155,10 +172,11 @@ export function DailyMenuToggles({
     setSavingMeta(false);
     if (dbError) {
       setError(dbError.message);
+      toast.error(dbError.message);
       return;
     }
     await revalidate();
-    setSuccess("Configuración del día guardada");
+    toast.success("Configuración del día guardada");
     router.refresh();
   }
 
@@ -188,11 +206,6 @@ export function DailyMenuToggles({
       {error ? (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
           {error}
-        </p>
-      ) : null}
-      {success ? (
-        <p className="rounded-lg bg-accent/10 px-3 py-2 text-sm text-accent" role="status">
-          {success}
         </p>
       ) : null}
 
@@ -262,6 +275,34 @@ export function DailyMenuToggles({
         <h2 className="text-sm font-semibold">
           Opciones de {labels.dishes.toLowerCase()} hoy
         </h2>
+        <div className="space-y-2">
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={`Buscar ${labels.dish.toLowerCase()}…`}
+            className="min-h-11"
+            aria-label="Buscar"
+          />
+          <div className="flex flex-wrap gap-2">
+            {(
+              [
+                ["all", "Todos"],
+                ["on", "En el menú"],
+                ["off", "Fuera"],
+              ] as const
+            ).map(([id, lab]) => (
+              <Button
+                key={id}
+                type="button"
+                size="sm"
+                variant={filter === id ? "default" : "outline"}
+                onClick={() => setFilter(id)}
+              >
+                {lab}
+              </Button>
+            ))}
+          </div>
+        </div>
         {mains.length === 0 ? (
           <div className="rounded-xl border border-dashed border-black/10 px-4 py-6 text-center">
             <p className="text-sm text-muted">
@@ -271,9 +312,11 @@ export function DailyMenuToggles({
               <Link href="/admin/catalog/new">Crear {labels.dish.toLowerCase()}</Link>
             </Button>
           </div>
+        ) : filteredMains.length === 0 ? (
+          <p className="text-sm text-muted">Sin resultados con ese filtro.</p>
         ) : (
           <ul className="space-y-2">
-            {mains.map((dish) => (
+            {filteredMains.map((dish) => (
               <li
                 key={dish.id}
                 className={cn(
@@ -310,9 +353,11 @@ export function DailyMenuToggles({
               <Link href="/admin/catalog/new">Ir al {labels.catalog.toLowerCase()}</Link>
             </Button>
           </div>
+        ) : filteredSides.length === 0 ? (
+          <p className="text-sm text-muted">Sin guarniciones con ese filtro.</p>
         ) : (
           <ul className="space-y-2">
-            {sides.map((dish) => (
+            {filteredSides.map((dish) => (
               <li
                 key={dish.id}
                 className={cn(
