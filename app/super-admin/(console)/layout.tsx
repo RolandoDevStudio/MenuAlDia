@@ -38,6 +38,12 @@ export default async function SuperAdminConsoleLayout({
             Solicitudes
           </Link>
           <Link
+            href="/super-admin/promociones"
+            className="text-muted hover:text-brand"
+          >
+            Promociones
+          </Link>
+          <Link
             href="/super-admin/templates"
             className="text-muted hover:text-brand"
             title="Semillas demo por giro × plan"

@@ -116,6 +116,7 @@ export function AdminShell({
       feature: "analytics",
     },
     { href: "/admin/history", label: "Historial", icon: History },
+    { href: "/admin/promociones", label: "Promos", icon: Megaphone },
     { href: "/admin/settings", label: "Ajustes", icon: Settings },
   ];
 

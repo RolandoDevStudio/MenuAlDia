@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { DEFAULT_SPEI_INFO, type SpeiInfo } from "@/lib/coupons";
 
 const GIROS: { id: CanonicalDemoId; label: string }[] = [
   { id: "restaurante", label: "Restaurante" },
@@ -44,6 +45,7 @@ export default function SuperAdminSettingsPage() {
   const [uploadingGiro, setUploadingGiro] = useState<CanonicalDemoId | null>(
     null,
   );
+  const [spei, setSpei] = useState<SpeiInfo>({ ...DEFAULT_SPEI_INFO });
   const fileRefs = useRef<Partial<Record<CanonicalDemoId, HTMLInputElement | null>>>(
     {},
   );
@@ -77,6 +79,12 @@ export default function SuperAdminSettingsPage() {
               ? raw.faq
               : DEFAULT_LANDING_FAQ.map((f) => ({ ...f })),
           demoPosters: raw.demoPosters ?? {},
+        });
+      }
+      if (data.spei_info && typeof data.spei_info === "object") {
+        setSpei({
+          ...DEFAULT_SPEI_INFO,
+          ...(data.spei_info as SpeiInfo),
         });
       }
     })();
@@ -128,13 +136,26 @@ export default function SuperAdminSettingsPage() {
         value: payload,
       }),
     });
+    const r3 = await fetch("/api/super-admin/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        key: "spei_info",
+        value: {
+          bank: spei.bank.trim(),
+          beneficiary: spei.beneficiary.trim(),
+          clabe: spei.clabe.trim(),
+          concept_hint: spei.concept_hint.trim(),
+        },
+      }),
+    });
     setSaving(false);
-    if (!r1.ok || !r2.ok) {
+    if (!r1.ok || !r2.ok || !r3.ok) {
       setError("No se pudo guardar (¿migración 004 aplicada?)");
       return;
     }
     setLanding(payload);
-    setMessage("CMS y precios guardados");
+    setMessage("CMS, precios y SPEI guardados");
   }
 
   function setMonthly(plan: PlanType, monthly: number) {
@@ -462,6 +483,48 @@ export default function SuperAdminSettingsPage() {
             </div>
           </div>
         ))}
+      </section>
+
+      <section className="space-y-3 rounded-2xl border border-black/5 bg-surface p-4">
+        <h2 className="text-sm font-semibold">Datos SPEI (suscripción)</h2>
+        <p className="text-xs text-muted">
+          Se muestran a tenants en Ajustes → Suscripción.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label>Banco</Label>
+            <Input
+              value={spei.bank}
+              onChange={(e) => setSpei((s) => ({ ...s, bank: e.target.value }))}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Beneficiario</Label>
+            <Input
+              value={spei.beneficiary}
+              onChange={(e) =>
+                setSpei((s) => ({ ...s, beneficiary: e.target.value }))
+              }
+            />
+          </div>
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label>CLABE</Label>
+            <Input
+              value={spei.clabe}
+              onChange={(e) => setSpei((s) => ({ ...s, clabe: e.target.value }))}
+              inputMode="numeric"
+            />
+          </div>
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label>Hint de concepto</Label>
+            <Input
+              value={spei.concept_hint}
+              onChange={(e) =>
+                setSpei((s) => ({ ...s, concept_hint: e.target.value }))
+              }
+            />
+          </div>
+        </div>
       </section>
 
       <section className="space-y-3 rounded-2xl border border-black/5 bg-surface p-4">

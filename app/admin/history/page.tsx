@@ -106,6 +106,13 @@ export default async function HistoryPage() {
                 <p className="mt-1 text-xs text-muted">
                   {new Date(p.paid_at).toLocaleString("es-MX")} ·{" "}
                   {METHOD_LABELS[p.method] ?? p.method} · {p.period_days} días
+                  {p.coupon_code
+                    ? ` · Campaña ${p.coupon_code}${
+                        Number(p.discount_amount) > 0
+                          ? ` (−${formatMxn(Number(p.discount_amount))})`
+                          : ""
+                      }`
+                    : ""}
                 </p>
                 {p.reference ? (
                   <p className="mt-1 text-xs text-muted">Ref: {p.reference}</p>

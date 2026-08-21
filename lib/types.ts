@@ -66,6 +66,9 @@ export interface TenantPayment {
   invoice_at?: string | null;
   voided_at?: string | null;
   void_reason?: string;
+  coupon_code?: string | null;
+  discount_amount?: number;
+  list_amount?: number | null;
 }
 
 export interface AuditLog {

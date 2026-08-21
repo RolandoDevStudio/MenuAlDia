@@ -32,7 +32,7 @@ export async function PATCH(request: Request) {
   if (!body.key || body.value === undefined) {
     return NextResponse.json({ error: "key and value required" }, { status: 400 });
   }
-  if (!["landing_content", "plan_prices"].includes(body.key)) {
+  if (!["landing_content", "plan_prices", "spei_info"].includes(body.key)) {
     return NextResponse.json({ error: "invalid key" }, { status: 400 });
   }
   try {

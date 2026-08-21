@@ -27,8 +27,20 @@ export function buildOrderMessage(params: {
   checkout: CheckoutFormValues;
   shipping: number;
   total: number;
+  discount?: number;
+  couponCode?: string | null;
+  subtotalBeforeDiscount?: number;
 }): string {
-  const { restaurant, items, checkout, shipping, total } = params;
+  const {
+    restaurant,
+    items,
+    checkout,
+    shipping,
+    total,
+    discount = 0,
+    couponCode,
+    subtotalBeforeDiscount,
+  } = params;
   const lines: string[] = [];
   lines.push(`🍽️ *Pedido — ${restaurant.name}*`);
   lines.push("");
@@ -82,6 +94,15 @@ export function buildOrderMessage(params: {
     lines.push(`🚚 Envío: ${formatMxn(shipping)}`);
   } else {
     lines.push("🚚 Envío: Gratis");
+  }
+  if (discount > 0 && couponCode) {
+    lines.push(
+      `🏷️ Cupón ${couponCode}: −${formatMxn(discount)}${
+        subtotalBeforeDiscount != null
+          ? ` (subtotal ${formatMxn(subtotalBeforeDiscount)})`
+          : ""
+      }`,
+    );
   }
   lines.push(`💰 *Total estimado: ${formatMxn(total)}*`);
   lines.push("");

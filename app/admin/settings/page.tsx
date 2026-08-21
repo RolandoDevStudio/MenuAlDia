@@ -20,6 +20,9 @@ import { Switch } from "@/components/ui/switch";
 import { PLAN_LABELS } from "@/lib/plans";
 import { normalizeBusinessType } from "@/lib/business-labels";
 import { PlanRequestPanel } from "@/components/admin/plan-request-panel";
+import { SubscriptionPanel } from "@/components/admin/subscription-panel";
+import { AdminFaqsPanel } from "@/components/admin/admin-faqs-panel";
+import type { PlanType } from "@/lib/plans";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -201,6 +204,12 @@ export default function SettingsPage() {
       </div>
 
       <PlanRequestPanel currentPlan={restaurant.plan_type || "catalog"} />
+
+      <SubscriptionPanel
+        planType={(restaurant.plan_type as PlanType) || "catalog"}
+      />
+
+      <AdminFaqsPanel businessType={restaurant.business_type} />
 
       <ThemeEditor
         value={theme}

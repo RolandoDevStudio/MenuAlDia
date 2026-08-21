@@ -10,6 +10,7 @@ import {
   Truck,
   ChevronDown,
   Navigation,
+  HelpCircle,
 } from "lucide-react";
 import { StorageImage } from "@/components/ui/storage-image";
 import { cn } from "@/lib/utils";
@@ -46,9 +47,11 @@ function TikTokIcon({ className }: { className?: string }) {
 export function RestaurantHeader({
   restaurant,
   placeLine,
+  hasFaqs = false,
 }: {
   restaurant: Restaurant;
-  placeLine?: string;
+  placeLine?: string | null;
+  hasFaqs?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const offersDelivery = restaurant.offers_delivery !== false;
@@ -109,7 +112,7 @@ export function RestaurantHeader({
             </p>
           ) : null}
 
-          {socials.length > 0 ? (
+          {socials.length > 0 || hasFaqs ? (
             <div className="mt-2 flex flex-wrap gap-1">
               {socials.map(({ href, label, Icon }) => (
                 <a
@@ -123,6 +126,15 @@ export function RestaurantHeader({
                   <Icon className="h-5 w-5" />
                 </a>
               ))}
+              {hasFaqs ? (
+                <a
+                  href="#faqs"
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full bg-brand/10 text-brand transition hover:bg-brand/15"
+                  aria-label="Preguntas frecuentes"
+                >
+                  <HelpCircle className="h-5 w-5" />
+                </a>
+              ) : null}
             </div>
           ) : null}
 

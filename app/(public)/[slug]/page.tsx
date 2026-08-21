@@ -18,6 +18,8 @@ import {
 } from "@/components/public/floating-cart";
 import { PoweredByMenuAlDia } from "@/components/brand/brand-logo";
 import { TryAsCustomerBanner } from "@/components/marketing/try-as-customer-banner";
+import { MenuFaqs } from "@/components/public/menu-faqs";
+import { createPublicClient } from "@/lib/supabase/public";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -143,6 +145,16 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
   const hasCombos = (data.combos?.length ?? 0) > 0;
   const menuEmpty = !hasDaily && !hasCatalog && !hasCombos;
 
+  const publicClient = createPublicClient();
+  const { data: faqRows } = await publicClient
+    .from("restaurant_faqs")
+    .select("id, question, answer")
+    .eq("restaurant_id", data.restaurant.id)
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true })
+    .limit(8);
+  const faqs = faqRows ?? [];
+
   const bgStyle =
     theme.useBackgroundImage && theme.backgroundImageUrl
       ? {
@@ -170,7 +182,11 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
           className="h-28 w-full object-cover sm:h-36"
         />
       ) : null}
-      <RestaurantHeader restaurant={data.restaurant} placeLine={place} />
+      <RestaurantHeader
+        restaurant={data.restaurant}
+        placeLine={place}
+        hasFaqs={faqs.length > 0}
+      />
       {menuEmpty ? (
         <div className="mx-auto max-w-lg px-4 py-16 text-center">
           <p className="text-lg font-semibold text-brand-dark">
@@ -205,8 +221,10 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
               initialComboSlug={sp.c ?? null}
             />
           </Suspense>
+          <MenuFaqs faqs={faqs} />
         </>
       )}
+      {menuEmpty && faqs.length > 0 ? <MenuFaqs faqs={faqs} /> : null}
       <div className="mx-auto max-w-lg px-4 pb-4 pt-2 text-center">
         <PoweredByMenuAlDia />
       </div>

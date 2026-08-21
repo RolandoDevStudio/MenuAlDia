@@ -28,6 +28,7 @@ import { LandingNav } from "@/components/marketing/landing-nav";
 import { LandingWhatsAppFab } from "@/components/marketing/landing-whatsapp-fab";
 import { ProductStage } from "@/components/marketing/product-stage";
 import { ProductShots } from "@/components/marketing/product-shots";
+import { ComparisonTable } from "@/components/marketing/comparison-table";
 import { TrustStrip } from "@/components/marketing/trust-strip";
 import { FaqSection } from "@/components/marketing/faq-section";
 import { RoiCalculator } from "@/components/marketing/roi-calculator";
@@ -281,6 +282,21 @@ export default function HomePage() {
         <div className="mt-8">
           <ProductShots />
         </div>
+      </SectionShell>
+
+      <SectionShell id="comparar" tone="plain">
+        <Reveal>
+          <h2 className="font-[family-name:var(--font-display)] text-4xl tracking-wide text-brand-dark sm:text-5xl">
+            ¿Por qué elegir Menú al Día frente a un menú común?
+          </h2>
+          <p className="mt-2 max-w-lg text-sm text-muted">
+            Compara un catálogo de pago único con una plataforma pensada para
+            que tus clientes vuelvan.
+          </p>
+        </Reveal>
+        <Reveal delayMs={80}>
+          <ComparisonTable />
+        </Reveal>
       </SectionShell>
 
       <SectionShell id="demos" tone="plain">

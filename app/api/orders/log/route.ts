@@ -65,6 +65,45 @@ export async function POST(request: Request) {
       payload: normalized,
     });
 
+    const couponCode = String(raw.coupon_code ?? "")
+      .trim()
+      .toUpperCase();
+    const discountAmt = Number(raw.discount ?? 0);
+    if (couponCode && discountAmt > 0) {
+      try {
+        const { createServiceClient } = await import("@/lib/supabase/admin");
+        const { normalizeCouponCode } = await import("@/lib/coupons");
+        const admin = createServiceClient();
+        const code = normalizeCouponCode(couponCode);
+        const { data: coupon } = await admin
+          .from("tenant_coupons")
+          .select("id, use_count, max_uses_per_customer")
+          .eq("restaurant_id", body.restaurant_id)
+          .eq("code", code)
+          .maybeSingle();
+        if (coupon) {
+          await admin
+            .from("tenant_coupons")
+            .update({ use_count: Number(coupon.use_count ?? 0) + 1 })
+            .eq("id", coupon.id);
+          const phoneDigits = (phone ?? "").replace(/\D/g, "");
+          if (
+            !coupon.max_uses_per_customer ||
+            phoneDigits.length >= 10
+          ) {
+            await admin.from("tenant_coupon_redemptions").insert({
+              coupon_id: coupon.id,
+              restaurant_id: body.restaurant_id,
+              customer_phone: phoneDigits,
+              discount_applied: discountAmt,
+            });
+          }
+        }
+      } catch {
+        /* non-fatal */
+      }
+    }
+
     if (can(plan, "crm")) {
       const name = customerName.trim() || "Cliente";
 

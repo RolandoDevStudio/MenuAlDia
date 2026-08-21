@@ -72,6 +72,8 @@ export async function POST(request: Request) {
     notes?: string;
     receipt_url?: string | null;
     needs_invoice?: boolean;
+    coupon_code?: string | null;
+    list_amount?: number | null;
   };
 
   if (!body.restaurant_id) {
@@ -98,6 +100,52 @@ export async function POST(request: Request) {
   const receiptUrl = body.receipt_url?.trim() || null;
   const needsInvoice = Boolean(body.needs_invoice);
   const invoiceStatus: InvoiceStatus = needsInvoice ? "pending" : "global";
+
+  let couponCode: string | null = null;
+  let discountAmount = 0;
+  let listAmount =
+    body.list_amount != null && Number(body.list_amount) > 0
+      ? Number(body.list_amount)
+      : null;
+  let couponId: string | null = null;
+
+  if (body.coupon_code) {
+    const { normalizeCouponCode, clampDiscount } = await import(
+      "@/lib/coupons"
+    );
+    const { createServiceClient } = await import("@/lib/supabase/admin");
+    const code = normalizeCouponCode(body.coupon_code);
+    try {
+      const admin = createServiceClient();
+      const { data: coupon } = await admin
+        .from("platform_coupons")
+        .select("*")
+        .eq("code", code)
+        .maybeSingle();
+      if (
+        coupon?.is_active &&
+        !(
+          coupon.max_redemptions != null &&
+          Number(coupon.redemption_count) >= Number(coupon.max_redemptions)
+        ) &&
+        !(coupon.ends_at && new Date(coupon.ends_at).getTime() < Date.now()) &&
+        !(coupon.starts_at && new Date(coupon.starts_at).getTime() > Date.now()) &&
+        (coupon.plan_scope === "all" || coupon.plan_scope === planType)
+      ) {
+        const base = listAmount ?? amount;
+        discountAmount = clampDiscount({
+          type: coupon.discount_type,
+          value: Number(coupon.discount_value),
+          base,
+        });
+        listAmount = base;
+        couponCode = code;
+        couponId = coupon.id;
+      }
+    } catch {
+      /* ignore coupon if service missing */
+    }
+  }
 
   if (method === "transfer" && reference.length < 4) {
     return NextResponse.json(
@@ -142,6 +190,9 @@ export async function POST(request: Request) {
       needs_invoice: needsInvoice,
       invoice_status: invoiceStatus,
       created_by: actor?.id ?? null,
+      coupon_code: couponCode,
+      discount_amount: discountAmount,
+      list_amount: listAmount,
     })
     .select("*")
     .single();
@@ -151,6 +202,33 @@ export async function POST(request: Request) {
       { error: payErr?.message ?? "payment insert failed" },
       { status: 500 },
     );
+  }
+
+  if (couponId && couponCode) {
+    try {
+      const { createServiceClient } = await import("@/lib/supabase/admin");
+      const admin = createServiceClient();
+      await admin.from("platform_coupon_redemptions").insert({
+        coupon_id: couponId,
+        restaurant_id: body.restaurant_id,
+        payment_id: payment.id,
+        discount_applied: discountAmount,
+      });
+      const { data: cRow } = await admin
+        .from("platform_coupons")
+        .select("redemption_count")
+        .eq("id", couponId)
+        .maybeSingle();
+      await admin
+        .from("platform_coupons")
+        .update({
+          redemption_count: Number(cRow?.redemption_count ?? 0) + 1,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", couponId);
+    } catch {
+      /* non-fatal */
+    }
   }
 
   const now = Date.now();
@@ -193,7 +271,9 @@ export async function POST(request: Request) {
     fieldName: "amount",
     oldValue: null,
     newValue: String(amount),
-    summary: `Registró pago ${amount} (${method}, SPEI:${reference || "—"}, ${periodDays} días)`,
+    summary: `Registró pago ${amount} (${method}, SPEI:${reference || "—"}, ${periodDays} días${
+      couponCode ? `, Campaña ${couponCode}` : ""
+    })`,
   });
 
   await logFieldChanges({

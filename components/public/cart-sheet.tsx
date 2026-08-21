@@ -75,6 +75,10 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [citaOpen, setCitaOpen] = useState(false);
+  const [couponInput, setCouponInput] = useState("");
+  const [couponCode, setCouponCode] = useState<string | null>(null);
+  const [couponDiscount, setCouponDiscount] = useState(0);
+  const [couponHint, setCouponHint] = useState<string | null>(null);
 
   const offersDelivery = restaurant.offers_delivery !== false;
   const isServicios =
@@ -125,6 +129,10 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
       setStep("review");
       setError(null);
       setFulfillment(offersDelivery ? "delivery" : "pickup");
+      setCouponInput("");
+      setCouponCode(null);
+      setCouponDiscount(0);
+      setCouponHint(null);
     }
   }, [open, offersDelivery]);
 
@@ -134,7 +142,40 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
 
   const subtotal = step === "checkout" ? purchaseSubtotal : allSubtotal;
   const effectiveShipping = fulfillment === "pickup" ? 0 : shipping;
-  const total = subtotal + effectiveShipping;
+  const discount =
+    step === "checkout" && couponCode ? couponDiscount : 0;
+  const total = Math.max(0, subtotal - discount) + effectiveShipping;
+
+  async function applyCoupon() {
+    setCouponHint(null);
+    const code = couponInput.trim();
+    if (!code) return;
+    const res = await fetch("/api/public/coupons/validate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        restaurant_id: restaurant.id,
+        code,
+        subtotal: purchaseSubtotal,
+      }),
+    });
+    const json = (await res.json()) as {
+      ok?: boolean;
+      code?: string;
+      discount?: number;
+      message?: string;
+      error?: string;
+    };
+    if (!res.ok) {
+      setCouponCode(null);
+      setCouponDiscount(0);
+      setCouponHint(json.message ?? json.error ?? "Cupón no válido");
+      return;
+    }
+    setCouponCode(json.code ?? code.toUpperCase());
+    setCouponDiscount(Number(json.discount ?? 0));
+    setCouponHint(null);
+  }
 
   function openWhatsApp(url: string) {
     const isMobile =
@@ -175,12 +216,16 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
     }
 
     setSending(true);
+    const discountedSub = Math.max(0, purchaseSubtotal - discount);
     const message = buildOrderMessage({
       restaurant,
       items: orderItems,
       checkout: parsed.data,
       shipping: effectiveShipping,
-      total,
+      total: discountedSub + effectiveShipping,
+      discount,
+      couponCode,
+      subtotalBeforeDiscount: purchaseSubtotal,
     });
 
     void fetch("/api/orders/log", {
@@ -196,7 +241,9 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
           items: orderItems,
           subtotal: purchaseSubtotal,
           shipping: effectiveShipping,
-          total: purchaseSubtotal + effectiveShipping,
+          total: discountedSub + effectiveShipping,
+          coupon_code: couponCode,
+          discount,
         },
       }),
     });
@@ -374,6 +421,12 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
                 <span>Subtotal</span>
                 <span>{formatMxn(subtotal)}</span>
               </div>
+              {discount > 0 ? (
+                <div className="flex justify-between text-muted">
+                  <span>Cupón {couponCode}</span>
+                  <span>−{formatMxn(discount)}</span>
+                </div>
+              ) : null}
               <div className="flex justify-between text-muted">
                 <span>Envío</span>
                 <span>
@@ -388,6 +441,28 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
                 <span>Total</span>
                 <span>{formatMxn(total)}</span>
               </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="cart_coupon">¿Tienes un código de descuento?</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="cart_coupon"
+                  value={couponInput}
+                  onChange={(e) => setCouponInput(e.target.value)}
+                  placeholder="CUMPLE10"
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => void applyCoupon()}
+                >
+                  Aplicar
+                </Button>
+              </div>
+              {couponHint ? (
+                <p className="text-xs text-amber-800">{couponHint}</p>
+              ) : null}
             </div>
 
             {offersDelivery ? (
