@@ -23,6 +23,10 @@ import { FlyerPromoBanner } from "@/components/public/flyer-promo-banner";
 import { MenuViewBeacon } from "@/components/public/menu-view-beacon";
 import { StoreClosedBanner } from "@/components/public/store-closed-banner";
 import { createPublicClient } from "@/lib/supabase/public";
+import {
+  effectiveAcceptingOrders,
+  publicClosedMessage,
+} from "@/lib/store-hours";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -181,7 +185,8 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
       />
       <TryAsCustomerBanner slug={slug} />
       <StoreClosedBanner
-        acceptingOrders={data.restaurant.accepting_orders !== false}
+        acceptingOrders={effectiveAcceptingOrders(data.restaurant)}
+        message={publicClosedMessage(data.restaurant.closed_message)}
       />
       <MenuViewBeacon restaurantId={data.restaurant.id} />
       <Suspense fallback={null}>

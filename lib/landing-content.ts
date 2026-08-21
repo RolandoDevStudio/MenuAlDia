@@ -17,6 +17,83 @@ export type LandingDemoPosters = Partial<
   Record<CanonicalDemoId, string>
 >;
 
+export const COMPARISON_ROW_IDS = [
+  "control",
+  "attraction",
+  "retention",
+  "value",
+] as const;
+
+export type ComparisonRowId = (typeof COMPARISON_ROW_IDS)[number];
+
+export type ComparisonImageSlot =
+  `${ComparisonRowId}_${"problem" | "solution"}`;
+
+export const COMPARISON_IMAGE_SLOTS: ComparisonImageSlot[] = [
+  "control_problem",
+  "control_solution",
+  "attraction_problem",
+  "attraction_solution",
+  "retention_problem",
+  "retention_solution",
+  "value_problem",
+  "value_solution",
+];
+
+export type LandingComparisonImages = Partial<
+  Record<ComparisonImageSlot, string>
+>;
+
+export type ComparisonRowContent = {
+  id: ComparisonRowId;
+  problemTitle: string;
+  problemBody: string;
+  solutionTitle: string;
+  solutionBody: string;
+  /** Default SVG under /marketing/compare/ when CMS vacío */
+  defaultProblemArt: string;
+  defaultSolutionArt: string;
+};
+
+export const DEFAULT_COMPARISON_ROWS: ComparisonRowContent[] = [
+  {
+    id: "control",
+    problemTitle: "Actualización pasiva",
+    problemBody: "Dependes de terceros; el menú termina abandonado.",
+    solutionTitle: "Autonomía total",
+    solutionBody: "Panel propio, PWA y cambio al instante en 1 clic.",
+    defaultProblemArt: "/marketing/compare/control-problem.svg",
+    defaultSolutionArt: "/marketing/compare/control-solution.svg",
+  },
+  {
+    id: "attraction",
+    problemTitle: "Catálogo estático",
+    problemBody: "Esperas que alguien escanee el QR por casualidad.",
+    solutionTitle: "Atracción activa",
+    solutionBody: "Flyers diarios, Cita Express y mapa local.",
+    defaultProblemArt: "/marketing/compare/attraction-problem.svg",
+    defaultSolutionArt: "/marketing/compare/attraction-solution.svg",
+  },
+  {
+    id: "retention",
+    problemTitle: "Nula retención",
+    problemBody: "Sin datos del cliente, sin seguimiento.",
+    solutionTitle: "CRM completo",
+    solutionBody: "Historial, recurrencia y base para fidelizar.",
+    defaultProblemArt: "/marketing/compare/retention-problem.svg",
+    defaultSolutionArt: "/marketing/compare/retention-solution.svg",
+  },
+  {
+    id: "value",
+    problemTitle: "Te dejan solo",
+    problemBody: "Pago único: te entregan el menú y adiós.",
+    solutionTitle: "Ventas y fidelización",
+    solutionBody: "Te ayudamos a que tus clientes vuelvan cada semana.",
+    defaultProblemArt: "/marketing/compare/value-problem.svg",
+    defaultSolutionArt: "/marketing/compare/value-solution.svg",
+  },
+];
+
 export type LandingContent = {
   heroTitle: string;
   heroSubtitle: string;
@@ -25,6 +102,7 @@ export type LandingContent = {
   testimonials: LandingTestimonial[];
   faq: LandingFaqItem[];
   demoPosters: LandingDemoPosters;
+  comparisonImages: LandingComparisonImages;
 };
 
 export const DEFAULT_LANDING_FAQ: LandingFaqItem[] = [
@@ -57,6 +135,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
   testimonials: [],
   faq: DEFAULT_LANDING_FAQ,
   demoPosters: {},
+  comparisonImages: {},
 };
 
 function asString(value: unknown): string {
@@ -112,9 +191,24 @@ function parseDemoPosters(raw: unknown): LandingDemoPosters {
   return posters;
 }
 
+function parseComparisonImages(raw: unknown): LandingComparisonImages {
+  if (!raw || typeof raw !== "object") return {};
+  const row = raw as Record<string, unknown>;
+  const out: LandingComparisonImages = {};
+  for (const slot of COMPARISON_IMAGE_SLOTS) {
+    const url = asString(row[slot]);
+    if (url) out[slot] = url;
+  }
+  return out;
+}
+
 export function parseLandingContent(raw: unknown): LandingContent {
   if (!raw || typeof raw !== "object") {
-    return { ...DEFAULT_LANDING_CONTENT, faq: [...DEFAULT_LANDING_FAQ] };
+    return {
+      ...DEFAULT_LANDING_CONTENT,
+      faq: [...DEFAULT_LANDING_FAQ],
+      comparisonImages: {},
+    };
   }
   const row = raw as Record<string, unknown>;
   return {
@@ -129,6 +223,7 @@ export function parseLandingContent(raw: unknown): LandingContent {
     testimonials: parseTestimonials(row.testimonials),
     faq: parseFaq(row.faq),
     demoPosters: parseDemoPosters(row.demoPosters),
+    comparisonImages: parseComparisonImages(row.comparisonImages),
   };
 }
 
@@ -145,6 +240,7 @@ export async function getLandingContent(): Promise<LandingContent> {
     return {
       ...DEFAULT_LANDING_CONTENT,
       faq: [...DEFAULT_LANDING_FAQ],
+      comparisonImages: {},
     };
   }
 }

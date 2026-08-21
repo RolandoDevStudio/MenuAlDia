@@ -23,6 +23,15 @@ import { PlanRequestPanel } from "@/components/admin/plan-request-panel";
 import { SubscriptionPanel } from "@/components/admin/subscription-panel";
 import { AdminFaqsPanel } from "@/components/admin/admin-faqs-panel";
 import { DailyMenuVisibilitySwitch } from "@/components/admin/daily-menu-visibility-switch";
+import {
+  StoreHoursEditor,
+  scheduleHoursFromRestaurant,
+} from "@/components/admin/store-hours-editor";
+import {
+  effectiveAcceptingOrders,
+  formatScheduleText,
+  type ScheduleHours,
+} from "@/lib/store-hours";
 import type { PlanType } from "@/lib/plans";
 
 export default function SettingsPage() {
@@ -34,6 +43,9 @@ export default function SettingsPage() {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [city, setCity] = useState("");
   const [stateCode, setStateCode] = useState("");
+  const [scheduleHours, setScheduleHours] = useState<ScheduleHours>({});
+  const [scheduleAuto, setScheduleAuto] = useState(false);
+  const [closedMessage, setClosedMessage] = useState("");
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -97,6 +109,9 @@ export default function SettingsPage() {
     setLogoUrl(r.logo_url);
     setCity(r.city ?? "");
     setStateCode(normalizeLegacyState(r.state) || r.state || "");
+    setScheduleHours(scheduleHoursFromRestaurant(r.schedule_hours));
+    setScheduleAuto(Boolean(r.schedule_auto));
+    setClosedMessage(r.closed_message ?? "");
     setLoading(false);
   }, [router]);
 
@@ -129,6 +144,7 @@ export default function SettingsPage() {
     setMessage(null);
     setFieldErrors({});
     const fd = new FormData(e.currentTarget);
+    const scheduleText = formatScheduleText(scheduleHours);
     const parsed = restaurantSettingsSchema.safeParse({
       name: fd.get("name"),
       slogan: fd.get("slogan"),
@@ -137,7 +153,7 @@ export default function SettingsPage() {
       maps_url: fd.get("maps_url") || "",
       city,
       state: stateCode,
-      schedule_text: fd.get("schedule_text"),
+      schedule_text: scheduleText,
       shipping_cost: fd.get("shipping_cost"),
       free_shipping: freeShipping,
       offers_delivery: offersDelivery,
@@ -160,6 +176,12 @@ export default function SettingsPage() {
       setSaving(false);
       return;
     }
+    const accepting = effectiveAcceptingOrders({
+      accepting_orders: restaurant.accepting_orders,
+      schedule_auto: scheduleAuto,
+      schedule_hours: scheduleHours,
+      orders_override: scheduleAuto ? restaurant.orders_override ?? null : null,
+    });
     const supabase = createClient();
     const { error: dbError } = await supabase
       .from("restaurants")
@@ -171,6 +193,13 @@ export default function SettingsPage() {
         facebook_url: parsed.data.facebook_url || null,
         tiktok_url: parsed.data.tiktok_url || null,
         theme_config: theme,
+        schedule_hours: scheduleHours,
+        schedule_auto: scheduleAuto,
+        closed_message: closedMessage.trim().slice(0, 160),
+        accepting_orders: accepting,
+        orders_override: scheduleAuto
+          ? restaurant.orders_override ?? null
+          : null,
       })
       .eq("id", restaurant.id);
     setSaving(false);
@@ -251,7 +280,6 @@ export default function SettingsPage() {
             ["name", "Nombre", restaurant.name],
             ["slogan", "Eslogan", restaurant.slogan],
             ["phone_whatsapp", "WhatsApp (521…)", restaurant.phone_whatsapp],
-            ["schedule_text", "Horario", restaurant.schedule_text],
           ] as const
         ).map(([id, label, value]) => (
           <div key={id} className="space-y-1.5">
@@ -267,6 +295,15 @@ export default function SettingsPage() {
             ) : null}
           </div>
         ))}
+
+        <StoreHoursEditor
+          value={scheduleHours}
+          onChange={setScheduleHours}
+          scheduleAuto={scheduleAuto}
+          onScheduleAutoChange={setScheduleAuto}
+          closedMessage={closedMessage}
+          onClosedMessageChange={setClosedMessage}
+        />
 
         <MxLocationFields
           state={stateCode}

@@ -38,6 +38,14 @@ export interface Restaurant {
   offers_delivery?: boolean;
   /** Day-open: accepting orders (independent of subscription is_active) */
   accepting_orders?: boolean;
+  /** Structured weekly hours (0=Sun…6=Sat) */
+  schedule_hours?: import("@/lib/store-hours").ScheduleHours | Record<string, unknown>;
+  /** Follow schedule_hours unless orders_override is set */
+  schedule_auto?: boolean;
+  /** Optional public message while closed */
+  closed_message?: string;
+  /** Manual override over schedule_auto */
+  orders_override?: "force_open" | "force_closed" | null;
   terms_version_accepted?: string | null;
   terms_accepted_at?: string | null;
   loyalty_goal?: number;

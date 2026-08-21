@@ -84,7 +84,16 @@ export async function POST(request: Request) {
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const duplicate =
+      error.code === "23505" || /duplicate|unique/i.test(error.message);
+    return NextResponse.json(
+      {
+        error: duplicate
+          ? "Ese código ya existe. Elimínalo primero para reutilizarlo."
+          : error.message,
+      },
+      { status: duplicate ? 400 : 500 },
+    );
   }
   return NextResponse.json({ coupon: data });
 }

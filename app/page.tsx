@@ -28,7 +28,7 @@ import { LandingNav } from "@/components/marketing/landing-nav";
 import { LandingWhatsAppFab } from "@/components/marketing/landing-whatsapp-fab";
 import { ProductStage } from "@/components/marketing/product-stage";
 import { ProductShots } from "@/components/marketing/product-shots";
-import { ComparisonTable } from "@/components/marketing/comparison-table";
+import { ComparisonCards } from "@/components/marketing/comparison-cards";
 import { TrustStrip } from "@/components/marketing/trust-strip";
 import { FaqSection } from "@/components/marketing/faq-section";
 import { RoiCalculator } from "@/components/marketing/roi-calculator";
@@ -168,6 +168,7 @@ export default function HomePage() {
             ? data.testimonials
             : [],
           demoPosters: data.demoPosters ?? {},
+          comparisonImages: data.comparisonImages ?? {},
         });
       }
     })();
@@ -295,7 +296,7 @@ export default function HomePage() {
           </p>
         </Reveal>
         <Reveal delayMs={80}>
-          <ComparisonTable />
+          <ComparisonCards images={landing.comparisonImages} />
         </Reveal>
       </SectionShell>
 

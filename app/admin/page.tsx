@@ -30,15 +30,17 @@ export default async function AdminDashboardPage() {
     ),
   ]);
 
-  const acceptingOrders = session.restaurant.accepting_orders !== false;
-
   const header = (
     <>
       <AdminMorningBanner
-        restaurantId={restaurantId}
         restaurantName={session.restaurant.name}
         publicSlug={session.restaurant.slug}
-        initialAcceptingOrders={acceptingOrders}
+        initialAcceptingOrders={session.restaurant.accepting_orders !== false}
+        logoUrl={session.restaurant.logo_url}
+        scheduleAuto={Boolean(session.restaurant.schedule_auto)}
+        scheduleHours={session.restaurant.schedule_hours}
+        initialOverride={session.restaurant.orders_override ?? null}
+        initialClosedMessage={session.restaurant.closed_message ?? ""}
       />
       <AdminOpsKpis stats={ops} businessType={businessType} />
       <div className="flex flex-wrap gap-2">

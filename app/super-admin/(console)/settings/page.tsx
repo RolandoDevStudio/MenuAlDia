@@ -7,8 +7,11 @@ import {
   type PlanType,
 } from "@/lib/plans";
 import {
+  COMPARISON_IMAGE_SLOTS,
+  DEFAULT_COMPARISON_ROWS,
   DEFAULT_LANDING_CONTENT,
   DEFAULT_LANDING_FAQ,
+  type ComparisonImageSlot,
   type LandingContent,
   type LandingFaqItem,
   type LandingTestimonial,
@@ -27,6 +30,17 @@ const GIROS: { id: CanonicalDemoId; label: string }[] = [
   { id: "tienda", label: "Tienda" },
 ];
 
+const COMPARE_LABELS: Record<ComparisonImageSlot, string> = {
+  control_problem: "Control · problema",
+  control_solution: "Control · solución",
+  attraction_problem: "Atracción · problema",
+  attraction_solution: "Atracción · solución",
+  retention_problem: "Retención · problema",
+  retention_solution: "Retención · solución",
+  value_problem: "Valor · problema",
+  value_solution: "Valor · solución",
+};
+
 function emptyTestimonial(): LandingTestimonial {
   return { quote: "", author: "", role: "", initial: "" };
 }
@@ -38,6 +52,7 @@ export default function SuperAdminSettingsPage() {
     faq: DEFAULT_LANDING_FAQ.map((f) => ({ ...f })),
     testimonials: [],
     demoPosters: {},
+    comparisonImages: {},
   });
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -45,10 +60,16 @@ export default function SuperAdminSettingsPage() {
   const [uploadingGiro, setUploadingGiro] = useState<CanonicalDemoId | null>(
     null,
   );
+  const [uploadingSlot, setUploadingSlot] = useState<ComparisonImageSlot | null>(
+    null,
+  );
   const [spei, setSpei] = useState<SpeiInfo>({ ...DEFAULT_SPEI_INFO });
   const fileRefs = useRef<Partial<Record<CanonicalDemoId, HTMLInputElement | null>>>(
     {},
   );
+  const compareFileRefs = useRef<
+    Partial<Record<ComparisonImageSlot, HTMLInputElement | null>>
+  >({});
 
   useEffect(() => {
     void (async () => {
@@ -79,6 +100,7 @@ export default function SuperAdminSettingsPage() {
               ? raw.faq
               : DEFAULT_LANDING_FAQ.map((f) => ({ ...f })),
           demoPosters: raw.demoPosters ?? {},
+          comparisonImages: raw.comparisonImages ?? {},
         });
       }
       if (data.spei_info && typeof data.spei_info === "object") {
@@ -121,6 +143,12 @@ export default function SuperAdminSettingsPage() {
         servicios: landing.demoPosters.servicios?.trim() || undefined,
         tienda: landing.demoPosters.tienda?.trim() || undefined,
       },
+      comparisonImages: Object.fromEntries(
+        COMPARISON_IMAGE_SLOTS.map((slot) => {
+          const url = landing.comparisonImages[slot]?.trim();
+          return url ? [slot, url] : null;
+        }).filter(Boolean) as [ComparisonImageSlot, string][],
+      ),
     };
 
     const r1 = await fetch("/api/super-admin/settings", {
@@ -231,6 +259,56 @@ export default function SuperAdminSettingsPage() {
       });
     }
     setMessage(`Captura ${giro} quitada — recuerda Guardar`);
+  }
+
+  async function uploadCompare(slot: ComparisonImageSlot, file: File | null) {
+    if (!file) return;
+    setUploadingSlot(slot);
+    setError(null);
+    try {
+      const compressed = await compressImage(file, "banner");
+      const previousUrl = landing.comparisonImages[slot] ?? "";
+      const form = new FormData();
+      form.set("slot", slot);
+      form.set("file", compressed);
+      if (previousUrl) form.set("previousUrl", previousUrl);
+      const res = await fetch("/api/super-admin/marketing-upload", {
+        method: "POST",
+        body: form,
+      });
+      setUploadingSlot(null);
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        setError(data.error ?? "No se pudo subir la ilustración");
+        return;
+      }
+      const data = (await res.json()) as { url: string };
+      setLanding((prev) => ({
+        ...prev,
+        comparisonImages: { ...prev.comparisonImages, [slot]: data.url },
+      }));
+      setMessage(`${COMPARE_LABELS[slot]} subida — recuerda Guardar`);
+    } catch (e) {
+      setUploadingSlot(null);
+      setError(e instanceof Error ? e.message : "Error al comprimir");
+    }
+  }
+
+  function clearCompare(slot: ComparisonImageSlot) {
+    const previousUrl = landing.comparisonImages[slot];
+    setLanding((p) => {
+      const next = { ...p.comparisonImages };
+      delete next[slot];
+      return { ...p, comparisonImages: next };
+    });
+    if (previousUrl) {
+      void fetch("/api/super-admin/marketing-upload", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: previousUrl }),
+      });
+    }
+    setMessage(`${COMPARE_LABELS[slot]} quitada — recuerda Guardar`);
   }
 
   return (
@@ -413,6 +491,85 @@ export default function SuperAdminSettingsPage() {
         >
           Añadir pregunta
         </Button>
+      </section>
+
+      <section className="space-y-3 rounded-2xl border border-black/5 bg-surface p-4">
+        <h2 className="text-sm font-semibold">Comparación (ilustraciones)</h2>
+        <p className="text-xs text-muted">
+          Opcional. Si no hay URL, la landing usa los SVG por defecto. Sube
+          recortes WebP de tu arte (problema / solución por fila).
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {COMPARISON_IMAGE_SLOTS.map((slot) => {
+            const url = landing.comparisonImages[slot];
+            const row = DEFAULT_COMPARISON_ROWS.find((r) =>
+              slot.startsWith(r.id),
+            );
+            const fallback = slot.endsWith("problem")
+              ? row?.defaultProblemArt
+              : row?.defaultSolutionArt;
+            return (
+              <div
+                key={slot}
+                className="space-y-2 rounded-xl border border-black/5 bg-white/80 p-3"
+              >
+                <Label>{COMPARE_LABELS[slot]}</Label>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={url || fallback}
+                  alt=""
+                  className="h-24 w-full rounded-lg object-cover"
+                />
+                <Input
+                  className="min-h-11"
+                  placeholder="https://…webp"
+                  value={url ?? ""}
+                  onChange={(e) =>
+                    setLanding((p) => ({
+                      ...p,
+                      comparisonImages: {
+                        ...p.comparisonImages,
+                        [slot]: e.target.value,
+                      },
+                    }))
+                  }
+                />
+                <input
+                  ref={(el) => {
+                    compareFileRefs.current[slot] = el;
+                  }}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="sr-only"
+                  onChange={(e) =>
+                    void uploadCompare(slot, e.target.files?.[0] ?? null)
+                  }
+                />
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="min-h-11"
+                    disabled={uploadingSlot === slot}
+                    onClick={() => compareFileRefs.current[slot]?.click()}
+                  >
+                    {uploadingSlot === slot ? "Subiendo…" : "Subir"}
+                  </Button>
+                  {url ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="min-h-11"
+                      onClick={() => clearCompare(slot)}
+                    >
+                      Quitar
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </section>
 
       <section className="space-y-3 rounded-2xl border border-black/5 bg-surface p-4">

@@ -27,6 +27,11 @@ function normalizeRestaurant(raw: Restaurant): Restaurant {
   r.facebook_url = r.facebook_url ?? null;
   r.tiktok_url = r.tiktok_url ?? null;
   r.offers_delivery = r.offers_delivery ?? true;
+  r.accepting_orders = r.accepting_orders ?? true;
+  r.schedule_auto = r.schedule_auto ?? false;
+  r.closed_message = r.closed_message ?? "";
+  r.orders_override = r.orders_override ?? null;
+  r.schedule_hours = r.schedule_hours ?? {};
   r.terms_version_accepted = r.terms_version_accepted ?? null;
   r.terms_accepted_at = r.terms_accepted_at ?? null;
   r.loyalty_goal = r.loyalty_goal ?? 10;
@@ -104,7 +109,7 @@ async function fetchPublicMenuBySlug(
   const { data: restaurant, error: restaurantError } = await supabase
     .from("restaurants")
     .select(
-      "id, slug, name, slogan, logo_url, phone_whatsapp, address, maps_url, city, state, schedule_text, shipping_cost, free_shipping, created_at, plan_type, is_active, subscription_end_date, theme_config, business_type, owner_name, instagram_url, facebook_url, tiktok_url, offers_delivery, accepting_orders",
+      "id, slug, name, slogan, logo_url, phone_whatsapp, address, maps_url, city, state, schedule_text, shipping_cost, free_shipping, created_at, plan_type, is_active, subscription_end_date, theme_config, business_type, owner_name, instagram_url, facebook_url, tiktok_url, offers_delivery, accepting_orders, schedule_hours, schedule_auto, closed_message, orders_override",
     )
     .eq("slug", slug)
     .maybeSingle();

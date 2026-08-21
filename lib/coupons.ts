@@ -26,30 +26,50 @@ export function missingMinSubtotalMessage(missing: number): string {
   return `Agrega ${formatMxn(m)} más a tu carrito para activar este cupón`;
 }
 
+/** Normalize Intl offset labels (e.g. "GMT-6", "GMT-06:00") → "+HH:MM"/"-HH:MM". */
+function mexicoCityOffsetIso(ymd: string): string {
+  const probe = new Date(`${ymd}T12:00:00.000Z`);
+  let raw = "";
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Mexico_City",
+      timeZoneName: "longOffset",
+    }).formatToParts(probe);
+    raw = parts.find((p) => p.type === "timeZoneName")?.value ?? "";
+  } catch {
+    raw = "";
+  }
+  if (!raw) {
+    try {
+      const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/Mexico_City",
+        timeZoneName: "shortOffset",
+      }).formatToParts(probe);
+      raw = parts.find((p) => p.type === "timeZoneName")?.value ?? "";
+    } catch {
+      raw = "GMT-06:00";
+    }
+  }
+  const m = raw.replace(/^GMT/i, "").match(/^([+-])(\d{1,2})(?::?(\d{2}))?$/);
+  if (!m) return "-06:00";
+  const sign = m[1]!;
+  const hh = m[2]!.padStart(2, "0");
+  const mm = (m[3] ?? "00").padStart(2, "0");
+  return `${sign}${hh}:${mm}`;
+}
+
 /** End of calendar day 23:59:59.999 in America/Mexico_City → UTC ISO. */
 export function endOfCouponDay(dateYmd: string): string {
   const ymd = dateYmd.trim().slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) {
     throw new Error("fecha inválida");
   }
-  // Approximate: treat as CDMX offset −06:00 (CST) / −05:00 (CDT).
-  // Use noon UTC probe then format in zone, then set local end.
-  const probe = new Date(`${ymd}T12:00:00.000Z`);
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/Mexico_City",
-    timeZoneName: "shortOffset",
-  }).formatToParts(probe);
-  const tz =
-    parts.find((p) => p.type === "timeZoneName")?.value?.replace("GMT", "") ||
-    "-06";
-  // Normalize to ±HH:MM
-  let offset = tz.includes(":")
-    ? tz
-    : tz.length <= 3
-      ? `${tz}:00`
-      : tz;
-  if (/^[+-]\d{2}$/.test(offset)) offset = `${offset}:00`;
-  return new Date(`${ymd}T23:59:59.999${offset}`).toISOString();
+  const offset = mexicoCityOffsetIso(ymd);
+  const d = new Date(`${ymd}T23:59:59.999${offset}`);
+  if (Number.isNaN(d.getTime())) {
+    throw new Error("fecha inválida");
+  }
+  return d.toISOString();
 }
 
 export function startOfCouponDay(dateYmd: string): string {
@@ -57,21 +77,12 @@ export function startOfCouponDay(dateYmd: string): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) {
     throw new Error("fecha inválida");
   }
-  const probe = new Date(`${ymd}T12:00:00.000Z`);
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/Mexico_City",
-    timeZoneName: "shortOffset",
-  }).formatToParts(probe);
-  const tz =
-    parts.find((p) => p.type === "timeZoneName")?.value?.replace("GMT", "") ||
-    "-06";
-  let offset = tz.includes(":")
-    ? tz
-    : tz.length <= 3
-      ? `${tz}:00`
-      : tz;
-  if (/^[+-]\d{2}$/.test(offset)) offset = `${offset}:00`;
-  return new Date(`${ymd}T00:00:00.000${offset}`).toISOString();
+  const offset = mexicoCityOffsetIso(ymd);
+  const d = new Date(`${ymd}T00:00:00.000${offset}`);
+  if (Number.isNaN(d.getTime())) {
+    throw new Error("fecha inválida");
+  }
+  return d.toISOString();
 }
 
 export type SpeiInfo = {

@@ -3,6 +3,10 @@ import { createServiceClient } from "@/lib/supabase/admin";
 import { isCurrentUserSuperAdmin } from "@/lib/restaurant";
 import { deleteStoragePublicUrl } from "@/lib/storage-cleanup";
 import type { CanonicalDemoId } from "@/lib/canonical-demos";
+import {
+  COMPARISON_IMAGE_SLOTS,
+  type ComparisonImageSlot,
+} from "@/lib/landing-content";
 
 const GIROS: CanonicalDemoId[] = ["restaurante", "servicios", "tienda"];
 const MAX_COMPRESSED_BYTES = 220 * 1024;
@@ -15,11 +19,14 @@ export async function POST(request: Request) {
 
   const form = await request.formData();
   const giro = String(form.get("giro") ?? "");
+  const slot = String(form.get("slot") ?? "") as ComparisonImageSlot | "";
   const previousUrl = String(form.get("previousUrl") ?? "") || null;
   const file = form.get("file");
 
-  if (!GIROS.includes(giro as CanonicalDemoId)) {
-    return NextResponse.json({ error: "giro inválido" }, { status: 400 });
+  const isGiro = GIROS.includes(giro as CanonicalDemoId);
+  const isCompare = COMPARISON_IMAGE_SLOTS.includes(slot as ComparisonImageSlot);
+  if (!isGiro && !isCompare) {
+    return NextResponse.json({ error: "destino inválido" }, { status: 400 });
   }
   if (!(file instanceof File) || file.size === 0) {
     return NextResponse.json({ error: "archivo requerido" }, { status: 400 });
@@ -41,7 +48,9 @@ export async function POST(request: Request) {
 
   try {
     const admin = createServiceClient();
-    const path = `marketing/${giro}-${crypto.randomUUID()}.webp`;
+    const path = isCompare
+      ? `marketing/compare-${slot}-${crypto.randomUUID()}.webp`
+      : `marketing/${giro}-${crypto.randomUUID()}.webp`;
     const buffer = Buffer.from(await file.arrayBuffer());
     const { error } = await admin.storage.from("dish-photos").upload(path, buffer, {
       upsert: true,

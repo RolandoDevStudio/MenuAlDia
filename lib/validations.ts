@@ -77,7 +77,7 @@ export const restaurantSettingsSchema = z.object({
     .default("")
     .transform((v) => normalizeLegacyState(v) || v.trim().toUpperCase())
     .refine((v) => !v || isMxStateCode(v), "Selecciona un estado válido"),
-  schedule_text: z.string().min(1, "Escribe el horario"),
+  schedule_text: z.string().min(1, "Define el horario").optional().default("Horario por confirmar"),
   shipping_cost: z.coerce.number().min(0, "El envío no puede ser negativo"),
   free_shipping: z.boolean(),
   offers_delivery: z.boolean().default(true),

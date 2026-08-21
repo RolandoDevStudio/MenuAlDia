@@ -88,13 +88,39 @@ export function PlatformPromosConsole() {
     await load();
   }
 
+  async function remove(c: Coupon) {
+    const used = Number(c.redemption_count ?? 0);
+    const ok = window.confirm(
+      used > 0
+        ? `¿Eliminar ${c.code}? Tiene ${used} canje(s). Se borrará el historial de canjes de este cupón y podrás reutilizar el código.`
+        : `¿Eliminar ${c.code}? Podrás volver a crear el mismo código.`,
+    );
+    if (!ok) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/super-admin/platform-coupons?id=${encodeURIComponent(c.id)}`,
+        { method: "DELETE" },
+      );
+      const json = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        setError(json.error ?? "No se pudo eliminar");
+        return;
+      }
+      await load();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-lg font-semibold">Promociones (cupones B2B)</h1>
         <p className="text-sm text-muted">
           Descuentos sobre planes de suscripción. El canje ocurre al registrar
-          el pago SPEI.
+          el pago SPEI. Elimina un cupón para liberar el código y reutilizarlo.
         </p>
       </div>
 
@@ -191,16 +217,30 @@ export function PlatformPromosConsole() {
                   : `$${c.discount_value}`}{" "}
                 · {c.plan_scope} · usos {c.redemption_count}
                 {c.max_redemptions != null ? `/${c.max_redemptions}` : ""}
+                {c.label ? ` · ${c.label}` : ""}
               </p>
             </div>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => void toggle(c)}
-            >
-              {c.is_active ? "Desactivar" : "Activar"}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={busy}
+                onClick={() => void toggle(c)}
+              >
+                {c.is_active ? "Desactivar" : "Activar"}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="text-red-700 hover:bg-red-50 hover:text-red-800"
+                disabled={busy}
+                onClick={() => void remove(c)}
+              >
+                Eliminar
+              </Button>
+            </div>
           </li>
         ))}
       </ul>
