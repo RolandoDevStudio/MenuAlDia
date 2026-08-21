@@ -47,6 +47,11 @@ export async function POST(request: Request) {
     const phone =
       (raw.phone as string | null | undefined)?.trim() || null;
 
+    const couponCode = String(raw.coupon_code ?? "")
+      .trim()
+      .toUpperCase();
+    const discountAmt = Number(raw.discount ?? 0);
+
     const normalized: OrderLogPayload = {
       customer_name: customerName,
       fulfillment,
@@ -57,6 +62,8 @@ export async function POST(request: Request) {
       subtotal: Number(raw.subtotal ?? 0),
       shipping: Number(raw.shipping ?? 0),
       total: Number(raw.total ?? 0),
+      coupon_code: couponCode || null,
+      discount: discountAmt > 0 ? discountAmt : 0,
       // Strip address / maps / references / full WA body for privacy
     };
 
@@ -65,10 +72,6 @@ export async function POST(request: Request) {
       payload: normalized,
     });
 
-    const couponCode = String(raw.coupon_code ?? "")
-      .trim()
-      .toUpperCase();
-    const discountAmt = Number(raw.discount ?? 0);
     if (couponCode && discountAmt > 0) {
       try {
         const { createServiceClient } = await import("@/lib/supabase/admin");

@@ -262,6 +262,8 @@ export interface OrderLogPayload {
   shipping: number;
   total: number;
   wa_message?: string;
+  coupon_code?: string | null;
+  discount?: number;
   /** Legacy camelCase from older clients */
   customerName?: string;
   mapsUrl?: string;

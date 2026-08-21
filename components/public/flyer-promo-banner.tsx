@@ -52,6 +52,15 @@ export function FlyerPromoBanner({
         title: data.title,
         png_path: data.png_path,
       });
+      void fetch("/api/public/flyer-landing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          restaurant_id: restaurantId,
+          flyer_id: data.id,
+        }),
+        keepalive: true,
+      }).catch(() => {});
     })();
   }, [flyerId, restaurantId]);
 

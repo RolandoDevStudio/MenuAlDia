@@ -163,6 +163,12 @@ export function CitaExpressDialog({
       customerPhone: phone,
       customerNote: note,
     });
+    void fetch("/api/public/wa-click", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ restaurant_id: restaurantId }),
+      keepalive: true,
+    }).catch(() => {});
     window.open(
       buildWaMeUrl(phoneWhatsapp, msg),
       "_blank",

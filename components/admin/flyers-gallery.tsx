@@ -121,7 +121,7 @@ export function FlyersGallery({
     void fetch("/api/admin/flyer-events", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "share" }),
+      body: JSON.stringify({ action: "share", flyer_id: f.id }),
     });
   }
 
@@ -130,7 +130,7 @@ export function FlyersGallery({
     void fetch("/api/admin/flyer-events", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "copy" }),
+      body: JSON.stringify({ action: "copy", flyer_id: f.id }),
     });
   }
 
@@ -146,7 +146,7 @@ export function FlyersGallery({
     void fetch("/api/admin/flyer-events", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "download" }),
+      body: JSON.stringify({ action: "download", flyer_id: f.id }),
     });
   }
 

@@ -249,6 +249,12 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
     });
 
     const url = buildWaMeUrl(restaurant.phone_whatsapp, message);
+    void fetch("/api/public/wa-click", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ restaurant_id: restaurant.id }),
+      keepalive: true,
+    }).catch(() => {});
     openWhatsApp(url);
     // Clear after navigation attempt so a blocked popup doesn't wipe the order
     window.setTimeout(() => {

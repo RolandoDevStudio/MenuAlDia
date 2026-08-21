@@ -310,6 +310,7 @@ export function FlyerStudio({
         body: JSON.stringify({
           restaurant_id: restaurant.id,
           action: "download",
+          flyer_id: f.id,
         }),
       });
     } catch {

@@ -63,6 +63,16 @@ export function ProductBottomSheet({
       const s = resolveStepValue(u, dish.step_value);
       setQty(s);
       setSelected({});
+      void fetch("/api/public/dish-engage", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          restaurant_id: dish.restaurant_id,
+          dish_id: dish.id,
+          kind: "open",
+        }),
+        keepalive: true,
+      }).catch(() => {});
     }
   }, [open, dish]);
 
@@ -110,6 +120,16 @@ export function ProductBottomSheet({
       unitType: unit,
       stepValue: step,
     });
+    void fetch("/api/public/dish-engage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        restaurant_id: dish.restaurant_id,
+        dish_id: dish.id,
+        kind: "add",
+      }),
+      keepalive: true,
+    }).catch(() => {});
     setSelected({});
     onOpenChange(false);
   }

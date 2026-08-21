@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "plan required" }, { status: 403 });
   }
 
-  let body: { restaurant_id?: string; action?: string };
+  let body: { restaurant_id?: string; action?: string; flyer_id?: string };
   try {
     body = await request.json();
   } catch {
@@ -37,6 +37,7 @@ export async function POST(request: Request) {
   const { error } = await supabase.from("flyer_events").insert({
     restaurant_id: session.restaurant.id,
     action,
+    flyer_id: body.flyer_id || null,
   });
 
   if (error) {

@@ -8,17 +8,12 @@ export async function POST(request: Request) {
     if (!restaurantId) {
       return NextResponse.json({ error: "restaurant_id required" }, { status: 400 });
     }
-
     const supabase = createPublicClient();
-    const [dayRes, hourRes] = await Promise.all([
-      supabase.rpc("increment_menu_view", { p_restaurant_id: restaurantId }),
-      supabase.rpc("increment_menu_view_hour", { p_restaurant_id: restaurantId }),
-    ]);
-    if (dayRes.error) {
-      return NextResponse.json({ error: dayRes.error.message }, { status: 500 });
-    }
-    if (hourRes.error) {
-      return NextResponse.json({ error: hourRes.error.message }, { status: 500 });
+    const { error } = await supabase.rpc("increment_wa_click", {
+      p_restaurant_id: restaurantId,
+    });
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
     return NextResponse.json({ ok: true });
   } catch (e) {

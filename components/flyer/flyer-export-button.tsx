@@ -15,6 +15,7 @@ type Props = {
   aspect: FlyerAspect;
   targetId?: string;
   backgroundColor?: string;
+  flyerId?: string | null;
   /** Fired after a successful local export (download/share/copy). */
   onAfterLocalExport?: (action: FlyerExportAction, dataUrl: string) => void;
 };
@@ -25,6 +26,7 @@ export function FlyerExportButton({
   aspect,
   targetId = "flyer-canvas",
   backgroundColor = "#f7e6c8",
+  flyerId,
   onAfterLocalExport,
 }: Props) {
   const [busy, setBusy] = useState(false);
@@ -42,7 +44,11 @@ export function FlyerExportButton({
       await fetch("/api/admin/flyer-events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ restaurant_id: restaurantId, action }),
+        body: JSON.stringify({
+          restaurant_id: restaurantId,
+          action,
+          flyer_id: flyerId || undefined,
+        }),
       });
     } catch {
       /* ignore */
