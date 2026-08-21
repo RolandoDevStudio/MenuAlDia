@@ -2,9 +2,12 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { requireTenantSession } from "@/lib/admin-session";
 import { getAdminImpactStats } from "@/lib/admin-impact";
+import { getAdminOpsStats } from "@/lib/admin-ops-stats";
 import { DailyMenuToggles } from "@/components/admin/daily-menu-toggles";
 import { ImpactCard } from "@/components/admin/impact-card";
 import { PlanGate } from "@/components/admin/plan-gate";
+import { AdminMorningBanner } from "@/components/admin/admin-morning-banner";
+import { AdminOpsKpis } from "@/components/admin/admin-ops-kpis";
 import { Button } from "@/components/ui/button";
 import { can } from "@/lib/plans";
 import { labelsFor } from "@/lib/business-labels";
@@ -16,12 +19,55 @@ export default async function AdminDashboardPage() {
   const plan = session.restaurant.plan_type || "catalog";
   const businessType = session.restaurant.business_type;
   const labels = labelsFor(businessType);
-  const impact = await getAdminImpactStats(session.restaurant.id, plan);
+  const restaurantId = session.restaurant.id;
+
+  const [impact, ops] = await Promise.all([
+    getAdminImpactStats(restaurantId, plan),
+    getAdminOpsStats(
+      restaurantId,
+      plan,
+      session.restaurant.subscription_end_date,
+    ),
+  ]);
+
+  const acceptingOrders = session.restaurant.accepting_orders !== false;
+
+  const header = (
+    <>
+      <AdminMorningBanner
+        restaurantId={restaurantId}
+        restaurantName={session.restaurant.name}
+        publicSlug={session.restaurant.slug}
+        initialAcceptingOrders={acceptingOrders}
+      />
+      <AdminOpsKpis stats={ops} businessType={businessType} />
+      <div className="flex flex-wrap gap-2">
+        {can(plan, "flyer") ? (
+          <Button asChild size="sm" variant="secondary">
+            <Link href="/admin/difusion">Compartir menú en WhatsApp</Link>
+          </Button>
+        ) : (
+          <Button asChild size="sm" variant="secondary">
+            <Link href="/admin/settings">Ver mi plan</Link>
+          </Button>
+        )}
+        <Button asChild size="sm" variant="outline">
+          <Link href="/admin/catalog/new">
+            Agregar {labels.dish.toLowerCase()}
+          </Link>
+        </Button>
+        <Button asChild size="sm" variant="outline">
+          <Link href="/admin/promociones">Crear cupón del día</Link>
+        </Button>
+      </div>
+      <ImpactCard stats={impact} plan={plan} />
+    </>
+  );
 
   if (!can(plan, "daily_menu")) {
     return (
       <div className="space-y-4">
-        <ImpactCard stats={impact} plan={plan} />
+        {header}
         <PlanGate
           plan={plan}
           feature="daily_menu"
@@ -34,7 +80,6 @@ export default async function AdminDashboardPage() {
   }
 
   const supabase = await createClient();
-  const restaurantId = session.restaurant.id;
 
   let { data: selection } = await supabase
     .from("daily_menu_selections")
@@ -57,9 +102,12 @@ export default async function AdminDashboardPage() {
 
   if (!selection) {
     return (
-      <p className="text-sm text-red-600">
-        No se pudo crear el {labels.dailyMenu.toLowerCase()}.
-      </p>
+      <div className="space-y-4">
+        {header}
+        <p className="text-sm text-red-600">
+          No se pudo crear el {labels.dailyMenu.toLowerCase()}.
+        </p>
+      </div>
     );
   }
 
@@ -87,7 +135,7 @@ export default async function AdminDashboardPage() {
 
   return (
     <div className="space-y-4">
-      <ImpactCard stats={impact} plan={plan} />
+      {header}
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold">{labels.dailyMenu}</h1>
@@ -103,9 +151,6 @@ export default async function AdminDashboardPage() {
             </Button>
             <Button asChild variant="outline" size="sm">
               <Link href="/admin/flyers">Galería</Link>
-            </Button>
-            <Button asChild variant="outline" size="sm">
-              <Link href="/admin/difusion">Difundir</Link>
             </Button>
           </div>
         ) : null}

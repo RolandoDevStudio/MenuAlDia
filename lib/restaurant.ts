@@ -104,7 +104,7 @@ async function fetchPublicMenuBySlug(
   const { data: restaurant, error: restaurantError } = await supabase
     .from("restaurants")
     .select(
-      "id, slug, name, slogan, logo_url, phone_whatsapp, address, maps_url, city, state, schedule_text, shipping_cost, free_shipping, created_at, plan_type, is_active, subscription_end_date, theme_config, business_type, owner_name, instagram_url, facebook_url, tiktok_url, offers_delivery",
+      "id, slug, name, slogan, logo_url, phone_whatsapp, address, maps_url, city, state, schedule_text, shipping_cost, free_shipping, created_at, plan_type, is_active, subscription_end_date, theme_config, business_type, owner_name, instagram_url, facebook_url, tiktok_url, offers_delivery, accepting_orders",
     )
     .eq("slug", slug)
     .maybeSingle();

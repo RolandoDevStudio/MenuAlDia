@@ -36,6 +36,8 @@ export interface Restaurant {
   facebook_url?: string | null;
   tiktok_url?: string | null;
   offers_delivery?: boolean;
+  /** Day-open: accepting orders (independent of subscription is_active) */
+  accepting_orders?: boolean;
   terms_version_accepted?: string | null;
   terms_accepted_at?: string | null;
   loyalty_goal?: number;

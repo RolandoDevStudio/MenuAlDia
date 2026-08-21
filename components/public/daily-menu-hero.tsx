@@ -41,19 +41,7 @@ export function DailyMenuHero({
   const [activeDishId, setActiveDishId] = useState(dishes[0]?.id ?? "");
 
   if (dishes.length === 0) {
-    return (
-      <section className="mx-auto max-w-lg px-4 py-8">
-        <div className="rounded-3xl border border-dashed border-brand/25 bg-surface/70 px-5 py-8 text-center">
-          <p className="font-[family-name:var(--font-display)] text-3xl text-brand">
-            Hoy no hay {dailyMenuLabel.toLowerCase()}
-          </p>
-          <p className="mt-2 text-sm text-muted">
-            Aún no se activaron {dishesLabel.toLowerCase()} para hoy. Revisa el
-            catálogo o vuelve más tarde.
-          </p>
-        </div>
-      </section>
-    );
+    return null;
   }
 
   const active = dishes.find((d) => d.id === activeDishId) ?? dishes[0];

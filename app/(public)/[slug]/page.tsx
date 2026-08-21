@@ -20,6 +20,8 @@ import { PoweredByMenuAlDia } from "@/components/brand/brand-logo";
 import { TryAsCustomerBanner } from "@/components/marketing/try-as-customer-banner";
 import { MenuFaqs } from "@/components/public/menu-faqs";
 import { FlyerPromoBanner } from "@/components/public/flyer-promo-banner";
+import { MenuViewBeacon } from "@/components/public/menu-view-beacon";
+import { StoreClosedBanner } from "@/components/public/store-closed-banner";
 import { createPublicClient } from "@/lib/supabase/public";
 
 type Props = {
@@ -178,6 +180,10 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
         style={bgStyle}
       />
       <TryAsCustomerBanner slug={slug} />
+      <StoreClosedBanner
+        acceptingOrders={data.restaurant.accepting_orders !== false}
+      />
+      <MenuViewBeacon restaurantId={data.restaurant.id} />
       <Suspense fallback={null}>
         <FlyerPromoBanner restaurantId={data.restaurant.id} />
       </Suspense>
@@ -203,7 +209,7 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
         </div>
       ) : (
         <>
-          {dailyMenuActive ? (
+          {dailyMenuActive && (data.dailyDishes?.length ?? 0) > 0 ? (
             <DailyMenuHero
               dishes={data.dailyDishes}
               sides={data.dailySides}
