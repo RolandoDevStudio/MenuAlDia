@@ -46,6 +46,35 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
     const { data } = admin.storage.from("dish-photos").getPublicUrl(path);
+    try {
+      const { emitSuperAdminNotification } = await import(
+        "@/lib/notifications/emit"
+      );
+      const { enqueueExternalWebhook } = await import(
+        "@/lib/notifications/webhook"
+      );
+      const { data: rest } = await admin
+        .from("restaurants")
+        .select("name, slug")
+        .eq("id", restaurantId)
+        .maybeSingle();
+      await emitSuperAdminNotification({
+        restaurantId,
+        type: "sa_payment_receipt",
+        title: "Comprobante SPEI subido",
+        body: `${rest?.name ?? restaurantId} · /${rest?.slug ?? ""}`,
+        href: `/super-admin/tenants?edit=${restaurantId}`,
+        payload: { restaurant_id: restaurantId, receipt_url: data.publicUrl },
+      });
+      await enqueueExternalWebhook("spei_receipt_uploaded", {
+        restaurant_id: restaurantId,
+        name: rest?.name,
+        slug: rest?.slug,
+        receipt_url: data.publicUrl,
+      });
+    } catch {
+      /* non-fatal */
+    }
     return NextResponse.json({ url: data.publicUrl });
   } catch (e) {
     return NextResponse.json(

@@ -1,7 +1,19 @@
+import type { Metadata } from "next";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { TermsAcceptanceGate } from "@/components/admin/terms-acceptance-gate";
+import { PwaRegister } from "@/components/admin/pwa-register";
 import { getSessionRestaurant } from "@/lib/restaurant";
 import type { PlanType } from "@/lib/plans";
+
+export const metadata: Metadata = {
+  manifest: "/admin/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "MenuAlDía Admin",
+    statusBarStyle: "default",
+  },
+  themeColor: "#0f766e",
+};
 
 export default async function AdminLayout({
   children,
@@ -19,6 +31,7 @@ export default async function AdminLayout({
       restaurantId={session.restaurant.id}
       termsVersionAccepted={session.restaurant.terms_version_accepted}
     >
+      <PwaRegister />
       <AdminShell
         restaurantName={session.restaurant.name}
         restaurantSlug={session.restaurant.slug}

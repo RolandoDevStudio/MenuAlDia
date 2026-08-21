@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Minus, Plus, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import type { Restaurant } from "@/lib/types";
 import { formatMxn } from "@/lib/money";
 import { checkoutSchema } from "@/lib/validations";
@@ -273,14 +273,21 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
                         size="icon"
                         className="h-11 w-11"
                         aria-label="Menos"
-                        onClick={() =>
-                          updateQty(item.dishId, item.quantity - 1, sideKey)
-                        }
+                        onClick={() => {
+                          const step = item.stepValue ?? 1;
+                          updateQty(
+                            item.dishId,
+                            item.quantity - step,
+                            sideKey,
+                          );
+                        }}
                       >
-                        <Minus className="h-4 w-4" />
+                        −
                       </Button>
-                      <span className="min-w-8 text-center text-sm font-semibold">
-                        {item.quantity}
+                      <span className="min-w-12 text-center text-sm font-semibold">
+                        {item.unitType && item.unitType !== "unit"
+                          ? `${item.quantity} ${item.unitType === "kg" ? "kg" : "L"}`
+                          : item.quantity}
                       </span>
                       <Button
                         type="button"
@@ -288,11 +295,16 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
                         size="icon"
                         className="h-11 w-11"
                         aria-label="Más"
-                        onClick={() =>
-                          updateQty(item.dishId, item.quantity + 1, sideKey)
-                        }
+                        onClick={() => {
+                          const step = item.stepValue ?? 1;
+                          updateQty(
+                            item.dishId,
+                            item.quantity + step,
+                            sideKey,
+                          );
+                        }}
                       >
-                        <Plus className="h-4 w-4" />
+                        +
                       </Button>
                     </div>
                   </li>

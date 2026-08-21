@@ -124,6 +124,9 @@ export interface Dish {
   allow_purchase?: boolean;
   /** Cita Express (servicios) */
   allow_booking?: boolean;
+  /** Sell unit (tienda): piece, kg, liter */
+  unit_type?: "unit" | "kg" | "liter";
+  step_value?: number;
 }
 
 export interface DishAddon {
@@ -280,6 +283,8 @@ export interface CartItem {
   /** Snapshot from dish/combo at add time */
   allowPurchase?: boolean;
   allowBooking?: boolean;
+  unitType?: "unit" | "kg" | "liter";
+  stepValue?: number;
 }
 
 export interface CheckoutFormValues {

@@ -168,34 +168,34 @@ export function CustomersCrm({
 
   async function addVisit(c: Customer) {
     setBusy(true);
-    const supabase = createClient();
-    const goalN = Math.max(1, Number(goal) || 10);
-    const toward = (c.visits_toward_reward ?? 0) + 1;
-    const visitCount = (c.visit_count ?? 0) + 1;
-    const now = new Date().toISOString();
-    await supabase.from("customer_visits").insert({
-      restaurant_id: restaurantId,
-      customer_id: c.id,
-    });
-    const { data, error } = await supabase
-      .from("customers")
-      .update({
-        visit_count: visitCount,
-        visits_toward_reward: toward,
-        last_visit_at: now,
-      })
-      .eq("id", c.id)
-      .select("*")
-      .single();
-    setBusy(false);
-    if (error || !data) {
-      setMsg(error?.message ?? "No se registró la visita");
-      return;
+    try {
+      const res = await fetch("/api/admin/loyalty/visit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customer_id: c.id }),
+      });
+      const json = (await res.json()) as {
+        error?: string;
+        toward?: number;
+        goal?: number;
+        goalReached?: boolean;
+        customer?: Customer;
+      };
+      if (!res.ok || !json.customer) {
+        setMsg(json.error ?? "No se registró la visita");
+        return;
+      }
+      const updated = json.customer;
+      setCustomers((list) => list.map((x) => (x.id === c.id ? updated : x)));
+      const goalN = json.goal ?? Math.max(1, Number(goal) || 10);
+      const toward = json.toward ?? 0;
+      if (json.goalReached) setRewardOpen(updated);
+      else setMsg(`Visita registrada (${toward}/${goalN})`);
+    } catch {
+      setMsg("Error de red");
+    } finally {
+      setBusy(false);
     }
-    const updated = data as Customer;
-    setCustomers((list) => list.map((x) => (x.id === c.id ? updated : x)));
-    if (toward >= goalN) setRewardOpen(updated);
-    else setMsg(`Visita registrada (${toward}/${goalN})`);
   }
 
   async function redeemReward(c: Customer) {

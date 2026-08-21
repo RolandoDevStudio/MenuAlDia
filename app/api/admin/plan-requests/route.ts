@@ -111,6 +111,22 @@ export async function POST(request: Request) {
     summary,
   });
 
+  try {
+    const { emitSuperAdminNotification } = await import(
+      "@/lib/notifications/emit"
+    );
+    await emitSuperAdminNotification({
+      restaurantId: session.restaurant.id,
+      type: "sa_plan_request",
+      title: "Solicitud de plan",
+      body: `${session.restaurant.name}: ${summary}`,
+      href: "/super-admin/solicitudes",
+      payload: { request_id: data.id, request_type: requestType },
+    });
+  } catch {
+    /* non-fatal */
+  }
+
   return NextResponse.json({ ok: true, request: data });
 }
 

@@ -1,10 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Dish, DishAddon } from "@/lib/types";
 import type { PhotoFrame } from "@/lib/theme";
 import { photoFrameClass } from "@/lib/theme";
 import { formatMxn } from "@/lib/money";
+import {
+  formatQty,
+  normalizeQty,
+  pricePerUnitLabel,
+  resolveStepValue,
+  resolveUnitType,
+} from "@/lib/units";
 import { useCartStore } from "@/stores/cart-store";
 import {
   Dialog,
@@ -15,7 +22,6 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import { StorageImage } from "@/components/ui/storage-image";
 import { cn } from "@/lib/utils";
 import { Share2 } from "lucide-react";
@@ -47,6 +53,18 @@ export function ProductBottomSheet({
 }: Props) {
   const addItem = useCartStore((s) => s.addItem);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const unit = resolveUnitType(dish?.unit_type);
+  const step = resolveStepValue(unit, dish?.step_value);
+  const [qty, setQty] = useState(step);
+
+  useEffect(() => {
+    if (open && dish) {
+      const u = resolveUnitType(dish.unit_type);
+      const s = resolveStepValue(u, dish.step_value);
+      setQty(s);
+      setSelected({});
+    }
+  }, [open, dish]);
 
   const activeAddons = useMemo(
     () => addons.filter((a) => a.is_active && !a.archived_at),
@@ -59,19 +77,29 @@ export function ProductBottomSheet({
 
   const canBook = allowBooking;
   const canBuy = allowPurchase;
+  const linePreview =
+    (Number(dish?.price ?? 0) + addonTotal) * (qty > 0 ? qty : 0);
 
   function toggle(id: string) {
     setSelected((prev) => ({ ...prev, [id]: !prev[id] }));
   }
 
+  function bump(delta: number) {
+    setQty((q) => {
+      const next = normalizeQty(q + delta, step);
+      return next > 0 ? next : step;
+    });
+  }
+
   function addToCart() {
     if (!dish || !canBuy) return;
     const chosen = activeAddons.filter((a) => selected[a.id]);
+    const amount = normalizeQty(qty, step) || step;
     addItem({
       dishId: dish.id,
       name: dish.name,
       unitPrice: Number(dish.price),
-      quantity: 1,
+      quantity: amount,
       addons: chosen.map((a) => ({
         id: a.id,
         name: a.name,
@@ -79,6 +107,8 @@ export function ProductBottomSheet({
       })),
       allowPurchase: true,
       allowBooking: canBook,
+      unitType: unit,
+      stepValue: step,
     });
     setSelected({});
     onOpenChange(false);
@@ -139,7 +169,8 @@ export function ProductBottomSheet({
                   <DialogDescription>{dish.description}</DialogDescription>
                 ) : null}
                 <p className="text-lg font-semibold text-brand">
-                  {formatMxn(Number(dish.price) + addonTotal)}
+                  {formatMxn(Number(dish.price))}
+                  {pricePerUnitLabel(unit)}
                 </p>
               </DialogHeader>
 
@@ -164,6 +195,35 @@ export function ProductBottomSheet({
                       </li>
                     ))}
                   </ul>
+                </div>
+              ) : null}
+
+              {canBuy ? (
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-black/5 bg-surface px-3 py-2">
+                  <span className="text-sm font-medium">Cantidad</span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="icon"
+                      className="h-11 w-11"
+                      onClick={() => bump(-step)}
+                    >
+                      −
+                    </Button>
+                    <span className="min-w-[4rem] text-center text-sm font-semibold">
+                      {formatQty(qty, unit)}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="icon"
+                      className="h-11 w-11"
+                      onClick={() => bump(step)}
+                    >
+                      +
+                    </Button>
+                  </div>
                 </div>
               ) : null}
 
@@ -194,7 +254,7 @@ export function ProductBottomSheet({
                       className="min-h-11 flex-1"
                       onClick={addToCart}
                     >
-                      Agregar al carrito
+                      Agregar · {formatMxn(linePreview)}
                     </Button>
                   ) : null}
                 </div>
@@ -205,18 +265,13 @@ export function ProductBottomSheet({
                     className="min-h-11 w-full"
                     onClick={addToCart}
                   >
-                    Agregar al carrito
+                    Agregar al carrito · {formatMxn(linePreview)}
                   </Button>
                 ) : null}
               </div>
             </div>
           </>
-        ) : (
-          <div className="p-6">
-            <DialogTitle>Producto</DialogTitle>
-            <Label className="text-muted">No encontrado</Label>
-          </div>
-        )}
+        ) : null}
       </DialogContent>
     </Dialog>
   );

@@ -205,6 +205,43 @@ export async function POST(request: Request) {
     fields: ["subscription_end_date", "plan_type"],
   });
 
+  try {
+    const { emitSuperAdminNotification } = await import(
+      "@/lib/notifications/emit"
+    );
+    const { enqueueExternalWebhook } = await import(
+      "@/lib/notifications/webhook"
+    );
+    if (receiptUrl) {
+      await emitSuperAdminNotification({
+        restaurantId: body.restaurant_id,
+        type: "sa_payment_receipt",
+        title: "Pago registrado con comprobante",
+        body: `${updated.name ?? body.restaurant_id} · $${amount}`,
+        href: `/super-admin/tenants?edit=${body.restaurant_id}`,
+        payload: { payment_id: payment.id, receipt_url: receiptUrl },
+      });
+      await enqueueExternalWebhook("spei_receipt_uploaded", {
+        restaurant_id: body.restaurant_id,
+        payment_id: payment.id,
+        amount,
+        receipt_url: receiptUrl,
+      });
+    }
+    if (needsInvoice) {
+      await emitSuperAdminNotification({
+        restaurantId: body.restaurant_id,
+        type: "sa_invoice_request",
+        title: "Solicitud de factura CFDI",
+        body: `${updated.name ?? body.restaurant_id} · $${amount}`,
+        href: "/super-admin/finanzas",
+        payload: { payment_id: payment.id },
+      });
+    }
+  } catch {
+    /* non-fatal */
+  }
+
   return NextResponse.json({
     ok: true,
     payment,

@@ -13,6 +13,11 @@ import type {
 import type { PhotoFrame } from "@/lib/theme";
 import { photoFrameClass } from "@/lib/theme";
 import { formatMxn } from "@/lib/money";
+import {
+  pricePerUnitLabel,
+  resolveStepValue,
+  resolveUnitType,
+} from "@/lib/units";
 import { comboDisplayPrice } from "@/lib/combo";
 import { normalizeBusinessType } from "@/lib/business-labels";
 import {
@@ -191,9 +196,17 @@ export function PublicMenuClient({
       dishId: dish.id,
       name: dish.name,
       unitPrice: Number(dish.price),
-      quantity: 1,
+      quantity: resolveStepValue(
+        resolveUnitType(dish.unit_type),
+        dish.step_value,
+      ),
       allowPurchase: true,
       allowBooking: canBook,
+      unitType: resolveUnitType(dish.unit_type),
+      stepValue: resolveStepValue(
+        resolveUnitType(dish.unit_type),
+        dish.step_value,
+      ),
     });
     setFlashDishId(dish.id);
     window.setTimeout(() => {
@@ -339,6 +352,9 @@ export function PublicMenuClient({
                             ) : null}
                             <p className="mt-2 text-sm font-semibold text-brand">
                               {formatMxn(Number(dish.price))}
+                              {pricePerUnitLabel(
+                                resolveUnitType(dish.unit_type),
+                              )}
                             </p>
                           </div>
                         </button>

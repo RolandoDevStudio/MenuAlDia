@@ -4,6 +4,11 @@ import type { Category, Dish } from "@/lib/types";
 import type { PhotoFrame } from "@/lib/theme";
 import { photoFrameClass } from "@/lib/theme";
 import { formatMxn } from "@/lib/money";
+import {
+  pricePerUnitLabel,
+  resolveStepValue,
+  resolveUnitType,
+} from "@/lib/units";
 import { useCartStore } from "@/stores/cart-store";
 import { Button } from "@/components/ui/button";
 import { StorageImage } from "@/components/ui/storage-image";
@@ -90,19 +95,26 @@ export function CatalogSection({
                     <div className="mt-2 flex items-center justify-between gap-2">
                       <span className="text-sm font-semibold text-brand">
                         {formatMxn(Number(dish.price))}
+                        {pricePerUnitLabel(resolveUnitType(dish.unit_type))}
                       </span>
                       <Button
                         size="sm"
                         className="min-h-11"
                         variant="secondary"
-                        onClick={() =>
+                        onClick={() => {
+                          const unit = resolveUnitType(dish.unit_type);
+                          const step = resolveStepValue(unit, dish.step_value);
                           addItem({
                             dishId: dish.id,
                             name: dish.name,
                             unitPrice: Number(dish.price),
-                            quantity: 1,
-                          })
-                        }
+                            quantity: step,
+                            unitType: unit,
+                            stepValue: step,
+                            allowPurchase: dish.allow_purchase !== false,
+                            allowBooking: Boolean(dish.allow_booking),
+                          });
+                        }}
                       >
                         <Plus className="h-4 w-4" />
                         Agregar

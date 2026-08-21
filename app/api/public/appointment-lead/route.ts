@@ -58,6 +58,21 @@ export async function POST(request: Request) {
           .update({ name })
           .eq("id", existing.id);
       }
+      try {
+        const { emitTenantNotification } = await import(
+          "@/lib/notifications/emit"
+        );
+        await emitTenantNotification({
+          restaurantId,
+          type: "appointment_lead",
+          title: "Nueva solicitud de cita",
+          body: `${name} · ${phoneDigits}`,
+          href: "/admin/customers",
+          payload: { customer_id: existing.id, name, phone: phoneDigits },
+        });
+      } catch {
+        /* non-fatal */
+      }
       return NextResponse.json({ ok: true, customer_id: existing.id });
     }
 
@@ -73,6 +88,21 @@ export async function POST(request: Request) {
 
     if (cErr) {
       return NextResponse.json({ error: cErr.message }, { status: 500 });
+    }
+    try {
+      const { emitTenantNotification } = await import(
+        "@/lib/notifications/emit"
+      );
+      await emitTenantNotification({
+        restaurantId,
+        type: "appointment_lead",
+        title: "Nueva solicitud de cita",
+        body: `${name} · ${phoneDigits}`,
+        href: "/admin/customers",
+        payload: { customer_id: created.id, name, phone: phoneDigits },
+      });
+    } catch {
+      /* non-fatal */
     }
     return NextResponse.json({ ok: true, customer_id: created.id });
   } catch (e) {

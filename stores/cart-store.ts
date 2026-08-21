@@ -76,9 +76,17 @@ export const useCartStore = create<CartState>()(
           return;
         }
         set({
-          items: get().items.map((i) =>
-            matchKey(i, dishId, sideKey) ? { ...i, quantity } : i,
-          ),
+          items: get().items.map((i) => {
+            if (!matchKey(i, dishId, sideKey)) return i;
+            const step = i.stepValue && i.stepValue > 0 ? i.stepValue : 1;
+            const decimals = String(step).includes(".")
+              ? (String(step).split(".")[1]?.length ?? 0)
+              : 0;
+            const rounded =
+              Math.round(quantity / step) * step;
+            const q = Number(rounded.toFixed(Math.min(4, decimals)));
+            return { ...i, quantity: q > 0 ? q : step };
+          }),
         });
       },
       clear: () => set({ items: [] }),

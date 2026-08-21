@@ -1,5 +1,6 @@
 import type { CartItem, CheckoutFormValues, Restaurant } from "@/lib/types";
 import { formatMxn } from "@/lib/money";
+import { formatQty, resolveUnitType } from "@/lib/units";
 
 export function normalizeWhatsAppPhone(phone: string): string {
   return phone.replace(/\D/g, "");
@@ -57,8 +58,9 @@ export function buildOrderMessage(params: {
   for (const [, group] of comboGroups) {
     lines.push(`🔥 *${group.title}*`);
     for (const item of group.items) {
+      const unit = resolveUnitType(item.unitType);
       lines.push(
-        `• ${item.quantity}x ${item.name} — ${formatMxn(lineTotal(item))}`,
+        `• ${formatQty(item.quantity, unit)} ${item.name} — ${formatMxn(lineTotal(item))}`,
       );
       lines.push(...addonLines(item));
     }
@@ -66,8 +68,9 @@ export function buildOrderMessage(params: {
   }
 
   for (const item of singles) {
+    const unit = resolveUnitType(item.unitType);
     lines.push(
-      `• ${item.quantity}x ${item.name} — ${formatMxn(lineTotal(item))}`,
+      `• ${formatQty(item.quantity, unit)} ${item.name} — ${formatMxn(lineTotal(item))}`,
     );
     lines.push(...addonLines(item));
   }

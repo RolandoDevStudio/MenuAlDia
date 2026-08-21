@@ -8,6 +8,7 @@ import { buildWaMeUrl, SALES_WHATSAPP } from "@/lib/whatsapp";
 import { CANONICAL_DEMOS } from "@/lib/canonical-demos";
 import type { Restaurant } from "@/lib/types";
 import { Button } from "@/components/ui/button";
+import { AlertsFeed } from "@/components/super-admin/alerts-feed";
 
 export default async function SuperAdminHomePage() {
   await requireSuperAdmin();
@@ -85,6 +86,8 @@ export default async function SuperAdminHomePage() {
           </Button>
         ))}
       </div>
+
+      <AlertsFeed />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-black/5 bg-surface p-4">

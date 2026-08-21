@@ -298,6 +298,22 @@ export async function POST(request: Request) {
     summary: `Clonó tenant ${newName} (${cloneLabel} → ${newSlug})`,
   });
 
+  try {
+    const { emitSuperAdminNotification } = await import(
+      "@/lib/notifications/emit"
+    );
+    await emitSuperAdminNotification({
+      restaurantId,
+      type: "sa_new_tenant",
+      title: "Nuevo negocio registrado",
+      body: `${newName} · /${newSlug}`,
+      href: `/super-admin/tenants?edit=${restaurantId}`,
+      payload: { slug: newSlug },
+    });
+  } catch {
+    /* non-fatal */
+  }
+
   return NextResponse.json({
     ok: true,
     slug: created!.slug,

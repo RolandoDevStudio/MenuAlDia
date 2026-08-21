@@ -15,6 +15,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { DishPhotoUpload } from "@/components/admin/dish-photo-upload";
+import {
+  UNIT_TYPE_LABELS,
+  defaultStepForUnit,
+  isDishUnitType,
+  type DishUnitType,
+} from "@/lib/units";
 
 type Props = {
   restaurantId: string;
@@ -39,6 +45,7 @@ export function DishForm({
   const dishLabel = label(businessType, "dish");
   const sideLabel = label(businessType, "side");
   const isServicios = normalizeBusinessType(businessType) === "servicios";
+  const isTienda = normalizeBusinessType(businessType) === "productos";
   const [name, setName] = useState(dish?.name ?? "");
   const [description, setDescription] = useState(dish?.description ?? "");
   const [price, setPrice] = useState(String(dish?.price ?? 0));
@@ -51,6 +58,12 @@ export function DishForm({
   );
   const [allowBooking, setAllowBooking] = useState(
     dish?.allow_booking ?? isServicios,
+  );
+  const [unitType, setUnitType] = useState<DishUnitType>(
+    isDishUnitType(dish?.unit_type) ? dish!.unit_type! : "unit",
+  );
+  const [stepValue, setStepValue] = useState(
+    String(dish?.step_value ?? defaultStepForUnit("unit")),
   );
   const [photoUrl, setPhotoUrl] = useState<string | null>(dish?.photo_url ?? null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -130,6 +143,7 @@ export function DishForm({
 
     setSaving(true);
     const supabase = createClient();
+    const stepNum = Number(stepValue);
     const payload = {
       restaurant_id: restaurantId,
       name: parsed.data.name,
@@ -142,6 +156,12 @@ export function DishForm({
       photo_url: parsed.data.photo_url || null,
       allow_purchase: allowPurchase,
       allow_booking: allowBooking,
+      unit_type: isTienda ? unitType : "unit",
+      step_value: isTienda
+        ? Number.isFinite(stepNum) && stepNum > 0
+          ? stepNum
+          : defaultStepForUnit(unitType)
+        : 1,
     };
 
     const { data: saved, error: dbError } = dish
@@ -290,6 +310,42 @@ export function DishForm({
           <p className="text-xs text-red-600">{fieldErrors.price}</p>
         ) : null}
       </div>
+      {isTienda ? (
+        <div className="space-y-3 rounded-xl border border-black/5 bg-surface p-3">
+          <p className="text-sm font-semibold">Unidad de venta</p>
+          <div className="space-y-1.5">
+            <Label htmlFor="unit_type">Se vende por</Label>
+            <select
+              id="unit_type"
+              className="flex h-11 w-full rounded-lg border border-black/10 bg-background px-3 text-sm"
+              value={unitType}
+              onChange={(e) => {
+                const u = e.target.value as DishUnitType;
+                setUnitType(u);
+                setStepValue(String(defaultStepForUnit(u)));
+              }}
+            >
+              {(Object.keys(UNIT_TYPE_LABELS) as DishUnitType[]).map((u) => (
+                <option key={u} value={u}>
+                  {UNIT_TYPE_LABELS[u]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="step_value">Incremento en el carrito</Label>
+            <Input
+              id="step_value"
+              inputMode="decimal"
+              value={stepValue}
+              onChange={(e) => setStepValue(e.target.value)}
+            />
+            <p className="text-[11px] text-muted">
+              Ej. 1 para piezas, 0.1 o 0.25 para kg/L.
+            </p>
+          </div>
+        </div>
+      ) : null}
       <div className="space-y-1.5">
         <Label htmlFor="category_id">Categoría</Label>
         <select

@@ -28,6 +28,8 @@ import {
 import { label } from "@/lib/business-labels";
 import type { BusinessType } from "@/lib/types";
 import { BrandLogo } from "@/components/brand/brand-logo";
+import { NotificationBell } from "@/components/admin/notification-bell";
+import { PwaInstallBanner } from "@/components/admin/pwa-install-banner";
 
 type NavItem = {
   href: string;
@@ -141,6 +143,7 @@ export function AdminShell({
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-1">
+            <NotificationBell />
             <Button variant="ghost" size="sm" className="min-h-11 gap-1.5 px-2" asChild>
               <a
                 href={`/${restaurantSlug}`}
@@ -213,6 +216,9 @@ export function AdminShell({
             ) : null}
           </div>
         ) : null}
+        <div className="print:hidden">
+          <PwaInstallBanner />
+        </div>
       </header>
       <div className="flex-1 px-4 py-4 print:px-0 print:py-0">{children}</div>
       <nav

@@ -1,0 +1,25 @@
+{
+  "name": "MenuAlDía Admin",
+  "short_name": "MenuAlDía",
+  "description": "Panel para dueños de negocio — menualdia.com.mx",
+  "start_url": "/admin",
+  "scope": "/admin",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0f766e",
+  "lang": "es-MX",
+  "icons": [
+    {
+      "src": "/brand/menualdia-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/brand/menualdia-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
