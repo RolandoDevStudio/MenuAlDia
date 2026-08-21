@@ -10,15 +10,21 @@
   "lang": "es-MX",
   "icons": [
     {
-      "src": "/brand/menualdia-icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "/brand/menualdia-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/brand/menualdia-mark.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "/brand/menualdia-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/brand/menualdia-mark-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
       "purpose": "maskable"
     }
   ]

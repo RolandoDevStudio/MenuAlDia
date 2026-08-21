@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { TermsAcceptanceGate } from "@/components/admin/terms-acceptance-gate";
 import { PwaRegister } from "@/components/admin/pwa-register";
@@ -12,6 +12,9 @@ export const metadata: Metadata = {
     title: "MenuAlDía Admin",
     statusBarStyle: "default",
   },
+};
+
+export const viewport: Viewport = {
   themeColor: "#0f766e",
 };
 

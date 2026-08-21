@@ -59,12 +59,16 @@ export async function updateSession(request: NextRequest) {
   const isLogin = path === "/admin/login" || path.startsWith("/admin/login/");
   const isNoTenant =
     path === "/admin/sin-negocio" || path.startsWith("/admin/sin-negocio/");
+  // PWA assets under /admin must be publicly fetchable (JSON, not login HTML)
+  const isAdminPublicAsset =
+    path === "/admin/manifest.webmanifest" ||
+    path.endsWith(".webmanifest");
   const isSaLogin =
     path === "/super-admin/login" || path.startsWith("/super-admin/login/");
   const isSuperAdminArea = path.startsWith("/super-admin");
 
   // Tenant admin area
-  if (isAdmin && !isLogin && !isNoTenant && !user) {
+  if (isAdmin && !isLogin && !isNoTenant && !isAdminPublicAsset && !user) {
     const url = request.nextUrl.clone();
     url.pathname = "/admin/login";
     url.searchParams.set("next", path);
