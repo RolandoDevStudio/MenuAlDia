@@ -92,14 +92,17 @@ export default async function AdminDashboardPage() {
         <div>
           <h1 className="text-lg font-semibold">{labels.dailyMenu}</h1>
           <p className="text-sm text-muted">
-            Elige qué ofreces <strong>hoy</strong> como paquete. El catálogo
-            completo sigue visible abajo en el menú público.
+            Marca las <strong>opciones</strong> de hoy. El cliente elige una y
+            (si aplica) {labels.sides.toLowerCase()}.
           </p>
         </div>
         {can(plan, "flyer") ? (
           <div className="flex shrink-0 flex-col gap-2 sm:items-end">
             <Button asChild variant="secondary" size="sm">
               <Link href="/admin/flyer?from=today">Generar Flyer</Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/admin/flyers">Galería</Link>
             </Button>
             <Button asChild variant="outline" size="sm">
               <Link href="/admin/difusion">Difundir</Link>
@@ -112,6 +115,10 @@ export default async function AdminDashboardPage() {
         dailyMenuId={selection.id}
         packagePrice={Number(selection.package_price)}
         maxSides={selection.max_sides}
+        pricingMode={
+          selection.pricing_mode === "individual" ? "individual" : "package"
+        }
+        isActive={selection.is_active !== false}
         mains={mains}
         sides={sides}
         selectedMainIds={(mainLinks ?? []).map((l) => l.dish_id)}

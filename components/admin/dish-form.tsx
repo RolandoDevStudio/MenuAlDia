@@ -52,6 +52,7 @@ export function DishForm({
   const [categoryId, setCategoryId] = useState(dish?.category_id ?? "");
   const [isSide, setIsSide] = useState(dish?.is_side ?? false);
   const [isActive, setIsActive] = useState(dish?.is_active ?? true);
+  const popularLabel = label(businessType, "popular");
   const [isPopular, setIsPopular] = useState(dish?.is_popular ?? false);
   const [allowPurchase, setAllowPurchase] = useState(
     dish?.allow_purchase !== false,
@@ -372,7 +373,7 @@ export function DishForm({
       </div>
       <div className="flex min-h-14 items-center justify-between rounded-xl border border-black/5 bg-surface px-3 py-3">
         <div>
-          <Label htmlFor="isPopular">Lo más pedido</Label>
+          <Label htmlFor="isPopular">{popularLabel}</Label>
           <p className="text-xs text-muted">Badge en el menú público</p>
         </div>
         <Switch

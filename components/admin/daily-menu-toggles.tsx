@@ -13,11 +13,15 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+type PricingMode = "package" | "individual";
+
 type Props = {
   restaurantId: string;
   dailyMenuId: string;
   packagePrice: number;
   maxSides: number;
+  pricingMode?: PricingMode;
+  isActive?: boolean;
   mains: Dish[];
   sides: Dish[];
   selectedMainIds: string[];
@@ -31,6 +35,8 @@ export function DailyMenuToggles({
   dailyMenuId,
   packagePrice: initialPrice,
   maxSides: initialMaxSides,
+  pricingMode: initialPricingMode = "package",
+  isActive = true,
   mains,
   sides,
   selectedMainIds: initialMains,
@@ -44,6 +50,9 @@ export function DailyMenuToggles({
   const [sideIds, setSideIds] = useState(new Set(initialSides));
   const [packagePrice, setPackagePrice] = useState(String(initialPrice));
   const [maxSides, setMaxSides] = useState(String(initialMaxSides));
+  const [pricingMode, setPricingMode] = useState<PricingMode>(
+    initialPricingMode,
+  );
   const [savingId, setSavingId] = useState<string | null>(null);
   const [savingMeta, setSavingMeta] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -137,6 +146,7 @@ export function DailyMenuToggles({
       .update({
         package_price: Number(packagePrice) || 0,
         max_sides: Number(maxSides) || 1,
+        pricing_mode: pricingMode,
         menu_date: new Date().toISOString().slice(0, 10),
       })
       .eq("id", dailyMenuId)
@@ -148,12 +158,33 @@ export function DailyMenuToggles({
       return;
     }
     await revalidate();
-    setSuccess(`Precio del ${labels.dailyMenu.toLowerCase()} actualizado`);
+    setSuccess("Configuración del día guardada");
     router.refresh();
   }
 
   return (
     <div className="space-y-6">
+      {!isActive ? (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          {labels.dailyMenu} está oculto en el menú público.{" "}
+          <Link href="/admin/settings#daily-menu" className="font-semibold underline">
+            Activarlo en Ajustes
+          </Link>
+        </p>
+      ) : null}
+
+      <div className="rounded-xl border border-black/5 bg-surface/80 px-3 py-3 text-xs leading-relaxed text-muted">
+        <p>
+          Activa las <strong>opciones</strong> del día. El cliente elige{" "}
+          <strong>un</strong> {labels.dish.toLowerCase()} y hasta N{" "}
+          {labels.sides.toLowerCase()} — no se agregan todos juntos como combo.
+        </p>
+        <p className="mt-1">
+          Distinto de <strong>{labels.popular}</strong>: ese es solo un badge en
+          el {labels.catalog.toLowerCase()}, sin precio paquete.
+        </p>
+      </div>
+
       {error ? (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
           {error}
@@ -165,18 +196,53 @@ export function DailyMenuToggles({
         </p>
       ) : null}
 
-      <section className="rounded-2xl border border-black/5 bg-surface p-4">
-        <h2 className="text-sm font-semibold">Precio del paquete</h2>
-        <div className="mt-3 grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="packagePrice">Precio (MXN)</Label>
-            <Input
-              id="packagePrice"
-              inputMode="decimal"
-              value={packagePrice}
-              onChange={(e) => setPackagePrice(e.target.value)}
-            />
+      <section className="rounded-2xl border border-black/5 bg-surface p-4 space-y-3">
+        <h2 className="text-sm font-semibold">Precio y límites</h2>
+        <div className="space-y-2">
+          <Label>Cómo se cobra</Label>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              type="button"
+              variant={pricingMode === "package" ? "default" : "secondary"}
+              className="min-h-11"
+              onClick={() => setPricingMode("package")}
+            >
+              Precio paquete
+            </Button>
+            <Button
+              type="button"
+              variant={pricingMode === "individual" ? "default" : "secondary"}
+              className="min-h-11"
+              onClick={() => setPricingMode("individual")}
+            >
+              Precio individual
+            </Button>
           </div>
+          <p className="text-[11px] text-muted">
+            {pricingMode === "package"
+              ? "Un solo precio fijo sin importar qué opción elija el cliente."
+              : `Se usa el precio de catálogo del ${labels.dish.toLowerCase()} elegido.`}
+          </p>
+        </div>
+        <div className="mt-1 grid grid-cols-2 gap-3">
+          {pricingMode === "package" ? (
+            <div className="space-y-1.5">
+              <Label htmlFor="packagePrice">Precio paquete (MXN)</Label>
+              <Input
+                id="packagePrice"
+                inputMode="decimal"
+                value={packagePrice}
+                onChange={(e) => setPackagePrice(e.target.value)}
+              />
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <Label>Precio</Label>
+              <p className="flex h-11 items-center text-sm text-muted">
+                Según cada {labels.dish.toLowerCase()}
+              </p>
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label htmlFor="maxSides">Máx. {labels.sides.toLowerCase()}</Label>
             <Input
@@ -187,13 +253,15 @@ export function DailyMenuToggles({
             />
           </div>
         </div>
-        <Button className="mt-4 w-full" onClick={saveMeta} disabled={savingMeta}>
-          {savingMeta ? "Guardando…" : "Guardar precio"}
+        <Button className="w-full" onClick={() => void saveMeta()} disabled={savingMeta}>
+          {savingMeta ? "Guardando…" : "Guardar configuración"}
         </Button>
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold">{labels.dishes} del día</h2>
+        <h2 className="text-sm font-semibold">
+          Opciones de {labels.dishes.toLowerCase()} hoy
+        </h2>
         {mains.length === 0 ? (
           <div className="rounded-xl border border-dashed border-black/10 px-4 py-6 text-center">
             <p className="text-sm text-muted">
@@ -216,12 +284,12 @@ export function DailyMenuToggles({
                 <div className="min-w-0">
                   <p className="truncate font-medium">{dish.name}</p>
                   <p className="text-xs text-muted">
-                    Regular {formatMxn(Number(dish.price))}
+                    Catálogo {formatMxn(Number(dish.price))}
                   </p>
                 </div>
                 <Switch
                   checked={mainIds.has(dish.id)}
-                  onCheckedChange={(on) => toggleMain(dish.id, on)}
+                  onCheckedChange={(on) => void toggleMain(dish.id, on)}
                   disabled={savingId === `main-${dish.id}`}
                 />
               </li>
@@ -255,7 +323,7 @@ export function DailyMenuToggles({
                 <span className="font-medium">{dish.name}</span>
                 <Switch
                   checked={sideIds.has(dish.id)}
-                  onCheckedChange={(on) => toggleSide(dish.id, on)}
+                  onCheckedChange={(on) => void toggleSide(dish.id, on)}
                   disabled={savingId === `side-${dish.id}`}
                 />
               </li>

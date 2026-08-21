@@ -16,10 +16,12 @@ type Props = {
   sides: Dish[];
   packagePrice: number;
   maxSides: number;
+  pricingMode?: "package" | "individual";
   photoFrame?: PhotoFrame;
   dailyMenuLabel?: string;
   sidesLabel?: string;
   dishesLabel?: string;
+  dishLabel?: string;
 };
 
 export function DailyMenuHero({
@@ -27,10 +29,12 @@ export function DailyMenuHero({
   sides,
   packagePrice,
   maxSides,
+  pricingMode = "package",
   photoFrame = "rounded_modern",
   dailyMenuLabel = "Especiales de hoy",
   sidesLabel = "Guarniciones",
   dishesLabel = "Platillos",
+  dishLabel = "Platillo",
 }: Props) {
   const addItem = useCartStore((s) => s.addItem);
   const [selectedSides, setSelectedSides] = useState<string[]>([]);
@@ -53,6 +57,10 @@ export function DailyMenuHero({
   }
 
   const active = dishes.find((d) => d.id === activeDishId) ?? dishes[0];
+  const linePrice =
+    pricingMode === "individual"
+      ? Number(active.price) || 0
+      : packagePrice;
 
   function addToCart() {
     const sideNames = sides
@@ -61,7 +69,7 @@ export function DailyMenuHero({
     addItem({
       dishId: active.id,
       name: `${dailyMenuLabel}: ${active.name}`,
-      unitPrice: packagePrice,
+      unitPrice: linePrice,
       quantity: 1,
       sideIds: selectedSides,
       sideNames,
@@ -69,8 +77,28 @@ export function DailyMenuHero({
     });
   }
 
+  let step = 1;
+
   return (
     <section className="mx-auto max-w-lg px-4 py-6">
+      <ol className="mb-3 space-y-1 rounded-xl bg-surface/80 px-3 py-2 text-xs text-muted">
+        <li>
+          <span className="font-semibold text-foreground">{step++}.</span> Elige
+          tu {dishLabel.toLowerCase()}
+          {dishes.length > 1 ? " (toca una opción)" : ""}
+        </li>
+        {sides.length > 0 ? (
+          <li>
+            <span className="font-semibold text-foreground">{step++}.</span>{" "}
+            Elige hasta {maxSides} {sidesLabel.toLowerCase()}
+          </li>
+        ) : null}
+        <li>
+          <span className="font-semibold text-foreground">{step}.</span> Agrega
+          al carrito
+        </li>
+      </ol>
+
       <div
         className="relative overflow-hidden rounded-3xl p-5 text-white shadow-lg"
         style={{
@@ -90,7 +118,7 @@ export function DailyMenuHero({
               {active.name}
             </h2>
             <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--color-card)_92%,var(--color-primary))] text-center font-[family-name:var(--font-display)] text-xl leading-none text-brand-dark shadow">
-              {formatMxn(packagePrice).replace("MX$", "$")}
+              {formatMxn(linePrice).replace("MX$", "$")}
             </div>
           </div>
           {active.description ? (
@@ -132,22 +160,32 @@ export function DailyMenuHero({
       )}
 
       {dishes.length > 1 ? (
-        <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
-          {dishes.map((d) => (
-            <button
-              key={d.id}
-              type="button"
-              onClick={() => setActiveDishId(d.id)}
-              className={cn(
-                "min-h-11 shrink-0 rounded-full px-4 text-sm font-medium transition-[background-color,color,transform] duration-200",
-                d.id === active.id
-                  ? "scale-[1.03] bg-brand text-white"
-                  : "border border-black/10 bg-surface text-foreground",
-              )}
-            >
-              {d.name}
-            </button>
-          ))}
+        <div className="mt-4 space-y-1">
+          <p className="text-[11px] font-medium text-muted">
+            Toca para cambiar de opción
+          </p>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {dishes.map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                onClick={() => setActiveDishId(d.id)}
+                className={cn(
+                  "min-h-11 shrink-0 rounded-full px-4 text-sm font-medium transition-[background-color,color,transform] duration-200",
+                  d.id === active.id
+                    ? "scale-[1.03] bg-brand text-white"
+                    : "border border-black/10 bg-surface text-foreground",
+                )}
+              >
+                {d.name}
+                {pricingMode === "individual" ? (
+                  <span className="ml-1 opacity-80">
+                    {formatMxn(Number(d.price)).replace("MX$", "$")}
+                  </span>
+                ) : null}
+              </button>
+            ))}
+          </div>
         </div>
       ) : null}
 
@@ -164,7 +202,7 @@ export function DailyMenuHero({
       ) : null}
 
       <Button className="mt-5 w-full" size="lg" onClick={addToCart}>
-        Agregar {dailyMenuLabel.toLowerCase()}
+        Agregar · {formatMxn(linePrice)}
       </Button>
     </section>
   );

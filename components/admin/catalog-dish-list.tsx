@@ -19,6 +19,7 @@ type DishRow = Pick<
   | "price"
   | "is_side"
   | "is_active"
+  | "is_popular"
   | "sort_order"
   | "category_id"
 >;
@@ -41,6 +42,7 @@ export function CatalogDishList({
   const dishesLabel = label(businessType, "dishes");
   const sideLabel = label(businessType, "side");
   const categoryLabel = label(businessType, "category");
+  const popularLabel = label(businessType, "popular");
 
   const [dishes, setDishes] = useState(initialDishes);
   const [query, setQuery] = useState("");
@@ -217,7 +219,14 @@ export function CatalogDishList({
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">{dish.name}</p>
+                  <p className="truncate font-medium">
+                    {dish.name}
+                    {dish.is_popular ? (
+                      <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
+                        {popularLabel}
+                      </span>
+                    ) : null}
+                  </p>
                   <p className="text-xs text-muted">
                     {dish.category_id
                       ? catName.get(dish.category_id) ?? "Categoría"

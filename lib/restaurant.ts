@@ -140,7 +140,7 @@ async function fetchPublicMenuBySlug(
     supabase
       .from("daily_menu_selections")
       .select(
-        "id, restaurant_id, package_price, max_sides, menu_date, updated_at",
+        "id, restaurant_id, package_price, max_sides, menu_date, updated_at, pricing_mode, is_active",
       )
       .eq("restaurant_id", r.id)
       .maybeSingle(),

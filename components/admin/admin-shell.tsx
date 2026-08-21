@@ -102,6 +102,12 @@ export function AdminShell({
     },
     { href: "/admin/flyer", label: "Flyer", icon: ImageIcon, feature: "flyer" },
     {
+      href: "/admin/flyers",
+      label: "Galería",
+      icon: ImageIcon,
+      feature: "flyer",
+    },
+    {
       href: "/admin/difusion",
       label: "Difundir",
       icon: Megaphone,

@@ -4,6 +4,9 @@ import { getSessionRestaurant } from "@/lib/restaurant";
 import { can } from "@/lib/plans";
 import { deleteStoragePublicUrl } from "@/lib/storage-cleanup";
 
+const FLYER_SELECT =
+  "id, title, subtitle, headline, weekday_label, aspect, price_mode, package_price, options_json, items_json, png_path, created_at, source, is_active, expires_at";
+
 export async function GET() {
   const session = await getSessionRestaurant();
   if (!session) {
@@ -16,9 +19,7 @@ export async function GET() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("flyers")
-    .select(
-      "id, title, subtitle, headline, weekday_label, aspect, price_mode, package_price, png_path, created_at",
-    )
+    .select(FLYER_SELECT)
     .eq("restaurant_id", session.restaurant.id)
     .order("created_at", { ascending: false });
 
@@ -48,12 +49,21 @@ export async function POST(request: Request) {
     options_json?: Record<string, unknown>;
     items_json?: unknown[];
     png_path?: string | null;
+    source?: string;
+    is_active?: boolean;
+    expires_at?: string | null;
   };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "invalid json" }, { status: 400 });
   }
+
+  if (!body.png_path) {
+    return NextResponse.json({ error: "imagen requerida" }, { status: 400 });
+  }
+
+  const source = body.source === "upload" ? "upload" : "studio";
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -70,10 +80,11 @@ export async function POST(request: Request) {
       options_json: body.options_json ?? {},
       items_json: body.items_json ?? [],
       png_path: body.png_path ?? null,
+      source,
+      is_active: body.is_active !== false,
+      expires_at: body.expires_at || null,
     })
-    .select(
-      "id, title, subtitle, headline, weekday_label, aspect, price_mode, package_price, png_path, created_at",
-    )
+    .select(FLYER_SELECT)
     .single();
 
   if (error) {
@@ -90,6 +101,43 @@ export async function POST(request: Request) {
     action: "save",
   });
 
+  return NextResponse.json({ flyer: data });
+}
+
+export async function PATCH(request: Request) {
+  const session = await getSessionRestaurant();
+  if (!session) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  if (!can(session.restaurant.plan_type, "flyer")) {
+    return NextResponse.json({ error: "plan required" }, { status: 403 });
+  }
+
+  const body = (await request.json()) as Record<string, unknown>;
+  const id = String(body.id ?? "");
+  if (!id) {
+    return NextResponse.json({ error: "id required" }, { status: 400 });
+  }
+
+  const updates: Record<string, unknown> = {};
+  if (body.title !== undefined) updates.title = String(body.title).trim();
+  if (body.is_active !== undefined) updates.is_active = Boolean(body.is_active);
+  if (body.expires_at !== undefined) {
+    updates.expires_at = body.expires_at ? String(body.expires_at) : null;
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("flyers")
+    .update(updates)
+    .eq("id", id)
+    .eq("restaurant_id", session.restaurant.id)
+    .select(FLYER_SELECT)
+    .single();
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
   return NextResponse.json({ flyer: data });
 }
 

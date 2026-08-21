@@ -21,7 +21,7 @@ export default async function CatalogPage() {
     supabase
       .from("dishes")
       .select(
-        "id, name, photo_url, price, is_side, is_active, sort_order, category_id",
+        "id, name, photo_url, price, is_side, is_active, is_popular, sort_order, category_id",
       )
       .eq("restaurant_id", session.restaurant.id)
       .is("archived_at", null)

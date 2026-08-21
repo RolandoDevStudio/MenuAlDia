@@ -19,6 +19,7 @@ import {
 import { PoweredByMenuAlDia } from "@/components/brand/brand-logo";
 import { TryAsCustomerBanner } from "@/components/marketing/try-as-customer-banner";
 import { MenuFaqs } from "@/components/public/menu-faqs";
+import { FlyerPromoBanner } from "@/components/public/flyer-promo-banner";
 import { createPublicClient } from "@/lib/supabase/public";
 
 type Props = {
@@ -135,6 +136,9 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
 
   const packagePrice = Number(data.dailyMenu?.package_price ?? 0);
   const maxSides = data.dailyMenu?.max_sides ?? 2;
+  const pricingMode =
+    data.dailyMenu?.pricing_mode === "individual" ? "individual" : "package";
+  const dailyMenuActive = data.dailyMenu?.is_active !== false;
   const theme = parseThemeConfig(data.restaurant.theme_config);
   const labels = labelsFor(data.restaurant.business_type);
   const place = formatPlaceLine(data.restaurant.city, data.restaurant.state);
@@ -174,6 +178,9 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
         style={bgStyle}
       />
       <TryAsCustomerBanner slug={slug} />
+      <Suspense fallback={null}>
+        <FlyerPromoBanner restaurantId={data.restaurant.id} />
+      </Suspense>
       {theme.bannerUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -196,16 +203,20 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
         </div>
       ) : (
         <>
-          <DailyMenuHero
-            dishes={data.dailyDishes}
-            sides={data.dailySides}
-            packagePrice={packagePrice}
-            maxSides={maxSides}
-            photoFrame={theme.photoFrame}
-            dailyMenuLabel={labels.dailyMenu}
-            sidesLabel={labels.sides}
-            dishesLabel={labels.dishes}
-          />
+          {dailyMenuActive ? (
+            <DailyMenuHero
+              dishes={data.dailyDishes}
+              sides={data.dailySides}
+              packagePrice={packagePrice}
+              maxSides={maxSides}
+              pricingMode={pricingMode}
+              photoFrame={theme.photoFrame}
+              dailyMenuLabel={labels.dailyMenu}
+              sidesLabel={labels.sides}
+              dishesLabel={labels.dishes}
+              dishLabel={labels.dish}
+            />
+          ) : null}
           <Suspense fallback={null}>
             <PublicMenuClient
               slug={slug}
@@ -217,6 +228,7 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
               photoFrame={theme.photoFrame}
               sidesLabel={labels.sides}
               combosLabel={labels.combos}
+              popularLabel={labels.popular}
               initialDishId={sp.p ?? null}
               initialComboSlug={sp.c ?? null}
             />

@@ -22,6 +22,7 @@ import { normalizeBusinessType } from "@/lib/business-labels";
 import { PlanRequestPanel } from "@/components/admin/plan-request-panel";
 import { SubscriptionPanel } from "@/components/admin/subscription-panel";
 import { AdminFaqsPanel } from "@/components/admin/admin-faqs-panel";
+import { DailyMenuVisibilitySwitch } from "@/components/admin/daily-menu-visibility-switch";
 import type { PlanType } from "@/lib/plans";
 
 export default function SettingsPage() {
@@ -204,6 +205,13 @@ export default function SettingsPage() {
       </div>
 
       <PlanRequestPanel currentPlan={restaurant.plan_type || "catalog"} />
+
+      <DailyMenuVisibilitySwitch
+        restaurantId={restaurant.id}
+        publicSlug={restaurant.slug}
+        planType={restaurant.plan_type || "catalog"}
+        businessType={restaurant.business_type}
+      />
 
       <SubscriptionPanel
         planType={(restaurant.plan_type as PlanType) || "catalog"}

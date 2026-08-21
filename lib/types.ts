@@ -177,6 +177,8 @@ export interface DailyMenuSelection {
   max_sides: number;
   menu_date: string;
   updated_at: string;
+  pricing_mode?: "package" | "individual";
+  is_active?: boolean;
 }
 
 export interface DailyMenuDish {

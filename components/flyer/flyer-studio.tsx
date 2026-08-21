@@ -227,6 +227,8 @@ export function FlyerStudio({
             ...selectedSides.map(dishToSnap),
           ],
           png_path: pngPath,
+          source: "studio",
+          is_active: true,
         }),
       });
       const json = (await res.json()) as { error?: string; quota?: boolean };

@@ -44,6 +44,7 @@ type Props = {
   photoFrame?: PhotoFrame;
   sidesLabel?: string;
   combosLabel?: string;
+  popularLabel?: string;
   initialDishId?: string | null;
   initialComboSlug?: string | null;
 };
@@ -58,6 +59,7 @@ export function PublicMenuClient({
   photoFrame = "rounded_modern",
   sidesLabel = "Adicionales",
   combosLabel = "Combos",
+  popularLabel = "Lo más pedido",
   initialDishId,
   initialComboSlug,
 }: Props) {
@@ -339,7 +341,7 @@ export function PublicMenuClient({
                             )}
                             {dish.is_popular ? (
                               <span className="absolute left-1 top-1 rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow">
-                                Popular
+                                {popularLabel}
                               </span>
                             ) : null}
                           </div>
