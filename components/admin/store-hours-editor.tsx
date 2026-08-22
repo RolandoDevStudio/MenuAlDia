@@ -135,13 +135,11 @@ export function StoreHoursEditor({
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm font-semibold">{WEEKDAY_LABELS[day]}</p>
                 <label className="flex items-center gap-2 text-xs text-muted">
-                  <span>Cerrado</span>
+                  <span>Abierto</span>
                   <Switch
-                    checked={closed}
+                    checked={!closed}
                     onCheckedChange={(v) => {
                       if (v) {
-                        setDay(day, { closed: true, slots: [] });
-                      } else {
                         setDay(day, {
                           closed: false,
                           slots:
@@ -149,8 +147,11 @@ export function StoreHoursEditor({
                               ? d.slots
                               : [{ open: "09:00", close: "18:00" }],
                         });
+                      } else {
+                        setDay(day, { closed: true, slots: [] });
                       }
                     }}
+                    aria-label={`${WEEKDAY_LABELS[day]} abierto`}
                   />
                 </label>
               </div>

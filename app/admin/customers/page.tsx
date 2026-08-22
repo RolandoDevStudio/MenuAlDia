@@ -62,6 +62,7 @@ export default async function CustomersPage() {
         loyaltyRewardLabel={
           session.restaurant.loyalty_reward_label || "Recompensa gratis"
         }
+        businessType={session.restaurant.business_type}
       />
     </div>
   );

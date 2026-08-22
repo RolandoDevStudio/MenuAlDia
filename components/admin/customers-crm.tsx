@@ -19,6 +19,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { normalizeBusinessType } from "@/lib/business-labels";
+import type { BusinessType } from "@/lib/types";
 
 const TAG_OPTIONS = ["VIP", "Para llevar", "Frecuente", "Familiar"] as const;
 const MAX_PHOTOS = 5;
@@ -29,6 +31,7 @@ type Props = {
   initialCustomers: Customer[];
   loyaltyGoal: number;
   loyaltyRewardLabel: string;
+  businessType?: BusinessType | string | null;
 };
 
 function isBirthdayToday(birthday: string | null | undefined) {
@@ -44,7 +47,9 @@ export function CustomersCrm({
   initialCustomers,
   loyaltyGoal: initialGoal,
   loyaltyRewardLabel: initialReward,
+  businessType,
 }: Props) {
+  const isServicios = normalizeBusinessType(businessType) === "servicios";
   const [customers, setCustomers] = useState(initialCustomers);
   const [q, setQ] = useState("");
   const [campaignFilter, setCampaignFilter] = useState<CampaignFilter>("all");
@@ -262,12 +267,13 @@ export function CustomersCrm({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-brand/20 bg-brand/5 px-3 py-2 text-xs text-muted">
-        Tip: pide autorización verbal antes de tomar fotos del servicio. Las
-        fichas y fotos son privadas; solo tú las ves en tu panel. Enfoca el
-        trabajo (corte, uñas, platillo), no rostros completos cuando sea
-        posible.
-      </div>
+      {isServicios ? (
+        <div className="rounded-xl border border-brand/20 bg-brand/5 px-3 py-2 text-xs text-muted">
+          Tip: pide autorización verbal antes de tomar fotos del servicio. Las
+          fichas y fotos son privadas; solo tú las ves en tu panel. Enfoca el
+          trabajo (corte, uñas, etc.), no rostros completos cuando sea posible.
+        </div>
+      ) : null}
 
       <CampaignPanel
         customers={customers}

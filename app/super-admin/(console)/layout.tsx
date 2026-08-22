@@ -56,9 +56,6 @@ export default async function SuperAdminConsoleLayout({
           >
             CMS
           </Link>
-          <Link href="/admin" className="text-muted hover:text-brand">
-            Admin
-          </Link>
         </nav>
       </header>
       <div className="min-w-0 w-full">{children}</div>

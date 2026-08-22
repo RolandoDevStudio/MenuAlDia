@@ -117,6 +117,16 @@ export function TenantsTable({ restaurants, owners, onEdit }: Props) {
   function RowActions({ r }: { r: Restaurant }) {
     return (
       <div className="flex flex-wrap gap-1.5">
+        <Button asChild size="sm" variant="outline" className="min-h-10">
+          <a
+            href={`/${r.slug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Ver menú público (como el cliente)"
+          >
+            Ver menú
+          </a>
+        </Button>
         <Button
           type="button"
           size="sm"
