@@ -68,6 +68,7 @@ const RESTAURANT_FIELDS = [
   "phone_whatsapp",
   "plan_type",
   "is_active",
+  "show_powered_by",
   "subscription_end_date",
   "business_type",
   "city",
@@ -87,6 +88,7 @@ export async function PATCH(request: Request) {
     phone_whatsapp?: string;
     plan_type?: string;
     is_active?: boolean;
+    show_powered_by?: boolean;
     subscription_end_date?: string | null;
     business_type?: string;
     city?: string;
@@ -124,6 +126,8 @@ export async function PATCH(request: Request) {
     updates.owner_name = body.owner_name.trim();
   if (typeof body.plan_type === "string") updates.plan_type = body.plan_type;
   if (typeof body.is_active === "boolean") updates.is_active = body.is_active;
+  if (typeof body.show_powered_by === "boolean")
+    updates.show_powered_by = body.show_powered_by;
   if (typeof body.business_type === "string")
     updates.business_type = body.business_type;
   if (typeof body.city === "string") updates.city = body.city.trim();

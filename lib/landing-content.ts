@@ -126,9 +126,9 @@ export const DEFAULT_LANDING_FAQ: LandingFaqItem[] = [
 
 export const DEFAULT_LANDING_CONTENT: LandingContent = {
   heroTitle:
-    "Digitaliza tu menú en 2 minutos. Recibe pedidos por WhatsApp sin comisiones.",
+    "Tu catálogo y menú digital interactivo. Recibe pedidos por WhatsApp con 0% de comisiones.",
   heroSubtitle:
-    "Hecho para restaurantes, servicios y tiendas locales que viven de listas de difusión — no de intermediarios.",
+    "Hecho para restaurantes, servicios y tiendas locales — sin intermediarios ni App Store.",
   contactBlurb:
     "Te respondemos por WhatsApp y te activamos en el mismo día.",
   socialProofLine: "Hecho para locales en México · activación el mismo día",

@@ -62,6 +62,7 @@ export function TenantEditModal({
   const [city, setCity] = useState("");
   const [stateMx, setStateMx] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const [showPoweredBy, setShowPoweredBy] = useState(true);
   const [endDate, setEndDate] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -124,6 +125,7 @@ export function TenantEditModal({
     setCity(restaurant.city ?? "");
     setStateMx(normalizeLegacyState(restaurant.state) || restaurant.state || "");
     setIsActive(restaurant.is_active !== false);
+    setShowPoweredBy(restaurant.show_powered_by !== false);
     setEndDate(restaurant.subscription_end_date?.slice(0, 10) ?? "");
     setEmail(ownerEmail ?? "");
     setPassword("");
@@ -196,6 +198,7 @@ export function TenantEditModal({
       city,
       state: stateMx,
       is_active: isActive,
+      show_powered_by: showPoweredBy,
       subscription_end_date: endDate
         ? new Date(endDate + "T23:59:59").toISOString()
         : null,
@@ -428,6 +431,19 @@ export function TenantEditModal({
             <div className="flex items-center justify-between gap-3 rounded-lg border border-black/5 bg-background/50 px-3 py-2">
               <Label>Activo</Label>
               <Switch checked={isActive} onCheckedChange={setIsActive} />
+            </div>
+
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-black/5 bg-background/50 px-3 py-2">
+              <div>
+                <Label>Pie “Hecho con Menú al Día”</Label>
+                <p className="text-[11px] text-muted">
+                  Visible en el menú público del tenant
+                </p>
+              </div>
+              <Switch
+                checked={showPoweredBy}
+                onCheckedChange={setShowPoweredBy}
+              />
             </div>
 
             <div className="space-y-1.5">

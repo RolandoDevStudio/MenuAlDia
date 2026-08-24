@@ -33,8 +33,8 @@ export function DailyMenuHero({
   photoFrame = "rounded_modern",
   dailyMenuLabel = "Especiales de hoy",
   sidesLabel = "Guarniciones",
-  dishesLabel = "Platillos",
-  dishLabel = "Platillo",
+  dishesLabel = "Opciones",
+  dishLabel = "Opción",
 }: Props) {
   const addItem = useCartStore((s) => s.addItem);
   const [selectedSides, setSelectedSides] = useState<string[]>([]);

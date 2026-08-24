@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ImageIcon, Smartphone, MessageCircle } from "lucide-react";
+import { ImageIcon, Smartphone, MessageCircle, Shield, Zap } from "lucide-react";
 import {
   PLAN_LABELS,
   FALLBACK_PLAN_PRICES,
@@ -16,7 +16,6 @@ import { buildWaMeUrl, SALES_WHATSAPP } from "@/lib/whatsapp";
 import {
   CANONICAL_DEMOS,
   OFFICIAL_DOMAIN,
-  type CanonicalDemoId,
 } from "@/lib/canonical-demos";
 import {
   DEFAULT_LANDING_CONTENT,
@@ -29,7 +28,11 @@ import { LandingWhatsAppFab } from "@/components/marketing/landing-whatsapp-fab"
 import { ProductStage } from "@/components/marketing/product-stage";
 import { ProductShots } from "@/components/marketing/product-shots";
 import { ComparisonCards } from "@/components/marketing/comparison-cards";
+import { ValueMatrix } from "@/components/marketing/value-matrix";
+import { LandingStickyCta } from "@/components/marketing/landing-sticky-cta";
+import { PhoneFrame } from "@/components/marketing/phone-frame";
 import { TrustStrip } from "@/components/marketing/trust-strip";
+import { StorageImage } from "@/components/ui/storage-image";
 import { FaqSection } from "@/components/marketing/faq-section";
 import { RoiCalculator } from "@/components/marketing/roi-calculator";
 import { Reveal } from "@/components/marketing/reveal";
@@ -79,12 +82,6 @@ const BENEFITS = [
     body: "El cliente pide y el mensaje llega a tu WhatsApp. Tú cobras.",
   },
 ] as const;
-
-const GIRO_ACCENT: Record<CanonicalDemoId, string> = {
-  restaurante: "border-t-brand",
-  servicios: "border-t-accent",
-  tienda: "border-t-amber-600",
-};
 
 function SectionShell({
   children,
@@ -198,7 +195,7 @@ export default function HomePage() {
   }
 
   return (
-    <main className="relative min-h-full overflow-x-clip bg-background">
+    <main className="relative min-h-full overflow-x-clip bg-background pb-24 md:pb-0">
       <div
         className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
         aria-hidden
@@ -209,50 +206,106 @@ export default function HomePage() {
       <LandingNav onContactClick={scrollToContact} />
 
       <section className="mx-auto max-w-3xl px-6 pb-6 pt-10 sm:pt-14">
-        <div
-          className="motion-safe:animate-[rise_0.7s_ease-out]"
-          style={{ animationFillMode: "both" }}
-        >
-          <BrandLogo variant="lockup" size="xl" href={null} />
-        </div>
-        <h1
-          className="mt-5 max-w-xl text-2xl font-semibold leading-snug text-foreground sm:text-3xl motion-safe:animate-[rise_0.7s_ease-out]"
-          style={{ animationDelay: "80ms", animationFillMode: "both" }}
-        >
-          {landing.heroTitle}
-        </h1>
-        <p
-          className="mt-3 max-w-lg text-muted motion-safe:animate-[rise_0.7s_ease-out]"
-          style={{ animationDelay: "160ms", animationFillMode: "both" }}
-        >
-          {landing.heroSubtitle}
-        </p>
-        <p
-          className="mt-2 text-sm font-semibold text-brand motion-safe:animate-[rise_0.7s_ease-out]"
-          style={{ animationDelay: "200ms", animationFillMode: "both" }}
-        >
-          Desde {formatMxn(dailyValue(fromDaily))} al día ·{" "}
-          <button
-            type="button"
-            className="underline-offset-2 hover:underline"
-            onClick={() =>
-              document
-                .getElementById("precios")
-                ?.scrollIntoView({ behavior: "smooth" })
-            }
+        <div className="flex flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 flex-1">
+            <div
+              className="motion-safe:animate-[rise_0.7s_ease-out]"
+              style={{ animationFillMode: "both" }}
+            >
+              <BrandLogo variant="lockup" size="xl" href={null} />
+            </div>
+            <h1
+              className="mt-5 max-w-xl text-2xl font-semibold leading-snug text-foreground sm:text-3xl motion-safe:animate-[rise_0.7s_ease-out]"
+              style={{ animationDelay: "80ms", animationFillMode: "both" }}
+            >
+              {landing.heroTitle}
+            </h1>
+            <p
+              className="mt-3 max-w-lg text-muted motion-safe:animate-[rise_0.7s_ease-out]"
+              style={{ animationDelay: "160ms", animationFillMode: "both" }}
+            >
+              {landing.heroSubtitle}
+            </p>
+            <div
+              className="mt-4 flex flex-wrap gap-2 motion-safe:animate-[rise_0.7s_ease-out]"
+              style={{ animationDelay: "200ms", animationFillMode: "both" }}
+            >
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-muted">
+                <Zap className="h-3.5 w-3.5 text-brand" aria-hidden />
+                Carga rápida
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-muted">
+                <Shield className="h-3.5 w-3.5 text-brand" aria-hidden />
+                0% comisiones
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-muted">
+                <Smartphone className="h-3.5 w-3.5 text-brand" aria-hidden />
+                Sin App Store
+              </span>
+            </div>
+            <div
+              className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap motion-safe:animate-[rise_0.7s_ease-out]"
+              style={{ animationDelay: "240ms", animationFillMode: "both" }}
+            >
+              <Button
+                type="button"
+                className="landing-cta min-h-11"
+                onClick={scrollToContact}
+              >
+                Probar 30 días gratis
+              </Button>
+              <Button asChild variant="outline" className="landing-cta min-h-11">
+                <Link href="#demos">Ver demo en vivo</Link>
+              </Button>
+            </div>
+            <p
+              className="mt-3 text-sm font-semibold text-brand motion-safe:animate-[rise_0.7s_ease-out]"
+              style={{ animationDelay: "280ms", animationFillMode: "both" }}
+            >
+              Desde {formatMxn(dailyValue(fromDaily))} al día ·{" "}
+              <button
+                type="button"
+                className="underline-offset-2 hover:underline"
+                onClick={() =>
+                  document
+                    .getElementById("precios")
+                    ?.scrollIntoView({ behavior: "smooth" })
+                }
+              >
+                Ver precios
+              </button>
+            </p>
+            <p
+              className="mt-2 text-xs text-muted motion-safe:animate-[rise_0.7s_ease-out]"
+              style={{ animationDelay: "300ms", animationFillMode: "both" }}
+            >
+              {landing.socialProofLine}
+            </p>
+          </div>
+          <div
+            className="mx-auto hidden w-full max-w-[200px] shrink-0 sm:block motion-safe:animate-[rise_0.7s_ease-out]"
+            style={{ animationDelay: "200ms", animationFillMode: "both" }}
           >
-            Ver precios
-          </button>
-        </p>
-        <p
-          className="mt-2 text-xs text-muted motion-safe:animate-[rise_0.7s_ease-out]"
-          style={{ animationDelay: "240ms", animationFillMode: "both" }}
-        >
-          {landing.socialProofLine}
-        </p>
+            <PhoneFrame
+              urlLabel={`${OFFICIAL_DOMAIN}/demo-restaurante`}
+              className="max-w-[200px]"
+            >
+              <StorageImage
+                src={
+                  landing.demoPosters.restaurante?.trim() ||
+                  "/marketing/demo-restaurante.svg"
+                }
+                alt="Vista previa del menú digital"
+                fill
+                sizes="200px"
+                className="object-cover"
+              />
+            </PhoneFrame>
+          </div>
+        </div>
       </section>
 
-      <section className="mx-auto max-w-3xl px-6 pb-12 pt-2">
+      <section id="demos" className="mx-auto max-w-3xl scroll-mt-20 px-6 pb-12 pt-2">
         <Reveal>
           <ProductStage demoPosters={landing.demoPosters} />
         </Reveal>
@@ -298,37 +351,19 @@ export default function HomePage() {
         <Reveal delayMs={80}>
           <ComparisonCards images={landing.comparisonImages} />
         </Reveal>
-      </SectionShell>
-
-      <SectionShell id="demos" tone="plain">
-        <Reveal>
-          <h2 className="font-[family-name:var(--font-display)] text-4xl tracking-wide text-brand-dark sm:text-5xl">
-            Abrir demos
-          </h2>
-          <p className="mt-2 max-w-md text-sm text-muted">
-            Acceso directo por giro.
-          </p>
+        <Reveal delayMs={120}>
+          <div className="mt-10">
+            <h3 className="text-lg font-semibold text-brand-dark">
+              De un vistazo
+            </h3>
+            <p className="mt-1 text-sm text-muted">
+              PDF, apps de delivery y Menú al Día.
+            </p>
+            <div className="mt-4">
+              <ValueMatrix />
+            </div>
+          </div>
         </Reveal>
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
-          {CANONICAL_DEMOS.map((d, i) => (
-            <Reveal key={d.slug} delayMs={i * 90}>
-              <Link
-                href={`/${d.slug}`}
-                className={cn(
-                  "landing-card group flex min-h-11 items-center justify-between rounded-xl border border-black/10 border-t-4 bg-white px-4 py-3 hover:shadow-md",
-                  GIRO_ACCENT[d.id],
-                )}
-              >
-                <span className="text-sm font-semibold text-foreground">
-                  {d.label}
-                </span>
-                <span className="text-xs font-semibold text-brand group-hover:underline">
-                  Abrir demo
-                </span>
-              </Link>
-            </Reveal>
-          ))}
-        </div>
       </SectionShell>
 
       <SectionShell tone="brand">
@@ -519,6 +554,7 @@ export default function HomePage() {
           </div>
         </div>
       </footer>
+      <LandingStickyCta onPrimaryClick={scrollToContact} />
       <LandingWhatsAppFab />
     </main>
   );

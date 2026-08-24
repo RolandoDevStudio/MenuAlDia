@@ -447,6 +447,8 @@ export default function SettingsPage() {
                 value={theme}
                 onChange={setTheme}
                 restaurantId={restaurant.id}
+                logoUrl={logoUrl}
+                businessType={restaurant.business_type}
               />
             </div>
           </details>

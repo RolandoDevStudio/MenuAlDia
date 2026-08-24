@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Cake, Plus, Search, Trash2, MessageCircle } from "lucide-react";
-import type { Customer, CustomerPhoto } from "@/lib/types";
+import type { BusinessType, Customer, CustomerPhoto } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import { compressImage } from "@/lib/compress-image";
 import {
@@ -19,8 +19,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { normalizeBusinessType } from "@/lib/business-labels";
-import type { BusinessType } from "@/lib/types";
 
 const TAG_OPTIONS = ["VIP", "Para llevar", "Frecuente", "Familiar"] as const;
 const MAX_PHOTOS = 5;
@@ -52,6 +52,7 @@ export function CustomersCrm({
   const isServicios = normalizeBusinessType(businessType) === "servicios";
   const [customers, setCustomers] = useState(initialCustomers);
   const [q, setQ] = useState("");
+  const [visitPulseId, setVisitPulseId] = useState<string | null>(null);
   const [campaignFilter, setCampaignFilter] = useState<CampaignFilter>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [goal, setGoal] = useState(initialGoal || 10);
@@ -195,7 +196,12 @@ export function CustomersCrm({
       const goalN = json.goal ?? Math.max(1, Number(goal) || 10);
       const toward = json.toward ?? 0;
       if (json.goalReached) setRewardOpen(updated);
-      else setMsg(`Visita registrada (${toward}/${goalN})`);
+      else {
+        setMsg(`Visita registrada (${toward}/${goalN})`);
+        toast.success(`Visita registrada (${toward}/${goalN})`);
+        setVisitPulseId(updated.id);
+        window.setTimeout(() => setVisitPulseId(null), 700);
+      }
     } catch {
       setMsg("Error de red");
     } finally {
@@ -399,7 +405,11 @@ export function CustomersCrm({
                       <Button
                         type="button"
                         size="sm"
-                        className="shrink-0"
+                        className={cn(
+                          "shrink-0",
+                          visitPulseId === c.id &&
+                            "motion-safe:animate-pulse ring-2 ring-brand/40",
+                        )}
                         disabled={busy}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -409,9 +419,15 @@ export function CustomersCrm({
                         +1 visita
                       </Button>
                     </div>
-                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-black/10">
+                    <div
+                      className={cn(
+                        "mt-2 h-1.5 overflow-hidden rounded-full bg-black/10",
+                        visitPulseId === c.id &&
+                          "motion-safe:animate-pulse",
+                      )}
+                    >
                       <div
-                        className="h-full rounded-full bg-brand"
+                        className="h-full rounded-full bg-brand transition-[width] duration-300"
                         style={{ width: `${pct}%` }}
                       />
                     </div>

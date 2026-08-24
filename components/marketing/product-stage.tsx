@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ExternalLink,
+  Hand,
   Play,
   Store,
   UtensilsCrossed,
@@ -11,6 +12,7 @@ import {
 } from "lucide-react";
 import {
   CANONICAL_DEMOS,
+  OFFICIAL_DOMAIN,
   getCanonicalDemo,
   salesInterestMessage,
   type CanonicalDemoId,
@@ -19,13 +21,7 @@ import type { LandingDemoPosters } from "@/lib/landing-content";
 import { buildWaMeUrl, SALES_WHATSAPP } from "@/lib/whatsapp";
 import { Button } from "@/components/ui/button";
 import { StorageImage } from "@/components/ui/storage-image";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { PhoneFrame } from "@/components/marketing/phone-frame";
 import { cn } from "@/lib/utils";
 
 const ICONS = {
@@ -34,7 +30,12 @@ const ICONS = {
   tienda: Store,
 } as const;
 
-/** Soft panel theme per vertical — ties tabs + copy into one unit. */
+const FALLBACK_POSTERS: Record<CanonicalDemoId, string> = {
+  restaurante: "/marketing/demo-restaurante.svg",
+  servicios: "/marketing/demo-servicios.svg",
+  tienda: "/marketing/demo-tienda.svg",
+};
+
 const PANEL: Record<
   CanonicalDemoId,
   {
@@ -79,17 +80,32 @@ type Props = {
 export function ProductStage({ className, demoPosters = {} }: Props) {
   const [activeId, setActiveId] =
     useState<CanonicalDemoId>("restaurante");
-  const [modalOpen, setModalOpen] = useState(false);
+  const [isInteractive, setIsInteractive] = useState(false);
   const demo = getCanonicalDemo(activeId)!;
   const Icon = ICONS[activeId];
   const theme = PANEL[activeId];
-  const posterUrl = demoPosters[activeId]?.trim() || "";
+  const posterUrl =
+    demoPosters[activeId]?.trim() || FALLBACK_POSTERS[activeId];
+  const urlLabel = `${OFFICIAL_DOMAIN}/${demo.slug}`;
   const salesPhone =
     process.env.NEXT_PUBLIC_SALES_WHATSAPP || SALES_WHATSAPP;
   const salesUrl = buildWaMeUrl(
     salesPhone,
     salesInterestMessage(demo.label),
   );
+
+  useEffect(() => {
+    setIsInteractive(false);
+  }, [activeId]);
+
+  function activateDemo() {
+    setIsInteractive(true);
+  }
+
+  function selectTab(id: CanonicalDemoId) {
+    setActiveId(id);
+    setIsInteractive(false);
+  }
 
   return (
     <div className={cn(className)}>
@@ -113,7 +129,7 @@ export function ProductStage({ className, demoPosters = {} }: Props) {
                 type="button"
                 role="tab"
                 aria-selected={active}
-                onClick={() => setActiveId(d.id)}
+                onClick={() => selectTab(d.id)}
                 className={cn(
                   "inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold transition-colors duration-200 sm:text-sm",
                   active
@@ -128,12 +144,7 @@ export function ProductStage({ className, demoPosters = {} }: Props) {
           })}
         </div>
 
-        <div
-          className={cn(
-            "mt-5 flex flex-col gap-5",
-            posterUrl && "sm:flex-row sm:items-start sm:justify-between",
-          )}
-        >
+        <div className="mt-5 flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex min-w-0 flex-1 flex-col items-start text-left">
             <p
               className={cn(
@@ -148,19 +159,20 @@ export function ProductStage({ className, demoPosters = {} }: Props) {
               Menú demo · {demo.label}
             </h3>
             <p className="mt-2 max-w-lg text-sm text-muted">
-              Adaptado a {demo.label.toLowerCase()}. Agrega al carrito y pulsa
-              Enviar por WhatsApp — así arma el cliente el pedido y así le llega
-              al negocio.
+              Adaptado a {demo.label.toLowerCase()}. Explora el menú en el
+              teléfono; en la demo los envíos por WhatsApp están simulados.
             </p>
 
             <div className="mt-5 flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
               <Button
                 type="button"
                 className={cn("landing-cta min-h-11", theme.primaryBtn)}
-                onClick={() => setModalOpen(true)}
+                onClick={activateDemo}
               >
                 <Play className="h-4 w-4 fill-current" aria-hidden />
-                Cargar demo interactiva
+                {isInteractive
+                  ? "Demo interactiva activa"
+                  : "Cargar demo interactiva"}
               </Button>
               <Button
                 asChild
@@ -187,59 +199,52 @@ export function ProductStage({ className, demoPosters = {} }: Props) {
             </Link>
           </div>
 
-          {posterUrl ? (
-            <div className="relative mx-auto aspect-[4/3] w-full max-w-[220px] shrink-0 overflow-hidden rounded-xl border border-black/10 bg-white shadow-sm sm:mx-0 sm:w-[200px]">
-              <StorageImage
-                src={posterUrl}
-                alt={`Captura demo ${demo.label}`}
-                fill
-                sizes="220px"
-              />
+          <PhoneFrame urlLabel={urlLabel} className="sm:mx-0">
+            <div className="absolute inset-0">
+              <div
+                className={cn(
+                  "absolute inset-0 transition-opacity duration-300 motion-reduce:transition-none",
+                  isInteractive
+                    ? "pointer-events-none opacity-0"
+                    : "opacity-100",
+                )}
+                aria-hidden={isInteractive}
+              >
+                <StorageImage
+                  src={posterUrl}
+                  alt={`Captura demo ${demo.label}`}
+                  fill
+                  sizes="280px"
+                  className="object-cover"
+                />
+              </div>
+
+              {isInteractive ? (
+                <iframe
+                  key={demo.slug}
+                  title={`Demo ${demo.label}`}
+                  src={`/${demo.slug}`}
+                  className="absolute inset-0 h-full w-full border-0 opacity-100 transition-opacity duration-300"
+                />
+              ) : null}
+
+              {!isInteractive ? (
+                <button
+                  type="button"
+                  onClick={activateDemo}
+                  className="absolute inset-0 z-10 flex cursor-pointer items-end justify-center bg-transparent p-3 pb-4"
+                  aria-label="Toca para probar la demo interactiva"
+                >
+                  <span className="pointer-events-auto inline-flex max-w-[95%] items-center gap-2 rounded-full border border-white/40 bg-slate-900/70 px-3 py-2 text-left text-[11px] font-semibold leading-snug text-white shadow-lg backdrop-blur-md">
+                    <Hand className="h-4 w-4 shrink-0" aria-hidden />
+                    Toca para probar la demo interactiva
+                  </span>
+                </button>
+              ) : null}
             </div>
-          ) : null}
+          </PhoneFrame>
         </div>
       </div>
-
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="flex max-h-[90dvh] w-[min(100%-1.5rem,42rem)] max-w-3xl flex-col gap-3 overflow-hidden p-4 sm:p-5">
-          <DialogHeader className="shrink-0">
-            <DialogTitle>Vista previa · {demo.label}</DialogTitle>
-            <DialogDescription>
-              Prueba el menú sin salir de la landing. Cierra para seguir
-              explorando.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-black/10 bg-white">
-            {modalOpen ? (
-              <iframe
-                key={demo.slug}
-                title={`Demo ${demo.label}`}
-                src={`/${demo.slug}`}
-                className="h-[min(70vh,640px)] w-full border-0"
-              />
-            ) : null}
-          </div>
-
-          <div className="flex shrink-0 flex-wrap gap-2">
-            <Button asChild variant="secondary" size="sm" className="min-h-11">
-              <a href={`/${demo.slug}`} target="_blank" rel="noreferrer">
-                Abrir en pestaña
-                <ExternalLink className="ml-1.5 h-3.5 w-3.5" aria-hidden />
-              </a>
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="min-h-11"
-              onClick={() => setModalOpen(false)}
-            >
-              Cerrar
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

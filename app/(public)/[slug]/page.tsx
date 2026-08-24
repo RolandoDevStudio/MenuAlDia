@@ -27,6 +27,7 @@ import {
   effectiveAcceptingOrders,
   publicClosedMessage,
 } from "@/lib/store-hours";
+import { isCanonicalDemoSlug } from "@/lib/canonical-demos";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -188,7 +189,9 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
         acceptingOrders={effectiveAcceptingOrders(data.restaurant)}
         message={publicClosedMessage(data.restaurant.closed_message)}
       />
-      <MenuViewBeacon restaurantId={data.restaurant.id} />
+      {!isCanonicalDemoSlug(slug) ? (
+        <MenuViewBeacon restaurantId={data.restaurant.id} />
+      ) : null}
       <Suspense fallback={null}>
         <FlyerPromoBanner restaurantId={data.restaurant.id} />
       </Suspense>
@@ -249,7 +252,9 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
       )}
       {menuEmpty && faqs.length > 0 ? <MenuFaqs faqs={faqs} /> : null}
       <div className="mx-auto max-w-lg px-4 pb-4 pt-2 text-center">
-        <PoweredByMenuAlDia />
+        {data.restaurant.show_powered_by !== false ? (
+          <PoweredByMenuAlDia />
+        ) : null}
       </div>
       {!menuEmpty ? (
         <>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { Restaurant } from "@/lib/types";
 import { formatMxn } from "@/lib/money";
 import { formatPlaceLine } from "@/lib/mx-locations";
+import { normalizeBusinessType } from "@/lib/business-labels";
 import {
   MapPin,
   Clock,
@@ -80,6 +81,19 @@ export function RestaurantHeader({
     Icon: typeof InstagramIcon;
   }[];
 
+  const sloganFallback =
+    normalizeBusinessType(restaurant.business_type) === "servicios"
+      ? "Agenda y reserva fácil"
+      : normalizeBusinessType(restaurant.business_type) === "productos"
+        ? "Catálogo al día"
+        : "Sabor casero";
+  const showShippingChip =
+    offersDelivery &&
+    (restaurant.free_shipping || Number(restaurant.shipping_cost) === 0);
+
+  const chipClass =
+    "inline-flex min-h-9 items-center gap-1.5 rounded-full border border-black/10 bg-white/90 px-3 py-1.5 text-xs font-semibold text-brand shadow-sm";
+
   return (
     <header className="border-b border-black/5 bg-surface/80 px-4 py-5 backdrop-blur">
       <div className="mx-auto flex max-w-lg items-start gap-3">
@@ -103,7 +117,7 @@ export function RestaurantHeader({
             {restaurant.name}
           </h1>
           <p className="mt-1 text-sm font-medium text-brand-dark">
-            {restaurant.slogan || "Sabor casero"}
+            {restaurant.slogan || sloganFallback}
           </p>
           {place ? (
             <p className="mt-1 flex items-center gap-1 text-xs text-muted">
@@ -138,31 +152,39 @@ export function RestaurantHeader({
             </div>
           ) : null}
 
-          {restaurant.maps_url ? (
-            <a
-              href={restaurant.maps_url}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-2 inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-brand"
+          <div className="mt-3 flex flex-wrap gap-2">
+            {restaurant.maps_url ? (
+              <a
+                href={restaurant.maps_url}
+                target="_blank"
+                rel="noreferrer"
+                className={chipClass}
+              >
+                <Navigation className="h-3.5 w-3.5" aria-hidden />
+                Cómo llegar
+              </a>
+            ) : null}
+            <button
+              type="button"
+              className={cn(chipClass, "text-muted")}
+              aria-expanded={open}
+              onClick={() => setOpen((v) => !v)}
             >
-              <Navigation className="h-4 w-4" aria-hidden />
-              Cómo llegar
-            </a>
-          ) : null}
+              Más info
+              <ChevronDown
+                className={cn("h-3.5 w-3.5 transition", open && "rotate-180")}
+              />
+            </button>
+            {showShippingChip ? (
+              <span className={cn(chipClass, "border-accent/20 text-accent")}>
+                <Truck className="h-3.5 w-3.5" aria-hidden />
+                Envío gratis
+              </span>
+            ) : null}
+          </div>
 
-          <button
-            type="button"
-            className="mt-2 inline-flex min-h-11 items-center gap-1 text-xs font-semibold text-muted"
-            aria-expanded={open}
-            onClick={() => setOpen((v) => !v)}
-          >
-            Más info
-            <ChevronDown
-              className={cn("h-4 w-4 transition", open && "rotate-180")}
-            />
-          </button>
           {open ? (
-            <div className="mt-2 space-y-1.5 text-xs text-muted">
+            <div className="mt-3 space-y-1.5 rounded-xl border border-black/5 bg-background/60 px-3 py-2.5 text-xs text-muted">
               {restaurant.schedule_text ? (
                 <p className="flex items-center gap-1.5">
                   <Clock className="h-3.5 w-3.5 shrink-0" />
@@ -206,9 +228,7 @@ export function RestaurantHeader({
                 </div>
               ) : null}
             </div>
-          ) : (
-            <p className="mt-1 text-xs text-muted">{shippingLabel}</p>
-          )}
+          ) : null}
         </div>
       </div>
     </header>

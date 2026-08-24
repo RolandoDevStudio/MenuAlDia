@@ -11,7 +11,10 @@ import {
   type PhotoFrame,
   type ThemeConfig,
 } from "@/lib/theme";
+import { label, normalizeBusinessType } from "@/lib/business-labels";
+import type { BusinessType } from "@/lib/types";
 import { DishPhotoUpload } from "@/components/admin/dish-photo-upload";
+import { StorageImage } from "@/components/ui/storage-image";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -21,10 +24,20 @@ type Props = {
   value: ThemeConfig | Record<string, unknown> | null | undefined;
   onChange: (theme: ThemeConfig) => void;
   restaurantId?: string;
+  logoUrl?: string | null;
+  businessType?: BusinessType | string | null;
 };
 
-export function ThemeEditor({ value, onChange, restaurantId }: Props) {
+export function ThemeEditor({
+  value,
+  onChange,
+  restaurantId,
+  logoUrl,
+  businessType,
+}: Props) {
   const [theme, setTheme] = useState<ThemeConfig>(() => parseThemeConfig(value));
+  const exampleLabel = `${label(businessType, "dish")} ejemplo`;
+  const giro = normalizeBusinessType(businessType);
 
   function apply(next: ThemeConfig) {
     setTheme(next);
@@ -140,18 +153,32 @@ export function ThemeEditor({ value, onChange, restaurantId }: Props) {
           className="mt-3 flex items-center gap-3 rounded-xl p-3"
           style={{ background: "var(--color-card)" }}
         >
-          <div
-            className={cn(
-              "flex h-14 w-14 items-center justify-center bg-black/5 text-lg",
-              photoFrameClass(theme.photoFrame),
-            )}
-            style={{ color: "var(--color-primary)" }}
-          >
-            M
-          </div>
+          {logoUrl ? (
+            <StorageImage
+              src={logoUrl}
+              alt="Logo"
+              width={56}
+              height={56}
+              sizes="56px"
+              className={cn(
+                "h-14 w-14 object-cover",
+                photoFrameClass(theme.photoFrame),
+              )}
+            />
+          ) : (
+            <div
+              className={cn(
+                "flex h-14 w-14 items-center justify-center bg-black/5 text-lg",
+                photoFrameClass(theme.photoFrame),
+              )}
+              style={{ color: "var(--color-primary)" }}
+            >
+              {giro === "servicios" ? "S" : giro === "productos" ? "T" : "M"}
+            </div>
+          )}
           <div>
             <p className="font-semibold" style={{ color: "var(--color-text)" }}>
-              Platillo ejemplo
+              {exampleLabel}
             </p>
             <Button
               type="button"

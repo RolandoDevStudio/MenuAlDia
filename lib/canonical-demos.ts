@@ -47,6 +47,13 @@ export function isCanonicalDemoSlug(slug: string): boolean {
   return CANONICAL_DEMOS.some((d) => d.slug === slug);
 }
 
+/** Demo PWA or iframe embed — skip real WhatsApp / analytics side-effects. */
+export function isDemoOrEmbedded(slug?: string | null): boolean {
+  if (slug && isCanonicalDemoSlug(slug)) return true;
+  if (typeof window !== "undefined" && window.self !== window.top) return true;
+  return false;
+}
+
 export function getCanonicalDemo(
   idOrSlug: string,
 ): CanonicalDemo | undefined {

@@ -37,11 +37,10 @@ export function CatalogSection({
       <section className="mx-auto max-w-lg px-4 pb-8 pt-2">
         <div className="rounded-2xl border border-dashed border-black/10 bg-surface/70 px-4 py-6 text-center">
           <p className="font-semibold text-brand-dark">
-            Aún no hay platillos en el catálogo
+            Aún no hay productos en el catálogo
           </p>
           <p className="mt-1 text-sm text-muted">
-            Cuando el restaurante agregue entradas, bebidas u otros, aparecerán
-            aquí.
+            Cuando el negocio agregue ítems, aparecerán aquí.
           </p>
         </div>
       </section>

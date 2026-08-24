@@ -10,6 +10,8 @@ import {
   LogOut,
   Megaphone,
   Package,
+  Sparkles,
+  Store,
   Users,
   UtensilsCrossed,
 } from "lucide-react";
@@ -22,7 +24,7 @@ import {
   daysUntil,
   getLifecyclePhase,
 } from "@/lib/subscription-lifecycle";
-import { label } from "@/lib/business-labels";
+import { label, normalizeBusinessType } from "@/lib/business-labels";
 import type { BusinessType } from "@/lib/types";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { NotificationBell } from "@/components/admin/notification-bell";
@@ -87,6 +89,13 @@ export function AdminShell({
   const dailyMenuLabel = label(businessType, "dailyMenu");
   const catalogLabel = label(businessType, "catalog");
   const todayNavLabel = dailyMenuLabel.length <= 8 ? dailyMenuLabel : "Hoy";
+  const giro = normalizeBusinessType(businessType);
+  const TodayIcon =
+    giro === "servicios"
+      ? Sparkles
+      : giro === "productos"
+        ? Store
+        : UtensilsCrossed;
   const hasDaily = can(planType, "daily_menu");
   const hasFlyer = can(planType, "flyer");
   const hasCrm = can(planType, "crm");
@@ -98,7 +107,7 @@ export function AdminShell({
     primary.push({
       href: "/admin",
       label: todayNavLabel,
-      icon: UtensilsCrossed,
+      icon: TodayIcon,
       match: (p) => p === "/admin",
     });
   }

@@ -6,6 +6,7 @@ import type { Restaurant } from "@/lib/types";
 import { formatMxn } from "@/lib/money";
 import { checkoutSchema } from "@/lib/validations";
 import { buildOrderMessage, buildWaMeUrl } from "@/lib/whatsapp";
+import { isDemoOrEmbedded } from "@/lib/canonical-demos";
 import { normalizeBusinessType } from "@/lib/business-labels";
 import {
   bookableCartItems,
@@ -178,6 +179,10 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
   }
 
   function openWhatsApp(url: string) {
+    if (isDemoOrEmbedded(restaurant.slug)) {
+      setError("En la demo los envíos son simulados");
+      return;
+    }
     const isMobile =
       typeof navigator !== "undefined" &&
       /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -615,6 +620,7 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
       businessName={restaurant.name}
       phoneWhatsapp={restaurant.phone_whatsapp || ""}
       restaurantId={restaurant.id}
+      restaurantSlug={restaurant.slug}
       planType={restaurant.plan_type as PlanType}
       onBooked={() => {
         clear();

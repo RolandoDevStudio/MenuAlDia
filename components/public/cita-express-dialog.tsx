@@ -7,6 +7,7 @@ import {
   buildAppointmentMessage,
   buildWaMeUrl,
 } from "@/lib/whatsapp";
+import { isDemoOrEmbedded } from "@/lib/canonical-demos";
 import { can, type PlanType } from "@/lib/plans";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +35,7 @@ type Props = {
   businessName: string;
   phoneWhatsapp: string;
   restaurantId: string;
+  restaurantSlug?: string | null;
   planType?: PlanType | string | null;
   onBooked?: () => void;
 };
@@ -66,6 +68,7 @@ export function CitaExpressDialog({
   businessName,
   phoneWhatsapp,
   restaurantId,
+  restaurantSlug,
   planType,
   onBooked,
 }: Props) {
@@ -169,6 +172,11 @@ export function CitaExpressDialog({
       body: JSON.stringify({ restaurant_id: restaurantId }),
       keepalive: true,
     }).catch(() => {});
+    if (isDemoOrEmbedded(restaurantSlug)) {
+      setError("En la demo los envíos son simulados");
+      setBusy(false);
+      return;
+    }
     window.open(
       buildWaMeUrl(phoneWhatsapp, msg),
       "_blank",

@@ -46,6 +46,8 @@ export interface Restaurant {
   closed_message?: string;
   /** Manual override over schedule_auto */
   orders_override?: "force_open" | "force_closed" | null;
+  /** Public footer “Hecho con Menú al Día” (superadmin) */
+  show_powered_by?: boolean;
   terms_version_accepted?: string | null;
   terms_accepted_at?: string | null;
   loyalty_goal?: number;
