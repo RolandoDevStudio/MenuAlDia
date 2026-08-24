@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ImageIcon, Smartphone, MessageCircle, Shield, Zap } from "lucide-react";
+import { Bell, ImageIcon, Smartphone, MessageCircle, Shield, Zap } from "lucide-react";
 import {
   PLAN_LABELS,
   FALLBACK_PLAN_PRICES,
-  annualPrice,
   dailyValue,
   type PlanPricesMap,
   type PlanType,
@@ -33,6 +32,7 @@ import { LandingStickyCta } from "@/components/marketing/landing-sticky-cta";
 import { TrustStrip } from "@/components/marketing/trust-strip";
 import { FaqSection } from "@/components/marketing/faq-section";
 import { RoiCalculator } from "@/components/marketing/roi-calculator";
+import { PlanPricing } from "@/components/marketing/plan-pricing";
 import { Reveal } from "@/components/marketing/reveal";
 import { MxLocationFields } from "@/components/location/mx-location-fields";
 import { stateLabel } from "@/lib/mx-locations";
@@ -41,27 +41,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-
-const FEATURES: Record<PlanType, string[]> = {
-  catalog: [
-    "Hasta 30 productos con foto",
-    "Menú público con tu marca",
-    "Pedidos directos a WhatsApp",
-    "Personalización de colores",
-  ],
-  daily: [
-    "Todo lo del Catálogo",
-    "Menú del día en 1 toque",
-    "Combos Express con link viral",
-    "Flyer PNG para WhatsApp",
-  ],
-  pro: [
-    "Todo lo de Menú al Día",
-    "Historial de clientes y pedidos",
-    "Métricas básicas de venta",
-    "Exportar CSV",
-  ],
-};
 
 const BENEFITS = [
   {
@@ -127,11 +106,6 @@ export default function HomePage() {
 
   const salesPhone =
     process.env.NEXT_PUBLIC_SALES_WHATSAPP || SALES_WHATSAPP;
-
-  const plans = useMemo(
-    () => (["catalog", "daily", "pro"] as PlanType[]),
-    [],
-  );
 
   const fromDaily =
     planPrices.daily?.monthly ?? FALLBACK_PLAN_PRICES.daily.monthly;
@@ -240,8 +214,8 @@ export default function HomePage() {
                 0% comisiones
               </span>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-muted">
-                <Smartphone className="h-3.5 w-3.5 text-brand" aria-hidden />
-                Sin App Store
+                <Bell className="h-3.5 w-3.5 text-brand" aria-hidden />
+                Notificaciones de pedidos
               </span>
             </div>
             <div
@@ -351,85 +325,13 @@ export default function HomePage() {
       </SectionShell>
 
       <SectionShell id="precios" tone="white">
-        <Reveal>
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <h2 className="font-[family-name:var(--font-display)] text-4xl tracking-wide text-brand-dark sm:text-5xl">
-                Planes claros
-              </h2>
-              <p className="mt-2 text-sm text-muted">
-                Desde {formatMxn(dailyValue(fromDaily))} al día.
-              </p>
-            </div>
-            <div className="flex rounded-lg border border-black/10 bg-surface p-1">
-              <button
-                type="button"
-                className={`rounded-md px-3 py-2 text-xs font-semibold transition-colors duration-200 ${billing === "monthly" ? "bg-brand text-white" : "text-muted hover:text-foreground"}`}
-                onClick={() => setBilling("monthly")}
-              >
-                Mensual
-              </button>
-              <button
-                type="button"
-                className={`rounded-md px-3 py-2 text-xs font-semibold transition-colors duration-200 ${billing === "annual" ? "bg-brand text-white" : "text-muted hover:text-foreground"}`}
-                onClick={() => setBilling("annual")}
-              >
-                Anual (−2 meses)
-              </button>
-            </div>
-          </div>
-        </Reveal>
-
-        <div className="mt-8 grid items-stretch gap-4 sm:grid-cols-3">
-          {plans.map((plan, i) => {
-            const monthly =
-              planPrices[plan]?.monthly ?? FALLBACK_PLAN_PRICES[plan].monthly;
-            const price =
-              billing === "annual" ? annualPrice(monthly) : monthly;
-            const period = billing === "annual" ? "/año" : "/mes";
-            const highlight = plan === "daily";
-            return (
-              <Reveal key={plan} delayMs={i * 90}>
-                <div
-                  className={cn(
-                    "landing-card h-full rounded-2xl border p-4",
-                    highlight
-                      ? "border-brand bg-white shadow-lg sm:scale-[1.03] sm:z-10"
-                      : "border-black/10 bg-surface/90 hover:border-brand/30 hover:shadow-md",
-                  )}
-                >
-                  {highlight ? (
-                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-brand">
-                      Más popular
-                    </p>
-                  ) : null}
-                  <p className="font-semibold">{PLAN_LABELS[plan]}</p>
-                  <p className="mt-2 font-[family-name:var(--font-display)] text-4xl text-brand">
-                    {formatMxn(price)}
-                    <span className="text-sm font-sans font-medium text-muted">
-                      {period}
-                    </span>
-                  </p>
-                  <p className="text-xs text-muted">
-                    ≈ {formatMxn(dailyValue(monthly))} / día
-                  </p>
-                  <ul className="mt-4 space-y-1.5 text-xs text-foreground">
-                    {FEATURES[plan].map((f) => (
-                      <li key={f}>• {f}</li>
-                    ))}
-                  </ul>
-                  <Button
-                    className="landing-cta mt-4 w-full"
-                    variant={highlight ? "default" : "secondary"}
-                    onClick={() => contactSales(plan)}
-                  >
-                    Quiero este plan
-                  </Button>
-                </div>
-              </Reveal>
-            );
-          })}
-        </div>
+        <PlanPricing
+          billing={billing}
+          onBillingChange={setBilling}
+          planPrices={planPrices}
+          fromDaily={fromDaily}
+          onSelectPlan={contactSales}
+        />
 
         <Reveal className="mt-10" delayMs={80}>
           <div className="rounded-2xl border border-brand/15 bg-brand/[0.05] p-1 sm:p-2">
