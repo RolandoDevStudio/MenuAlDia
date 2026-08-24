@@ -1,11 +1,16 @@
 "use client";
 
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 type Props = {
   onPrimaryClick: () => void;
 };
+
+function scrollToDemoStage() {
+  document
+    .getElementById("demo-stage")
+    ?.scrollIntoView({ behavior: "smooth", block: "center" });
+}
 
 /** Mobile-only sticky CTA above the WhatsApp FAB. */
 export function LandingStickyCta({ onPrimaryClick }: Props) {
@@ -19,8 +24,13 @@ export function LandingStickyCta({ onPrimaryClick }: Props) {
         >
           Solicitar prueba gratis
         </Button>
-        <Button asChild variant="outline" className="min-h-11 shrink-0">
-          <Link href="#demos">Ver demo</Link>
+        <Button
+          type="button"
+          variant="outline"
+          className="min-h-11 shrink-0"
+          onClick={scrollToDemoStage}
+        >
+          Ver demo
         </Button>
       </div>
     </div>

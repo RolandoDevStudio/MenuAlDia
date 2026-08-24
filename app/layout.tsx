@@ -25,8 +25,31 @@ export const metadata: Metadata = {
   description:
     "Actualiza tu menú del día en 2 minutos, genera flyers para WhatsApp y recibe pedidos sin comisiones.",
   icons: {
-    icon: [{ url: "/brand/menualdia-icon.svg", type: "image/svg+xml" }],
-    apple: [{ url: "/brand/menualdia-icon.svg" }],
+    icon: [
+      { url: "/brand/menualdia-icon.svg", type: "image/svg+xml" },
+      {
+        url: "/brand/menualdia-favicon-32.png",
+        sizes: "32x32",
+        type: "image/png",
+      },
+      {
+        url: "/brand/menualdia-favicon-16.png",
+        sizes: "16x16",
+        type: "image/png",
+      },
+      {
+        url: "/brand/menualdia-icon-192.png",
+        sizes: "192x192",
+        type: "image/png",
+      },
+    ],
+    apple: [
+      {
+        url: "/brand/menualdia-apple-180.png",
+        sizes: "180x180",
+        type: "image/png",
+      },
+    ],
   },
 };
 

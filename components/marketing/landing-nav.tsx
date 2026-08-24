@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 const LINKS = [
   { href: "#beneficios", label: "Beneficios" },
   { href: "#comparar", label: "Comparar" },
-  { href: "#demos", label: "Demos" },
+  { href: "#demo-stage", label: "Demos" },
   { href: "#precios", label: "Precios" },
   { href: "#contacto", label: "Contacto" },
 ] as const;
@@ -39,7 +39,10 @@ export function LandingNav({ onContactClick }: Props) {
       return;
     }
     const el = document.querySelector(href);
-    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    el?.scrollIntoView({
+      behavior: "smooth",
+      block: href === "#demo-stage" ? "center" : "start",
+    });
   }
 
   return (
