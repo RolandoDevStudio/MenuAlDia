@@ -144,8 +144,8 @@ export function ProductStage({ className, demoPosters = {} }: Props) {
           })}
         </div>
 
-        <div className="mt-5 flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex min-w-0 flex-1 flex-col items-start text-left">
+        <div className="mt-5 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
+          <div className="flex min-w-0 flex-1 flex-col items-start text-left lg:max-w-md lg:pt-2">
             <p
               className={cn(
                 "flex items-center gap-2 text-xs font-semibold uppercase tracking-wide transition-colors duration-200",
@@ -155,9 +155,9 @@ export function ProductStage({ className, demoPosters = {} }: Props) {
               <Icon className="h-3.5 w-3.5" aria-hidden />
               Prueba el producto
             </p>
-            <h3 className="mt-1 font-[family-name:var(--font-display)] text-3xl text-brand-dark sm:text-4xl">
-              Menú demo · {demo.label}
-            </h3>
+            <p className="mt-1 text-lg font-semibold text-brand-dark sm:text-xl">
+              Demo · {demo.label}
+            </p>
             <p className="mt-2 max-w-lg text-sm text-muted">
               Adaptado a {demo.label.toLowerCase()}. Explora el menú en el
               teléfono; en la demo los envíos por WhatsApp están simulados.
@@ -199,50 +199,52 @@ export function ProductStage({ className, demoPosters = {} }: Props) {
             </Link>
           </div>
 
-          <PhoneFrame urlLabel={urlLabel} className="sm:mx-0">
-            <div className="absolute inset-0">
-              <div
-                className={cn(
-                  "absolute inset-0 transition-opacity duration-300 motion-reduce:transition-none",
-                  isInteractive
-                    ? "pointer-events-none opacity-0"
-                    : "opacity-100",
-                )}
-                aria-hidden={isInteractive}
-              >
-                <StorageImage
-                  src={posterUrl}
-                  alt={`Captura demo ${demo.label}`}
-                  fill
-                  sizes="280px"
-                  className="object-cover"
-                />
-              </div>
-
-              {isInteractive ? (
-                <iframe
-                  key={demo.slug}
-                  title={`Demo ${demo.label}`}
-                  src={`/${demo.slug}`}
-                  className="absolute inset-0 h-full w-full border-0 opacity-100 transition-opacity duration-300"
-                />
-              ) : null}
-
-              {!isInteractive ? (
-                <button
-                  type="button"
-                  onClick={activateDemo}
-                  className="absolute inset-0 z-10 flex cursor-pointer items-end justify-center bg-transparent p-3 pb-4"
-                  aria-label="Toca para probar la demo interactiva"
+          <div className="flex w-full justify-center py-6 md:min-h-[700px] md:py-8 lg:w-auto lg:shrink-0">
+            <PhoneFrame urlLabel={urlLabel}>
+              <div className="absolute inset-0">
+                <div
+                  className={cn(
+                    "absolute inset-0 transition-opacity duration-300 motion-reduce:transition-none",
+                    isInteractive
+                      ? "pointer-events-none opacity-0"
+                      : "opacity-100",
+                  )}
+                  aria-hidden={isInteractive}
                 >
-                  <span className="pointer-events-auto inline-flex max-w-[95%] items-center gap-2 rounded-full border border-white/40 bg-slate-900/70 px-3 py-2 text-left text-[11px] font-semibold leading-snug text-white shadow-lg backdrop-blur-md">
-                    <Hand className="h-4 w-4 shrink-0" aria-hidden />
-                    Toca para probar la demo interactiva
-                  </span>
-                </button>
-              ) : null}
-            </div>
-          </PhoneFrame>
+                  <StorageImage
+                    src={posterUrl}
+                    alt={`Captura demo ${demo.label}`}
+                    fill
+                    sizes="375px"
+                    className="object-cover object-top"
+                  />
+                </div>
+
+                {isInteractive ? (
+                  <iframe
+                    key={demo.slug}
+                    title={`Demo ${demo.label}`}
+                    src={`/${demo.slug}`}
+                    className="absolute inset-0 h-full w-full border-0 bg-white"
+                  />
+                ) : null}
+
+                {!isInteractive ? (
+                  <button
+                    type="button"
+                    onClick={activateDemo}
+                    className="absolute inset-0 z-10 flex cursor-pointer items-end justify-center bg-transparent p-3 pb-5"
+                    aria-label="Toca para probar la demo interactiva"
+                  >
+                    <span className="pointer-events-auto inline-flex max-w-[95%] items-center gap-2 rounded-full border border-white/40 bg-slate-900/70 px-3 py-2 text-left text-[11px] font-semibold leading-snug text-white shadow-lg backdrop-blur-md">
+                      <Hand className="h-4 w-4 shrink-0" aria-hidden />
+                      Toca para probar la demo interactiva
+                    </span>
+                  </button>
+                ) : null}
+              </div>
+            </PhoneFrame>
+          </div>
         </div>
       </div>
     </div>

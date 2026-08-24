@@ -30,9 +30,7 @@ import { ProductShots } from "@/components/marketing/product-shots";
 import { ComparisonCards } from "@/components/marketing/comparison-cards";
 import { ValueMatrix } from "@/components/marketing/value-matrix";
 import { LandingStickyCta } from "@/components/marketing/landing-sticky-cta";
-import { PhoneFrame } from "@/components/marketing/phone-frame";
 import { TrustStrip } from "@/components/marketing/trust-strip";
-import { StorageImage } from "@/components/ui/storage-image";
 import { FaqSection } from "@/components/marketing/faq-section";
 import { RoiCalculator } from "@/components/marketing/roi-calculator";
 import { Reveal } from "@/components/marketing/reveal";
@@ -205,110 +203,98 @@ export default function HomePage() {
 
       <LandingNav onContactClick={scrollToContact} />
 
-      <section className="mx-auto max-w-3xl px-6 pb-6 pt-10 sm:pt-14">
-        <div className="flex flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0 flex-1">
-            <div
-              className="motion-safe:animate-[rise_0.7s_ease-out]"
-              style={{ animationFillMode: "both" }}
-            >
-              <BrandLogo variant="lockup" size="xl" href={null} />
-            </div>
-            <h1
-              className="mt-5 max-w-xl text-2xl font-semibold leading-snug text-foreground sm:text-3xl motion-safe:animate-[rise_0.7s_ease-out]"
-              style={{ animationDelay: "80ms", animationFillMode: "both" }}
-            >
-              {landing.heroTitle}
-            </h1>
-            <p
-              className="mt-3 max-w-lg text-muted motion-safe:animate-[rise_0.7s_ease-out]"
-              style={{ animationDelay: "160ms", animationFillMode: "both" }}
-            >
-              {landing.heroSubtitle}
-            </p>
-            <div
-              className="mt-4 flex flex-wrap gap-2 motion-safe:animate-[rise_0.7s_ease-out]"
-              style={{ animationDelay: "200ms", animationFillMode: "both" }}
-            >
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-muted">
-                <Zap className="h-3.5 w-3.5 text-brand" aria-hidden />
-                Carga rápida
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-muted">
-                <Shield className="h-3.5 w-3.5 text-brand" aria-hidden />
-                0% comisiones
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-muted">
-                <Smartphone className="h-3.5 w-3.5 text-brand" aria-hidden />
-                Sin App Store
-              </span>
-            </div>
-            <div
-              className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap motion-safe:animate-[rise_0.7s_ease-out]"
-              style={{ animationDelay: "240ms", animationFillMode: "both" }}
-            >
-              <Button
-                type="button"
-                className="landing-cta min-h-11"
-                onClick={scrollToContact}
-              >
-                Probar 30 días gratis
-              </Button>
-              <Button asChild variant="outline" className="landing-cta min-h-11">
-                <Link href="#demos">Ver demo en vivo</Link>
-              </Button>
-            </div>
-            <p
-              className="mt-3 text-sm font-semibold text-brand motion-safe:animate-[rise_0.7s_ease-out]"
-              style={{ animationDelay: "280ms", animationFillMode: "both" }}
-            >
-              Desde {formatMxn(dailyValue(fromDaily))} al día ·{" "}
-              <button
-                type="button"
-                className="underline-offset-2 hover:underline"
-                onClick={() =>
-                  document
-                    .getElementById("precios")
-                    ?.scrollIntoView({ behavior: "smooth" })
-                }
-              >
-                Ver precios
-              </button>
-            </p>
-            <p
-              className="mt-2 text-xs text-muted motion-safe:animate-[rise_0.7s_ease-out]"
-              style={{ animationDelay: "300ms", animationFillMode: "both" }}
-            >
-              {landing.socialProofLine}
-            </p>
-          </div>
-          <div
-            className="mx-auto hidden w-full max-w-[200px] shrink-0 sm:block motion-safe:animate-[rise_0.7s_ease-out]"
-            style={{ animationDelay: "200ms", animationFillMode: "both" }}
-          >
-            <PhoneFrame
-              urlLabel={`${OFFICIAL_DOMAIN}/demo-restaurante`}
-              className="max-w-[200px]"
-            >
-              <StorageImage
-                src={
-                  landing.demoPosters.restaurante?.trim() ||
-                  "/marketing/demo-restaurante.svg"
-                }
-                alt="Vista previa del menú digital"
-                fill
-                sizes="200px"
-                className="object-cover"
-              />
-            </PhoneFrame>
-          </div>
+      <section
+        id="demos"
+        className="mx-auto max-w-5xl scroll-mt-20 px-6 pb-12 pt-10 sm:pt-14"
+      >
+        <div
+          className="motion-safe:animate-[rise_0.7s_ease-out]"
+          style={{ animationFillMode: "both" }}
+        >
+          <BrandLogo variant="lockup" size="xl" href={null} />
         </div>
-      </section>
+        <h1
+          className="mt-5 max-w-2xl text-2xl font-semibold leading-snug text-foreground sm:text-3xl motion-safe:animate-[rise_0.7s_ease-out]"
+          style={{ animationDelay: "80ms", animationFillMode: "both" }}
+        >
+          {landing.heroTitle}
+        </h1>
+        <p
+          className="mt-3 max-w-xl text-muted motion-safe:animate-[rise_0.7s_ease-out]"
+          style={{ animationDelay: "160ms", animationFillMode: "both" }}
+        >
+          {landing.heroSubtitle}
+        </p>
+        <div
+          className="mt-4 flex flex-wrap gap-2 motion-safe:animate-[rise_0.7s_ease-out]"
+          style={{ animationDelay: "200ms", animationFillMode: "both" }}
+        >
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-muted">
+            <Zap className="h-3.5 w-3.5 text-brand" aria-hidden />
+            Carga rápida
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-muted">
+            <Shield className="h-3.5 w-3.5 text-brand" aria-hidden />
+            0% comisiones
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-muted">
+            <Smartphone className="h-3.5 w-3.5 text-brand" aria-hidden />
+            Sin App Store
+          </span>
+        </div>
+        <div
+          className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap motion-safe:animate-[rise_0.7s_ease-out]"
+          style={{ animationDelay: "240ms", animationFillMode: "both" }}
+        >
+          <Button
+            type="button"
+            className="landing-cta min-h-11"
+            onClick={scrollToContact}
+          >
+            Probar 30 días gratis
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="landing-cta min-h-11"
+            onClick={() =>
+              document
+                .getElementById("demo-stage")
+                ?.scrollIntoView({ behavior: "smooth", block: "start" })
+            }
+          >
+            Ver demo en vivo
+          </Button>
+        </div>
+        <p
+          className="mt-3 text-sm font-semibold text-brand motion-safe:animate-[rise_0.7s_ease-out]"
+          style={{ animationDelay: "280ms", animationFillMode: "both" }}
+        >
+          Desde {formatMxn(dailyValue(fromDaily))} al día ·{" "}
+          <button
+            type="button"
+            className="underline-offset-2 hover:underline"
+            onClick={() =>
+              document
+                .getElementById("precios")
+                ?.scrollIntoView({ behavior: "smooth" })
+            }
+          >
+            Ver precios
+          </button>
+        </p>
+        <p
+          className="mt-2 text-xs text-muted motion-safe:animate-[rise_0.7s_ease-out]"
+          style={{ animationDelay: "300ms", animationFillMode: "both" }}
+        >
+          {landing.socialProofLine}
+        </p>
 
-      <section id="demos" className="mx-auto max-w-3xl scroll-mt-20 px-6 pb-12 pt-2">
-        <Reveal>
-          <ProductStage demoPosters={landing.demoPosters} />
-        </Reveal>
+        <div id="demo-stage" className="mt-8 scroll-mt-24">
+          <Reveal>
+            <ProductStage demoPosters={landing.demoPosters} />
+          </Reveal>
+        </div>
       </section>
 
       <SectionShell id="beneficios" tone="surface">
