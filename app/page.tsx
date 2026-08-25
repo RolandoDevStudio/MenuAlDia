@@ -11,10 +11,16 @@ import {
   type PlanType,
 } from "@/lib/plans";
 import { formatMxn } from "@/lib/money";
-import { buildWaMeUrl, SALES_WHATSAPP } from "@/lib/whatsapp";
+import {
+  buildWaMeUrl,
+  formatSalesWhatsAppDisplay,
+  SALES_WHATSAPP,
+} from "@/lib/whatsapp";
 import {
   CANONICAL_DEMOS,
   OFFICIAL_DOMAIN,
+  getCanonicalDemo,
+  type CanonicalDemoId,
 } from "@/lib/canonical-demos";
 import {
   DEFAULT_LANDING_CONTENT,
@@ -29,6 +35,7 @@ import { ProductShots } from "@/components/marketing/product-shots";
 import { ComparisonCards } from "@/components/marketing/comparison-cards";
 import { ValueMatrix } from "@/components/marketing/value-matrix";
 import { LandingStickyCta } from "@/components/marketing/landing-sticky-cta";
+import { LandingBreathStrip } from "@/components/marketing/landing-breath-strip";
 import { TrustStrip } from "@/components/marketing/trust-strip";
 import { FaqSection } from "@/components/marketing/faq-section";
 import { RoiCalculator } from "@/components/marketing/roi-calculator";
@@ -97,6 +104,8 @@ export default function HomePage() {
   const [city, setCity] = useState("");
   const [stateCode, setStateCode] = useState("");
   const [note, setNote] = useState("");
+  const [giro, setGiro] = useState<CanonicalDemoId | "">("restaurante");
+  const [giroError, setGiroError] = useState(false);
   const [planPrices, setPlanPrices] =
     useState<PlanPricesMap>(FALLBACK_PLAN_PRICES);
   const [landing, setLanding] = useState<LandingContent>({
@@ -106,6 +115,7 @@ export default function HomePage() {
 
   const salesPhone =
     process.env.NEXT_PUBLIC_SALES_WHATSAPP || SALES_WHATSAPP;
+  const salesPhoneDisplay = formatSalesWhatsAppDisplay(salesPhone);
 
   const fromDaily =
     planPrices.daily?.monthly ?? FALLBACK_PLAN_PRICES.daily.monthly;
@@ -143,11 +153,25 @@ export default function HomePage() {
     })();
   }, []);
 
+  function openSalesWhatsApp(prefill: string) {
+    window.location.href = buildWaMeUrl(salesPhone, prefill);
+  }
+
   function contactSales(plan?: PlanType) {
+    if (!giro) {
+      setGiroError(true);
+      document
+        .getElementById("contacto")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    setGiroError(false);
+    const giroLabel = getCanonicalDemo(giro)?.label ?? giro;
     const lines = [
       `*Prospecto ${OFFICIAL_DOMAIN}*`,
       `Nombre: ${name || "—"}`,
       `Negocio: ${business || "—"}`,
+      `Giro: ${giroLabel}`,
       `Ciudad: ${city || "—"}`,
       `Estado: ${stateLabel(stateCode) || "—"}`,
       plan
@@ -156,8 +180,36 @@ export default function HomePage() {
       note ? `Nota: ${note}` : null,
       "Quiero digitalizar mi menú.",
     ].filter(Boolean);
-    const url = buildWaMeUrl(salesPhone, lines.join("\n"));
-    window.location.href = url;
+    openSalesWhatsApp(lines.join("\n"));
+  }
+
+  function contactSalesQuick(kind: "nav" | "breath" | "form") {
+    const giroLabel = giro
+      ? (getCanonicalDemo(giro)?.label ?? giro)
+      : null;
+    if (kind === "form" && !giro) {
+      setGiroError(true);
+      return;
+    }
+    if (kind === "form") setGiroError(false);
+
+    if (kind === "nav") {
+      openSalesWhatsApp(
+        giroLabel
+          ? `Hola, quiero info de Menú al Día para mi negocio (${giroLabel}).`
+          : "Hola, quiero información de Menú al Día para mi negocio.",
+      );
+      return;
+    }
+    if (kind === "breath") {
+      openSalesWhatsApp(
+        giroLabel
+          ? `Hola, quiero activarme hoy con Menú al Día (${giroLabel}).`
+          : "Hola, quiero activarme hoy con Menú al Día.",
+      );
+      return;
+    }
+    contactSales();
   }
 
   function scrollToContact() {
@@ -175,7 +227,11 @@ export default function HomePage() {
         <div className="landing-aurora absolute -inset-[6%]" />
       </div>
 
-      <LandingNav onContactClick={scrollToContact} />
+      <LandingNav
+        onContactClick={scrollToContact}
+        onWhatsAppClick={() => contactSalesQuick("nav")}
+        whatsAppLabel={`WhatsApp ${salesPhoneDisplay}`}
+      />
 
       <section
         id="demos"
@@ -260,7 +316,13 @@ export default function HomePage() {
             className="mx-auto w-full max-w-[375px] shrink-0 motion-safe:animate-[rise_0.7s_ease-out] lg:mx-0"
             style={{ animationDelay: "200ms", animationFillMode: "both" }}
           >
-            <ProductStage demoPosters={landing.demoPosters} />
+            <ProductStage
+              demoPosters={landing.demoPosters}
+              onActiveDemoChange={(id) => {
+                setGiro(id);
+                setGiroError(false);
+              }}
+            />
           </div>
         </div>
       </section>
@@ -331,6 +393,7 @@ export default function HomePage() {
           planPrices={planPrices}
           fromDaily={fromDaily}
           onSelectPlan={contactSales}
+          selectPlanLabel={`Quiero este plan · ${salesPhoneDisplay}`}
         />
 
         <Reveal className="mt-10" delayMs={80}>
@@ -338,6 +401,13 @@ export default function HomePage() {
             <RoiCalculator />
           </div>
         </Reveal>
+      </SectionShell>
+
+      <SectionShell tone="brand">
+        <LandingBreathStrip
+          onCtaClick={() => contactSalesQuick("breath")}
+          ctaLabel={`WhatsApp ${salesPhoneDisplay}`}
+        />
       </SectionShell>
 
       <SectionShell id="faq" tone="surface">
@@ -372,6 +442,41 @@ export default function HomePage() {
               />
             </div>
             <div className="space-y-1.5">
+              <Label id="giro-label">Giro del negocio</Label>
+              <div
+                className="flex flex-wrap gap-2"
+                role="group"
+                aria-labelledby="giro-label"
+              >
+                {CANONICAL_DEMOS.map((d) => {
+                  const active = giro === d.id;
+                  return (
+                    <button
+                      key={d.id}
+                      type="button"
+                      onClick={() => {
+                        setGiro(d.id);
+                        setGiroError(false);
+                      }}
+                      className={cn(
+                        "min-h-10 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors",
+                        active
+                          ? "border-brand bg-brand text-white"
+                          : "border-black/10 bg-white text-foreground hover:bg-black/5",
+                      )}
+                    >
+                      {d.label}
+                    </button>
+                  );
+                })}
+              </div>
+              {giroError ? (
+                <p className="text-xs font-medium text-red-600" role="alert">
+                  Elige un giro para continuar.
+                </p>
+              ) : null}
+            </div>
+            <div className="space-y-1.5">
               <MxLocationFields
                 state={stateCode}
                 city={city}
@@ -391,9 +496,9 @@ export default function HomePage() {
             <Button
               className="landing-cta w-full"
               size="lg"
-              onClick={() => contactSales()}
+              onClick={() => contactSalesQuick("form")}
             >
-              Escribir por WhatsApp
+              Escribir al {salesPhoneDisplay}
             </Button>
           </Reveal>
         </div>
@@ -437,7 +542,10 @@ export default function HomePage() {
         </div>
       </footer>
       <LandingStickyCta onPrimaryClick={scrollToContact} />
-      <LandingWhatsAppFab />
+      <LandingWhatsAppFab
+        phone={salesPhone}
+        giroLabel={giro ? getCanonicalDemo(giro)?.label : undefined}
+      />
     </main>
   );
 }

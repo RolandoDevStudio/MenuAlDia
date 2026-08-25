@@ -1,7 +1,19 @@
 "use client";
 
+import type { LucideIcon } from "lucide-react";
+import {
+  HandHeart,
+  MapPin,
+  Megaphone,
+  QrCode,
+  RefreshCw,
+  UserX,
+  Users,
+  Zap,
+} from "lucide-react";
 import {
   DEFAULT_COMPARISON_ROWS,
+  type ComparisonRowId,
   type LandingComparisonImages,
 } from "@/lib/landing-content";
 import { Reveal } from "@/components/marketing/reveal";
@@ -9,6 +21,16 @@ import { cn } from "@/lib/utils";
 
 type Props = {
   images?: LandingComparisonImages;
+};
+
+const ROW_ICONS: Record<
+  ComparisonRowId,
+  { problem: LucideIcon; solution: LucideIcon }
+> = {
+  control: { problem: RefreshCw, solution: Zap },
+  attraction: { problem: QrCode, solution: Megaphone },
+  retention: { problem: UserX, solution: Users },
+  value: { problem: HandHeart, solution: MapPin },
 };
 
 export function ComparisonCards({ images = {} }: Props) {
@@ -30,6 +52,7 @@ export function ComparisonCards({ images = {} }: Props) {
             images[`${row.id}_problem`] ?? row.defaultProblemArt;
           const solutionSrc =
             images[`${row.id}_solution`] ?? row.defaultSolutionArt;
+          const icons = ROW_ICONS[row.id];
 
           return (
             <Reveal key={row.id} as="li" delayMs={i * 70}>
@@ -44,6 +67,7 @@ export function ComparisonCards({ images = {} }: Props) {
                   title={row.problemTitle}
                   body={row.problemBody}
                   src={problemSrc}
+                  Icon={icons.problem}
                   mobileLabel="El problema"
                 />
                 <div
@@ -59,6 +83,7 @@ export function ComparisonCards({ images = {} }: Props) {
                   title={row.solutionTitle}
                   body={row.solutionBody}
                   src={solutionSrc}
+                  Icon={icons.solution}
                   mobileLabel="Menú al Día"
                 />
               </article>
@@ -79,12 +104,14 @@ function Half({
   title,
   body,
   src,
+  Icon,
   mobileLabel,
 }: {
   tone: "problem" | "solution";
   title: string;
   body: string;
   src: string;
+  Icon: LucideIcon;
   mobileLabel: string;
 }) {
   const isSolution = tone === "solution";
@@ -103,9 +130,22 @@ function Half({
       >
         {mobileLabel}
       </p>
+
+      {/* Mobile: compact Lucide mark */}
       <div
         className={cn(
-          "relative aspect-[8/5] w-full overflow-hidden rounded-xl",
+          "mb-2 flex h-10 w-10 items-center justify-center rounded-xl sm:hidden",
+          isSolution ? "bg-accent/15 text-accent" : "bg-black/5 text-muted",
+        )}
+        aria-hidden
+      >
+        <Icon className="h-6 w-6" strokeWidth={1.75} />
+      </div>
+
+      {/* Desktop / tablet: full art */}
+      <div
+        className={cn(
+          "relative hidden aspect-[8/5] w-full overflow-hidden rounded-xl sm:block",
           isSolution ? "ring-1 ring-accent/20" : "ring-1 ring-black/5",
         )}
       >
@@ -117,9 +157,10 @@ function Half({
           loading="lazy"
         />
       </div>
+
       <h3
         className={cn(
-          "mt-3 font-[family-name:var(--font-display)] text-lg tracking-wide",
+          "font-[family-name:var(--font-display)] text-lg tracking-wide sm:mt-3",
           isSolution ? "text-accent" : "text-foreground",
         )}
       >

@@ -16,6 +16,7 @@ import {
   getCanonicalDemo,
   type CanonicalDemoId,
 } from "@/lib/canonical-demos";
+import { THEME_PRESETS } from "@/lib/theme";
 import type { LandingDemoPosters } from "@/lib/landing-content";
 import { StorageImage } from "@/components/ui/storage-image";
 import { PhoneFrame } from "@/components/marketing/phone-frame";
@@ -42,11 +43,9 @@ const FALLBACK_POSTERS: Record<CanonicalDemoId, string> = {
   tienda: "/marketing/demo-tienda.svg",
 };
 
-const TAB_ACTIVE: Record<CanonicalDemoId, string> = {
-  restaurante: "bg-brand text-white shadow-sm",
-  servicios: "bg-accent text-white shadow-sm",
-  tienda: "bg-amber-700 text-white shadow-sm",
-};
+function demoTabPrimary(presetKey: string): string {
+  return THEME_PRESETS[presetKey]?.colors.primary ?? "#c45c26";
+}
 
 /** Target logical width so header chips (redes, Cómo llegar) stay in a row. */
 const DEMO_IDEAL_WIDTH_PX = 390;
@@ -66,12 +65,17 @@ function scaleFromFrameWidth(widthPx: number) {
 type Props = {
   className?: string;
   demoPosters?: LandingDemoPosters;
+  onActiveDemoChange?: (id: CanonicalDemoId) => void;
 };
 
 /**
  * Hero demo: giro tabs + poster PhoneFrame; tap opens fullscreen demo modal.
  */
-export function ProductStage({ className, demoPosters = {} }: Props) {
+export function ProductStage({
+  className,
+  demoPosters = {},
+  onActiveDemoChange,
+}: Props) {
   const [activeId, setActiveId] =
     useState<CanonicalDemoId>("restaurante");
   const [modalOpen, setModalOpen] = useState(false);
@@ -85,6 +89,12 @@ export function ProductStage({ className, demoPosters = {} }: Props) {
   useEffect(() => {
     setModalOpen(false);
   }, [activeId]);
+
+  useEffect(() => {
+    onActiveDemoChange?.(activeId);
+    // Intentionally only on mount: parent defaults giro; tabs call below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!modalOpen) return;
@@ -124,6 +134,7 @@ export function ProductStage({ className, demoPosters = {} }: Props) {
   function selectTab(id: CanonicalDemoId) {
     setActiveId(id);
     setModalOpen(false);
+    onActiveDemoChange?.(id);
   }
 
   return (
@@ -136,6 +147,7 @@ export function ProductStage({ className, demoPosters = {} }: Props) {
         {CANONICAL_DEMOS.map((d) => {
           const TabIcon = ICONS[d.id];
           const active = d.id === activeId;
+          const primary = demoTabPrimary(d.themePreset);
           return (
             <button
               key={d.id}
@@ -146,9 +158,10 @@ export function ProductStage({ className, demoPosters = {} }: Props) {
               className={cn(
                 "inline-flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-[11px] font-semibold transition-colors duration-200 sm:gap-2 sm:text-sm",
                 active
-                  ? TAB_ACTIVE[d.id]
+                  ? "text-white shadow-sm"
                   : "text-muted hover:bg-black/5 hover:text-foreground",
               )}
+              style={active ? { backgroundColor: primary } : undefined}
             >
               <TabIcon
                 className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4"

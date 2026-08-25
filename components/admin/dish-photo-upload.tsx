@@ -14,6 +14,9 @@ type Props = {
   label?: string;
   kind?: CompressKind;
   folder?: string;
+  /** When false, block adding a first photo (replace existing still allowed). */
+  canAddPhoto?: boolean;
+  limitMessage?: string | null;
 };
 
 export function DishPhotoUpload({
@@ -23,13 +26,21 @@ export function DishPhotoUpload({
   label = "Foto",
   kind = "product",
   folder = "dish-photos",
+  canAddPhoto = true,
+  limitMessage = null,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hasPhoto = Boolean(value?.trim());
+  const blockedNew = !hasPhoto && !canAddPhoto;
 
   async function onFile(file: File | null) {
     if (!file) return;
+    if (!hasPhoto && !canAddPhoto) {
+      setError(limitMessage || "Alcanzaste el límite de fotos de tu plan.");
+      return;
+    }
     setUploading(true);
     setError(null);
     const previousUrl = value;
@@ -88,7 +99,7 @@ export function DishPhotoUpload({
         ref={inputRef}
         type="file"
         accept="image/jpeg,image/png,image/webp"
-        disabled={uploading}
+        disabled={uploading || blockedNew}
         className="sr-only"
         onChange={(e) => onFile(e.target.files?.[0] ?? null)}
       />
@@ -96,10 +107,14 @@ export function DishPhotoUpload({
         type="button"
         variant="secondary"
         className="min-h-11 w-full"
-        disabled={uploading}
+        disabled={uploading || blockedNew}
         onClick={() => inputRef.current?.click()}
       >
-        {uploading ? "Comprimiendo y subiendo…" : "Elegir foto"}
+        {uploading
+          ? "Comprimiendo y subiendo…"
+          : hasPhoto
+            ? "Cambiar foto"
+            : "Elegir foto"}
       </Button>
       {value ? (
         <Button
@@ -111,6 +126,9 @@ export function DishPhotoUpload({
         >
           Quitar foto
         </Button>
+      ) : null}
+      {blockedNew && limitMessage ? (
+        <p className="text-xs text-amber-800">{limitMessage}</p>
       ) : null}
       {error ? <p className="text-xs text-red-600">{error}</p> : null}
     </div>

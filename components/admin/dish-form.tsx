@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { BusinessType, Category, Dish, DishAddon, PlanType } from "@/lib/types";
-import { dishLimit } from "@/lib/plans";
+import { PLAN_LABELS, photoDishLimit } from "@/lib/plans";
 import { label, normalizeBusinessType } from "@/lib/business-labels";
 import { dishFormSchema, fieldErrorsFromZod } from "@/lib/validations";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,7 @@ type Props = {
   dish?: Dish | null;
   publicSlug: string;
   planType?: PlanType | string;
-  currentDishCount?: number;
+  currentPhotoCount?: number;
   businessType?: BusinessType | string | null;
 };
 
@@ -38,7 +38,7 @@ export function DishForm({
   dish,
   publicSlug,
   planType = "catalog",
-  currentDishCount = 0,
+  currentPhotoCount = 0,
   businessType = "restaurante",
 }: Props) {
   const router = useRouter();
@@ -75,8 +75,18 @@ export function DishForm({
   const [addonName, setAddonName] = useState("");
   const [addonPrice, setAddonPrice] = useState("0");
 
-  const limit = dishLimit(planType);
-  const atLimit = !dish && limit != null && currentDishCount >= limit;
+  const photoLimit = photoDishLimit(planType);
+  const resolvedPlan: PlanType =
+    planType === "daily" || planType === "pro" || planType === "catalog"
+      ? planType
+      : "catalog";
+  const planLabel = PLAN_LABELS[resolvedPlan];
+  const hadPhoto = Boolean(dish?.photo_url?.trim());
+  const hasPhoto = Boolean(photoUrl?.trim());
+  const addingNewPhoto = hasPhoto && !hadPhoto;
+  const atPhotoLimit = currentPhotoCount >= photoLimit;
+  const canAddPhoto = hadPhoto || !atPhotoLimit;
+  const photoLimitMessage = `Tu plan ${planLabel} permite hasta ${photoLimit} productos con foto (${currentPhotoCount}/${photoLimit}). Mejora de plan para subir más fotos.`;
 
   const loadAddons = useCallback(async () => {
     if (!dish) return;
@@ -107,10 +117,8 @@ export function DishForm({
     setFormError(null);
     setFieldErrors({});
 
-    if (atLimit) {
-      setFormError(
-        `Tu plan Catálogo permite máximo ${limit} productos. Mejora a Menú al Día o Pro.`,
-      );
+    if (addingNewPhoto && atPhotoLimit) {
+      setFormError(photoLimitMessage);
       return;
     }
 
@@ -244,26 +252,6 @@ export function DishForm({
     await revalidate();
   }
 
-  if (atLimit) {
-    return (
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-6 text-center">
-        <p className="font-semibold text-brand-dark">Límite del plan Catálogo</p>
-        <p className="mt-2 text-sm text-muted">
-          Ya tienes {currentDishCount}/{limit} productos. Mejora a Menú al Día o
-          Pro para agregar más.
-        </p>
-        <Button
-          type="button"
-          className="mt-4"
-          variant="secondary"
-          onClick={() => router.push("/admin/catalog")}
-        >
-          Volver al catálogo
-        </Button>
-      </div>
-    );
-  }
-
   return (
     <form onSubmit={onSubmit} className="space-y-4 pb-4">
       <Link
@@ -277,6 +265,8 @@ export function DishForm({
         restaurantId={restaurantId}
         value={photoUrl}
         onChange={setPhotoUrl}
+        canAddPhoto={canAddPhoto}
+        limitMessage={photoLimitMessage}
       />
       <div className="space-y-1.5">
         <Label htmlFor="name">Nombre</Label>

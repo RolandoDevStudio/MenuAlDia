@@ -7,6 +7,7 @@ import {
   FALLBACK_PLAN_PRICES,
   annualPrice,
   dailyValue,
+  photoLimitLabel,
   type PlanPricesMap,
   type PlanType,
 } from "@/lib/plans";
@@ -27,18 +28,20 @@ const PLANS: PlanType[] = ["catalog", "daily", "pro"];
 /** Short bullets on each pricing card */
 export const PLAN_CARD_FEATURES: Record<PlanType, string[]> = {
   catalog: [
-    "Hasta 30 productos con foto",
+    photoLimitLabel("catalog"),
     "Menú público con tu marca",
     "Pedidos directos a WhatsApp",
     "Personalización de colores",
   ],
   daily: [
+    photoLimitLabel("daily"),
     "Todo lo del Catálogo",
     "Menú del día en 1 toque",
     "Combos Express con link viral",
     "Flyer PNG para WhatsApp",
   ],
   pro: [
+    photoLimitLabel("pro"),
     "Todo lo de Menú al Día",
     "Historial de clientes y pedidos",
     "Métricas básicas de venta",
@@ -59,7 +62,7 @@ const PLAN_DETAILS: Record<PlanType, PlanDetail> = {
     benefit:
       "Tus clientes ven qué vendes y te escriben el pedido ordenado a WhatsApp — sin app nueva ni intermediarios.",
     includes: [
-      "Hasta 30 productos con foto",
+      photoLimitLabel("catalog"),
       "Menú / catálogo público con tu marca (logo y colores)",
       "Pedidos directos a tu WhatsApp (tú cobras, 0% comisión)",
       "Personalización visual del menú",
@@ -73,6 +76,7 @@ const PLAN_DETAILS: Record<PlanType, PlanDetail> = {
     benefit:
       "Cada mañana (o turno) actualizas lo de hoy, generas flyer y lo mandas: más pedidos, menos mensajes sueltos.",
     includes: [
+      photoLimitLabel("daily"),
       "Todo lo incluido en Catálogo Digital",
       "Menú / oferta del día en 1 toque",
       "Combos Express con link para compartir",
@@ -86,6 +90,7 @@ const PLAN_DETAILS: Record<PlanType, PlanDetail> = {
     benefit:
       "No solo recibes pedidos: sabes quién te compra y puedes volver a contactarlos para que regresen.",
     includes: [
+      photoLimitLabel("pro"),
       "Todo lo incluido en Menú al Día",
       "Historial de clientes y pedidos",
       "Métricas básicas de venta / actividad",
@@ -97,12 +102,18 @@ const PLAN_DETAILS: Record<PlanType, PlanDetail> = {
 
 const COMPARE_ROWS: {
   feature: string;
-  catalog: boolean;
-  daily: boolean;
-  pro: boolean;
+  catalog: string | boolean;
+  daily: string | boolean;
+  pro: string | boolean;
 }[] = [
   {
-    feature: "Catálogo + fotos + marca",
+    feature: "Productos con foto",
+    catalog: "Hasta 30",
+    daily: "Hasta 60",
+    pro: "Hasta 150",
+  },
+  {
+    feature: "Catálogo + marca",
     catalog: true,
     daily: true,
     pro: true,
@@ -133,12 +144,25 @@ const COMPARE_ROWS: {
   },
 ];
 
+function CompareCell({ value }: { value: string | boolean }) {
+  if (typeof value === "string") {
+    return (
+      <span className="font-semibold text-brand-dark">{value}</span>
+    );
+  }
+  if (value) {
+    return <Check className="h-4 w-4 text-brand" aria-label="Incluido" />;
+  }
+  return <Minus className="h-4 w-4 text-muted" aria-label="No incluido" />;
+}
+
 type Props = {
   billing: "monthly" | "annual";
   onBillingChange: (v: "monthly" | "annual") => void;
   planPrices: PlanPricesMap;
   fromDaily: number;
   onSelectPlan: (plan: PlanType) => void;
+  selectPlanLabel?: string;
 };
 
 export function PlanPricing({
@@ -147,6 +171,7 @@ export function PlanPricing({
   planPrices,
   fromDaily,
   onSelectPlan,
+  selectPlanLabel = "Quiero este plan",
 }: Props) {
   const [detailPlan, setDetailPlan] = useState<PlanType | null>(null);
   const detail = detailPlan ? PLAN_DETAILS[detailPlan] : null;
@@ -247,7 +272,7 @@ export function PlanPricing({
                   variant={highlight ? "default" : "secondary"}
                   onClick={() => onSelectPlan(plan)}
                 >
-                  Quiero este plan
+                  {selectPlanLabel}
                 </Button>
               </div>
             </Reveal>
@@ -288,18 +313,8 @@ export function PlanPricing({
                     >
                       {PLAN_LABELS[plan]}
                     </dt>
-                    <dd>
-                      {row[plan] ? (
-                        <Check
-                          className="h-4 w-4 text-brand"
-                          aria-label="Incluido"
-                        />
-                      ) : (
-                        <Minus
-                          className="h-4 w-4 text-muted"
-                          aria-label="No incluido"
-                        />
-                      )}
+                    <dd className="flex justify-end">
+                      <CompareCell value={row[plan]} />
                     </dd>
                   </div>
                 ))}
@@ -338,17 +353,9 @@ export function PlanPricing({
                   <td className="px-4 py-3 text-foreground">{row.feature}</td>
                   {PLANS.map((plan) => (
                     <td key={plan} className="px-3 py-3 text-center">
-                      {row[plan] ? (
-                        <Check
-                          className="mx-auto h-4 w-4 text-brand"
-                          aria-label="Incluido"
-                        />
-                      ) : (
-                        <Minus
-                          className="mx-auto h-4 w-4 text-muted"
-                          aria-label="No incluido"
-                        />
-                      )}
+                      <span className="inline-flex justify-center">
+                        <CompareCell value={row[plan]} />
+                      </span>
                     </td>
                   ))}
                 </tr>
@@ -417,7 +424,7 @@ export function PlanPricing({
                     onSelectPlan(plan);
                   }}
                 >
-                  Quiero este plan
+                  {selectPlanLabel}
                 </Button>
                 <Button
                   type="button"

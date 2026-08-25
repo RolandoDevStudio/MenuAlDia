@@ -79,9 +79,31 @@ export function can(
   return list.includes(feature);
 }
 
-/** Soft product cap for catalog plan only. */
-export function dishLimit(plan: PlanType | string | null | undefined): number | null {
-  return (plan ?? "catalog") === "catalog" ? 30 : null;
+/** Soft cap: non-archived dishes that have a photo, by plan. */
+export const PHOTO_DISH_LIMITS: Record<PlanType, number> = {
+  catalog: 30,
+  daily: 60,
+  pro: 150,
+};
+
+/** @deprecated Use photoDishLimit — alias kept for older call sites. */
+export function dishLimit(
+  plan: PlanType | string | null | undefined,
+): number {
+  return photoDishLimit(plan);
+}
+
+export function photoDishLimit(
+  plan: PlanType | string | null | undefined,
+): number {
+  const p = (plan ?? "catalog") as PlanType;
+  return PHOTO_DISH_LIMITS[p] ?? PHOTO_DISH_LIMITS.catalog;
+}
+
+export function photoLimitLabel(
+  plan: PlanType | string | null | undefined,
+): string {
+  return `Hasta ${photoDishLimit(plan)} productos con foto`;
 }
 
 export function isSubscriptionActive(restaurant: {

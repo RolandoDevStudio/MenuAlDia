@@ -232,3 +232,23 @@ export function buildAppointmentMessage(params: {
 
 /** Sales WhatsApp (landing FAB / contact). */
 export const SALES_WHATSAPP = "5218130947324";
+
+/**
+ * Display form for MX sales numbers (strip leading 521 country+mobile marker).
+ * e.g. 5218130947324 → "81 3094 7324"
+ */
+export function formatSalesWhatsAppDisplay(
+  phone: string = SALES_WHATSAPP,
+): string {
+  const digits = phone.replace(/\D/g, "");
+  const local =
+    digits.startsWith("521") && digits.length >= 13
+      ? digits.slice(3)
+      : digits.startsWith("52") && digits.length >= 12
+        ? digits.slice(2)
+        : digits;
+  if (local.length === 10) {
+    return `${local.slice(0, 2)} ${local.slice(2, 6)} ${local.slice(6)}`;
+  }
+  return local || phone;
+}

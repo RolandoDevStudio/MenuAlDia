@@ -11,6 +11,8 @@ export type CanonicalDemo = {
   ctaLabel: string;
   /** Short label for tabs */
   tabLabel: string;
+  /** Theme preset key matching seed demos / THEME_PRESETS */
+  themePreset: string;
 };
 
 /** Official production demos / clone templates. */
@@ -22,6 +24,7 @@ export const CANONICAL_DEMOS: readonly CanonicalDemo[] = [
     label: "Restaurante",
     tabLabel: "Restaurante",
     ctaLabel: "Crear mi Menú de Restaurante",
+    themePreset: "fonda_calida",
   },
   {
     id: "servicios",
@@ -30,6 +33,7 @@ export const CANONICAL_DEMOS: readonly CanonicalDemo[] = [
     label: "Servicios",
     tabLabel: "Servicios",
     ctaLabel: "Crear mi Catálogo de Servicios",
+    themePreset: "estetica_suave",
   },
   {
     id: "tienda",
@@ -38,6 +42,7 @@ export const CANONICAL_DEMOS: readonly CanonicalDemo[] = [
     label: "Tienda",
     tabLabel: "Tienda",
     ctaLabel: "Crear mi Catálogo de Tienda",
+    themePreset: "moderno_verde",
   },
 ] as const;
 

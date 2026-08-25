@@ -21,11 +21,13 @@ export default async function DishEditPage({ params }: Props) {
     .eq("restaurant_id", session.restaurant.id)
     .order("sort_order");
 
-  const { count } = await supabase
+  const { count: photoCount } = await supabase
     .from("dishes")
     .select("*", { count: "exact", head: true })
     .eq("restaurant_id", session.restaurant.id)
-    .is("archived_at", null);
+    .is("archived_at", null)
+    .not("photo_url", "is", null)
+    .neq("photo_url", "");
 
   let dish: Dish | null = null;
   if (dishId !== "new") {
@@ -42,7 +44,9 @@ export default async function DishEditPage({ params }: Props) {
   return (
     <div className="space-y-4">
       <h1 className="text-lg font-semibold">
-        {dish ? `Editar ${dishLabel.toLowerCase()}` : `Nuevo ${dishLabel.toLowerCase()}`}
+        {dish
+          ? `Editar ${dishLabel.toLowerCase()}`
+          : `Nuevo ${dishLabel.toLowerCase()}`}
       </h1>
       <DishForm
         restaurantId={session.restaurant.id}
@@ -50,7 +54,7 @@ export default async function DishEditPage({ params }: Props) {
         dish={dish}
         publicSlug={session.restaurant.slug}
         planType={session.restaurant.plan_type}
-        currentDishCount={count ?? 0}
+        currentPhotoCount={photoCount ?? 0}
         businessType={businessType}
       />
     </div>

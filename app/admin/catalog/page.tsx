@@ -2,7 +2,11 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireTenantSession } from "@/lib/admin-session";
-import { dishLimit, type PlanType } from "@/lib/plans";
+import {
+  PLAN_LABELS,
+  photoDishLimit,
+  type PlanType,
+} from "@/lib/plans";
 import { labelsFor } from "@/lib/business-labels";
 import { Button } from "@/components/ui/button";
 import { CategoriesManager } from "@/components/admin/categories-manager";
@@ -35,8 +39,9 @@ export default async function CatalogPage() {
 
   const list = (dishes ?? []) as Dish[];
   const cats = (categories ?? []) as Category[];
-  const limit = dishLimit(session.restaurant.plan_type);
-  const atLimit = limit != null && list.length >= limit;
+  const photoLimit = photoDishLimit(planType);
+  const photoCount = list.filter((d) => Boolean(d.photo_url?.trim())).length;
+  const atPhotoLimit = photoCount >= photoLimit;
 
   return (
     <div className="space-y-4">
@@ -44,22 +49,16 @@ export default async function CatalogPage() {
         <div>
           <h1 className="text-lg font-semibold">{labels.catalog}</h1>
           <p className="text-sm text-muted">
-            {labels.dishes} y {labels.sides.toLowerCase()}
-            {limit != null ? ` · ${list.length}/${limit}` : ` · ${list.length}`}.
+            {labels.dishes} y {labels.sides.toLowerCase()} · {list.length} ·
+            fotos {photoCount}/{photoLimit} ({PLAN_LABELS[planType]})
           </p>
         </div>
-        {atLimit ? (
-          <Button size="sm" className="min-h-11" disabled>
-            Límite
-          </Button>
-        ) : (
-          <Button asChild size="sm" className="min-h-11">
-            <Link href="/admin/catalog/new">
-              <Plus className="h-4 w-4" />
-              Nuevo
-            </Link>
-          </Button>
-        )}
+        <Button asChild size="sm" className="min-h-11">
+          <Link href="/admin/catalog/new">
+            <Plus className="h-4 w-4" />
+            Nuevo
+          </Link>
+        </Button>
       </div>
 
       <details className="rounded-xl border border-black/5 bg-surface">
@@ -75,10 +74,11 @@ export default async function CatalogPage() {
           />
         </div>
       </details>
-      {atLimit ? (
+      {atPhotoLimit ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-brand-dark">
-          Alcanzaste el máximo de {limit} productos del plan Catálogo. Mejora a
-          Menú al Día o Pro para agregar más.
+          Alcanzaste el máximo de {photoLimit} productos con foto del plan{" "}
+          {PLAN_LABELS[planType]}. Puedes seguir creando productos sin foto, o
+          mejora de plan para subir más fotos.
         </div>
       ) : null}
 

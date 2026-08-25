@@ -17,9 +17,15 @@ const LINKS = [
 
 type Props = {
   onContactClick?: () => void;
+  onWhatsAppClick?: () => void;
+  whatsAppLabel?: string;
 };
 
-export function LandingNav({ onContactClick }: Props) {
+export function LandingNav({
+  onContactClick,
+  onWhatsAppClick,
+  whatsAppLabel = "Hablar por WhatsApp",
+}: Props) {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -43,6 +49,11 @@ export function LandingNav({ onContactClick }: Props) {
       behavior: "smooth",
       block: href === "#demo-stage" ? "center" : "start",
     });
+  }
+
+  function openWhatsApp() {
+    setOpen(false);
+    onWhatsAppClick?.();
   }
 
   return (
@@ -77,9 +88,9 @@ export function LandingNav({ onContactClick }: Props) {
           <Button
             size="sm"
             className="landing-cta"
-            onClick={() => go("#contacto")}
+            onClick={openWhatsApp}
           >
-            Hablar por WhatsApp
+            {whatsAppLabel}
           </Button>
         </div>
 
@@ -123,9 +134,9 @@ export function LandingNav({ onContactClick }: Props) {
             </Link>
             <Button
               className="mt-2 w-full landing-cta"
-              onClick={() => go("#contacto")}
+              onClick={openWhatsApp}
             >
-              Hablar por WhatsApp
+              {whatsAppLabel}
             </Button>
           </nav>
         </div>
