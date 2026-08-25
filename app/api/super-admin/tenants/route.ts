@@ -69,6 +69,8 @@ const RESTAURANT_FIELDS = [
   "plan_type",
   "is_active",
   "show_powered_by",
+  "is_founding_partner",
+  "internal_notes",
   "subscription_end_date",
   "business_type",
   "city",
@@ -89,6 +91,8 @@ export async function PATCH(request: Request) {
     plan_type?: string;
     is_active?: boolean;
     show_powered_by?: boolean;
+    is_founding_partner?: boolean;
+    internal_notes?: string;
     subscription_end_date?: string | null;
     business_type?: string;
     city?: string;
@@ -128,6 +132,10 @@ export async function PATCH(request: Request) {
   if (typeof body.is_active === "boolean") updates.is_active = body.is_active;
   if (typeof body.show_powered_by === "boolean")
     updates.show_powered_by = body.show_powered_by;
+  if (typeof body.is_founding_partner === "boolean")
+    updates.is_founding_partner = body.is_founding_partner;
+  if (typeof body.internal_notes === "string")
+    updates.internal_notes = body.internal_notes.trim();
   if (typeof body.business_type === "string")
     updates.business_type = body.business_type;
   if (typeof body.city === "string") updates.city = body.city.trim();

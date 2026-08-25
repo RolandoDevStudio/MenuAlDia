@@ -20,6 +20,7 @@ import { compressImage } from "@/lib/compress-image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
@@ -63,6 +64,8 @@ export function TenantEditModal({
   const [stateMx, setStateMx] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [showPoweredBy, setShowPoweredBy] = useState(true);
+  const [isFoundingPartner, setIsFoundingPartner] = useState(false);
+  const [internalNotes, setInternalNotes] = useState("");
   const [endDate, setEndDate] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -126,6 +129,8 @@ export function TenantEditModal({
     setStateMx(normalizeLegacyState(restaurant.state) || restaurant.state || "");
     setIsActive(restaurant.is_active !== false);
     setShowPoweredBy(restaurant.show_powered_by !== false);
+    setIsFoundingPartner(restaurant.is_founding_partner === true);
+    setInternalNotes(restaurant.internal_notes ?? "");
     setEndDate(restaurant.subscription_end_date?.slice(0, 10) ?? "");
     setEmail(ownerEmail ?? "");
     setPassword("");
@@ -199,6 +204,8 @@ export function TenantEditModal({
       state: stateMx,
       is_active: isActive,
       show_powered_by: showPoweredBy,
+      is_founding_partner: isFoundingPartner,
+      internal_notes: internalNotes,
       subscription_end_date: endDate
         ? new Date(endDate + "T23:59:59").toISOString()
         : null,
@@ -443,6 +450,30 @@ export function TenantEditModal({
               <Switch
                 checked={showPoweredBy}
                 onCheckedChange={setShowPoweredBy}
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-black/5 bg-background/50 px-3 py-2">
+              <div>
+                <Label>Socio fundador</Label>
+                <p className="text-[11px] text-muted">
+                  Badge en el admin del tenant y chip en Tenants
+                </p>
+              </div>
+              <Switch
+                checked={isFoundingPartner}
+                onCheckedChange={setIsFoundingPartner}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="internal-notes">Notas internas</Label>
+              <Textarea
+                id="internal-notes"
+                value={internalNotes}
+                onChange={(e) => setInternalNotes(e.target.value)}
+                placeholder="Solo visible para superadmin"
+                className="min-h-[88px]"
               />
             </div>
 

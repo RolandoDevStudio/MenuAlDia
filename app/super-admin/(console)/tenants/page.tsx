@@ -41,6 +41,7 @@ function TenantsPageInner() {
   const [stateFilter, setStateFilter] = useState("all");
   const [cityFilter, setCityFilter] = useState("");
   const [activeFilter, setActiveFilter] = useState<string>("all");
+  const [founderFilter, setFounderFilter] = useState<string>("all");
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
@@ -98,6 +99,10 @@ function TenantsPageInner() {
       }
       if (activeFilter === "active" && r.is_active === false) return false;
       if (activeFilter === "inactive" && r.is_active !== false) return false;
+      if (founderFilter === "yes" && r.is_founding_partner !== true)
+        return false;
+      if (founderFilter === "no" && r.is_founding_partner === true)
+        return false;
       if (!q.trim()) return true;
       const s = q.toLowerCase();
       return (
@@ -105,10 +110,21 @@ function TenantsPageInner() {
         r.slug.toLowerCase().includes(s) ||
         (r.owner_name ?? "").toLowerCase().includes(s) ||
         (r.phone_whatsapp ?? "").includes(s) ||
-        (owners[r.id]?.email ?? "").toLowerCase().includes(s)
+        (owners[r.id]?.email ?? "").toLowerCase().includes(s) ||
+        (r.internal_notes ?? "").toLowerCase().includes(s)
       );
     });
-  }, [rows, q, planFilter, giroFilter, stateFilter, cityFilter, activeFilter, owners]);
+  }, [
+    rows,
+    q,
+    planFilter,
+    giroFilter,
+    stateFilter,
+    cityFilter,
+    activeFilter,
+    founderFilter,
+    owners,
+  ]);
 
   function handleSaved(updated?: Restaurant) {
     if (updated) {
@@ -174,6 +190,15 @@ function TenantsPageInner() {
           <option value="all">Activos e inactivos</option>
           <option value="active">Solo activos</option>
           <option value="inactive">Solo inactivos</option>
+        </select>
+        <select
+          className={`${selectClass} w-full sm:w-auto`}
+          value={founderFilter}
+          onChange={(e) => setFounderFilter(e.target.value)}
+        >
+          <option value="all">Fundadores: todos</option>
+          <option value="yes">Socios fundadores</option>
+          <option value="no">Sin fundador</option>
         </select>
         <select
           className={`${selectClass} w-full sm:w-auto`}

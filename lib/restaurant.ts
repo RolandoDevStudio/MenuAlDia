@@ -36,6 +36,8 @@ function normalizeRestaurant(raw: Restaurant): Restaurant {
   r.terms_accepted_at = r.terms_accepted_at ?? null;
   r.loyalty_goal = r.loyalty_goal ?? 10;
   r.loyalty_reward_label = r.loyalty_reward_label ?? "Recompensa gratis";
+  // Never expose superadmin CRM notes to tenant session or public menu.
+  delete r.internal_notes;
   return r;
 }
 

@@ -67,6 +67,7 @@ export default async function AdminLayout({
         purgeScheduledAt={session.restaurant.purge_scheduled_at}
         purgedAt={session.restaurant.purged_at}
         businessType={session.restaurant.business_type}
+        isFoundingPartner={session.restaurant.is_founding_partner === true}
       >
         {children}
       </AdminShell>

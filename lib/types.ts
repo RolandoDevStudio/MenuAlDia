@@ -48,6 +48,10 @@ export interface Restaurant {
   orders_override?: "force_open" | "force_closed" | null;
   /** Public footer “Hecho con Menú al Día” (superadmin) */
   show_powered_by?: boolean;
+  /** Founding partner — badge in tenant admin + Tenants */
+  is_founding_partner?: boolean;
+  /** Superadmin-only internal CRM notes */
+  internal_notes?: string;
   terms_version_accepted?: string | null;
   terms_accepted_at?: string | null;
   loyalty_goal?: number;

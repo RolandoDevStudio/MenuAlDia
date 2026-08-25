@@ -27,6 +27,8 @@ export async function POST(request: Request) {
     business_type?: string;
     plan_type?: string;
     theme_preset?: string;
+    is_founding_partner?: boolean;
+    internal_notes?: string;
   };
 
   const sourceSlug = body.source_slug?.trim();
@@ -40,6 +42,9 @@ export async function POST(request: Request) {
   const businessType = body.business_type?.trim();
   const planType = body.plan_type?.trim();
   const themePresetKey = body.theme_preset?.trim();
+  const isFoundingPartner = body.is_founding_partner === true;
+  const internalNotes =
+    typeof body.internal_notes === "string" ? body.internal_notes.trim() : "";
   const themeOverride =
     themePresetKey && THEME_PRESETS[themePresetKey]
       ? THEME_PRESETS[themePresetKey]
@@ -148,6 +153,8 @@ export async function POST(request: Request) {
         business_type: businessType || template.business_type,
         plan_type: planType || template.plan_type || "catalog",
         is_active: true,
+        is_founding_partner: isFoundingPartner,
+        internal_notes: internalNotes,
         subscription_end_date: subscriptionEnd,
         theme_config: themeOverride ?? template.theme_config,
         slogan: "",
@@ -197,6 +204,8 @@ export async function POST(request: Request) {
         plan_type: planType || source.plan_type || "catalog",
         business_type: businessType || source.business_type || "restaurante",
         is_active: true,
+        is_founding_partner: isFoundingPartner,
+        internal_notes: internalNotes,
         subscription_end_date: subscriptionEnd,
         theme_config: themeOverride ?? source.theme_config,
       })

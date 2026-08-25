@@ -12,6 +12,8 @@ import { PRESET_LABELS, THEME_PRESETS } from "@/lib/theme";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -49,6 +51,8 @@ export function CreateAdminModal({
   const [phone, setPhone] = useState("");
   const [ownerEmail, setOwnerEmail] = useState("");
   const [ownerPassword, setOwnerPassword] = useState("");
+  const [isFoundingPartner, setIsFoundingPartner] = useState(false);
+  const [internalNotes, setInternalNotes] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [sourceSlug, setSourceSlug] = useState("");
   const [busy, setBusy] = useState(false);
@@ -98,6 +102,8 @@ export function CreateAdminModal({
     setPhone("");
     setOwnerEmail("");
     setOwnerPassword("");
+    setIsFoundingPartner(false);
+    setInternalNotes("");
     setSourceSlug("");
     setShowAdvanced(false);
     setError(null);
@@ -107,7 +113,7 @@ export function CreateAdminModal({
   async function submit() {
     setBusy(true);
     setError(null);
-    const body: Record<string, string> = {
+    const body: Record<string, string | boolean> = {
       new_slug: newSlug,
       new_name: newName,
       owner_name: ownerName,
@@ -117,6 +123,8 @@ export function CreateAdminModal({
       business_type: businessType,
       plan_type: planType,
       theme_preset: themePreset,
+      is_founding_partner: isFoundingPartner,
+      internal_notes: internalNotes,
     };
     if (showAdvanced && sourceSlug.trim()) {
       body.source_slug = sourceSlug.trim();
@@ -311,6 +319,30 @@ export function CreateAdminModal({
                   autoComplete="new-password"
                 />
               </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-black/5 bg-background/50 px-3 py-2">
+              <div>
+                <Label>Socio fundador</Label>
+                <p className="text-[11px] text-muted">
+                  Marca al crear cuentas de prueba / early adopters
+                </p>
+              </div>
+              <Switch
+                checked={isFoundingPartner}
+                onCheckedChange={setIsFoundingPartner}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="create-internal-notes">Notas internas</Label>
+              <Textarea
+                id="create-internal-notes"
+                value={internalNotes}
+                onChange={(e) => setInternalNotes(e.target.value)}
+                placeholder="Solo visible para superadmin"
+                className="min-h-[72px]"
+              />
             </div>
 
             <button

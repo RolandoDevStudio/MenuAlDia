@@ -51,6 +51,7 @@ export function AdminShell({
   purgeScheduledAt = null,
   purgedAt = null,
   businessType = "restaurante",
+  isFoundingPartner = false,
   children,
 }: {
   restaurantName: string;
@@ -62,6 +63,7 @@ export function AdminShell({
   purgeScheduledAt?: string | null;
   purgedAt?: string | null;
   businessType?: BusinessType | string | null;
+  isFoundingPartner?: boolean;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -203,8 +205,15 @@ export function AdminShell({
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <BrandLogo variant="lockup" size="sm" href="/admin" />
-            <p className="mt-0.5 truncate text-xs text-muted">
-              {restaurantName} · {PLAN_LABELS[planType]}
+            <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">
+              <span className="truncate">
+                {restaurantName} · {PLAN_LABELS[planType]}
+              </span>
+              {isFoundingPartner ? (
+                <span className="inline-flex shrink-0 items-center rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-950">
+                  Socio fundador
+                </span>
+              ) : null}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-1">

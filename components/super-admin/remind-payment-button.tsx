@@ -5,6 +5,7 @@ import type { Restaurant } from "@/lib/types";
 import type { PlanPricesMap, PlanType } from "@/lib/plans";
 import { FALLBACK_PLAN_PRICES, PLAN_LABELS } from "@/lib/plans";
 import { formatMxn } from "@/lib/money";
+import { Bell } from "lucide-react";
 import { buildWaMeUrl } from "@/lib/whatsapp";
 import { Button } from "@/components/ui/button";
 
@@ -43,9 +44,11 @@ export function buildPaymentReminderMessage(
 export function RemindPaymentButton({
   restaurant,
   size = "sm",
+  compact = false,
 }: {
   restaurant: Restaurant;
   size?: "sm" | "default";
+  compact?: boolean;
 }) {
   const [planPrices, setPlanPrices] =
     useState<PlanPricesMap>(FALLBACK_PLAN_PRICES);
@@ -70,8 +73,16 @@ export function RemindPaymentButton({
   }
 
   return (
-    <Button type="button" variant="outline" size={size} onClick={openReminder}>
-      Recordar Pago
+    <Button
+      type="button"
+      variant="outline"
+      size={size}
+      onClick={openReminder}
+      className={compact ? "min-h-10 w-10 px-0" : undefined}
+      title="Recordar pago por WhatsApp"
+      aria-label="Recordar pago por WhatsApp"
+    >
+      {compact ? <Bell className="h-4 w-4" /> : "Recordar Pago"}
     </Button>
   );
 }
