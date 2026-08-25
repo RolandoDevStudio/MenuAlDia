@@ -29,6 +29,9 @@ import type { BusinessType } from "@/lib/types";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { NotificationBell } from "@/components/admin/notification-bell";
 import { PwaInstallBanner } from "@/components/admin/pwa-install-banner";
+import { OnboardingProgress } from "@/components/admin/onboarding-progress";
+import { SupportHelpFab } from "@/components/admin/support-help-fab";
+import type { OnboardingFlags } from "@/lib/super-admin-crm";
 import {
   AdminMoreMenu,
   MoreNavButton,
@@ -52,6 +55,10 @@ export function AdminShell({
   purgedAt = null,
   businessType = "restaurante",
   isFoundingPartner = false,
+  supportMode = false,
+  onboardingScore = 100,
+  onboardingFlags = null,
+  salesHelpUrl = null,
   children,
 }: {
   restaurantName: string;
@@ -64,6 +71,10 @@ export function AdminShell({
   purgedAt?: string | null;
   businessType?: BusinessType | string | null;
   isFoundingPartner?: boolean;
+  supportMode?: boolean;
+  onboardingScore?: number;
+  onboardingFlags?: OnboardingFlags | null;
+  salesHelpUrl?: string | null;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -198,9 +209,30 @@ export function AdminShell({
     router.refresh();
   }
 
+  async function exitSupport() {
+    await fetch("/api/admin/support-exit", { method: "POST" });
+    window.location.href = "/super-admin/crm";
+  }
+
   return (
     <div className="mx-auto flex min-h-full w-full max-w-lg flex-col pb-[calc(6rem+env(safe-area-inset-bottom))] md:max-w-2xl lg:max-w-5xl print:max-w-none print:pb-0">
       <Toaster richColors position="top-center" closeButton />
+      {supportMode ? (
+        <div className="flex items-center justify-between gap-2 bg-amber-100 px-4 py-2 text-sm text-amber-950 print:hidden">
+          <p className="font-medium">
+            Modo soporte — {restaurantName}
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            className="min-h-9"
+            onClick={() => void exitSupport()}
+          >
+            Salir
+          </Button>
+        </div>
+      ) : null}
       <header className="sticky top-0 z-20 border-b border-black/5 bg-background/95 px-4 py-3 backdrop-blur print:hidden">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
@@ -294,7 +326,13 @@ export function AdminShell({
           <PwaInstallBanner />
         </div>
       </header>
+      {onboardingFlags ? (
+        <OnboardingProgress score={onboardingScore} flags={onboardingFlags} />
+      ) : null}
       <div className="flex-1 px-4 py-4 print:px-0 print:py-0">{children}</div>
+      {salesHelpUrl && !supportMode ? (
+        <SupportHelpFab href={salesHelpUrl} />
+      ) : null}
       <nav
         className="fixed bottom-0 left-0 right-0 z-30 border-t border-black/10 bg-surface/95 backdrop-blur print:hidden"
         style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}

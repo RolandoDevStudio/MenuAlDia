@@ -1,7 +1,9 @@
 import { cache } from "react";
+import { cookies } from "next/headers";
 import { unstable_cache } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createPublicClient } from "@/lib/supabase/public";
+import { SUPPORT_COOKIE } from "@/lib/support-session";
 import type {
   Combo,
   ComboItem,
@@ -45,12 +47,52 @@ export async function getSessionRestaurant(): Promise<{
   restaurant: Restaurant;
   userId: string;
   role: MemberRole;
+  supportMode?: boolean;
 } | null> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return null;
+
+  const { data: saRow } = await supabase
+    .from("restaurant_members")
+    .select("role")
+    .eq("user_id", user.id)
+    .eq("role", "super_admin")
+    .limit(1)
+    .maybeSingle();
+  const isSuperAdmin = Boolean(saRow);
+
+  if (isSuperAdmin) {
+    const cookieStore = await cookies();
+    const supportId = cookieStore.get(SUPPORT_COOKIE)?.value;
+    if (supportId) {
+      const { data: token } = await supabase
+        .from("support_access_tokens")
+        .select("id")
+        .eq("restaurant_id", supportId)
+        .not("used_at", "is", null)
+        .gt("session_expires_at", new Date().toISOString())
+        .limit(1)
+        .maybeSingle();
+      if (token) {
+        const { data: restaurant } = await supabase
+          .from("restaurants")
+          .select("*")
+          .eq("id", supportId)
+          .maybeSingle();
+        if (restaurant) {
+          return {
+            restaurant: normalizeRestaurant(restaurant as Restaurant),
+            userId: user.id,
+            role: "owner",
+            supportMode: true,
+          };
+        }
+      }
+    }
+  }
 
   const { data: membership } = await supabase
     .from("restaurant_members")

@@ -57,52 +57,23 @@ export default function SettingsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
+    const sessionRes = await fetch("/api/admin/session");
+    if (sessionRes.status === 401) {
       router.push("/admin/login");
       return;
     }
-    const { data: membership, error: memError } = await supabase
-      .from("restaurant_members")
-      .select("restaurant_id")
-      .eq("user_id", user.id)
-      .neq("role", "super_admin")
-      .limit(1)
-      .maybeSingle();
-
-    let restaurantId = membership?.restaurant_id;
-    if (!restaurantId) {
-      const { data: anyMem } = await supabase
-        .from("restaurant_members")
-        .select("restaurant_id")
-        .eq("user_id", user.id)
-        .limit(1)
-        .maybeSingle();
-      restaurantId = anyMem?.restaurant_id;
-    }
-
-    if (memError || !restaurantId) {
+    const sessionJson = (await sessionRes.json()) as {
+      restaurant?: Restaurant;
+      error?: string;
+    };
+    if (!sessionRes.ok || !sessionJson.restaurant) {
       setLoadError(
-        memError?.message ??
-          "Tu usuario no está vinculado a un restaurante.",
+        sessionJson.error ?? "Tu usuario no está vinculado a un restaurante.",
       );
       setLoading(false);
       return;
     }
-    const { data, error: restError } = await supabase
-      .from("restaurants")
-      .select("*")
-      .eq("id", restaurantId)
-      .single();
-    if (restError || !data) {
-      setLoadError(restError?.message ?? "No se pudo cargar el restaurante");
-      setLoading(false);
-      return;
-    }
-    const r = data as Restaurant;
+    const r = sessionJson.restaurant;
     setRestaurant(r);
     setFreeShipping(r.free_shipping);
     setOffersDelivery(r.offers_delivery !== false);
@@ -213,6 +184,11 @@ export default function SettingsPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ slug: restaurant.slug }),
+    });
+    await fetch("/api/admin/support-audit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ summary: "Soporte actualizó ajustes" }),
     });
     setMessage("Ajustes guardados");
     toast.success("Ajustes guardados");

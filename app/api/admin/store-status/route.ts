@@ -1,10 +1,26 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionRestaurant } from "@/lib/restaurant";
+import { writeAuditLog } from "@/lib/audit";
+import { SUPPORT_ACTOR_LABEL } from "@/lib/support-session";
 import {
   effectiveAcceptingOrders,
   parseScheduleHours,
 } from "@/lib/store-hours";
+
+async function auditSupportStore(session: NonNullable<
+  Awaited<ReturnType<typeof getSessionRestaurant>>
+>) {
+  if (!session.supportMode) return;
+  await writeAuditLog({
+    restaurantId: session.restaurant.id,
+    actorUserId: session.userId,
+    actorLabel: SUPPORT_ACTOR_LABEL,
+    action: "update",
+    fieldName: "store_status",
+    summary: "Soporte actualizó el estado de la tienda",
+  });
+}
 
 export async function POST(request: Request) {
   const session = await getSessionRestaurant();
@@ -45,6 +61,7 @@ export async function POST(request: Request) {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+    await auditSupportStore(session);
     return NextResponse.json({
       accepting_orders: accepting,
       orders_override: null,
@@ -81,6 +98,8 @@ export async function POST(request: Request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  await auditSupportStore(session);
 
   return NextResponse.json({
     accepting_orders: accepting,

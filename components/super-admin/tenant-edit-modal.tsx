@@ -23,6 +23,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
+  ACQUISITION_LABELS,
+  ACQUISITION_SOURCES,
+} from "@/lib/super-admin-crm";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -66,6 +70,7 @@ export function TenantEditModal({
   const [showPoweredBy, setShowPoweredBy] = useState(true);
   const [isFoundingPartner, setIsFoundingPartner] = useState(false);
   const [internalNotes, setInternalNotes] = useState("");
+  const [acquisitionSource, setAcquisitionSource] = useState("");
   const [endDate, setEndDate] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -131,6 +136,7 @@ export function TenantEditModal({
     setShowPoweredBy(restaurant.show_powered_by !== false);
     setIsFoundingPartner(restaurant.is_founding_partner === true);
     setInternalNotes(restaurant.internal_notes ?? "");
+    setAcquisitionSource(restaurant.acquisition_source ?? "");
     setEndDate(restaurant.subscription_end_date?.slice(0, 10) ?? "");
     setEmail(ownerEmail ?? "");
     setPassword("");
@@ -206,6 +212,7 @@ export function TenantEditModal({
       show_powered_by: showPoweredBy,
       is_founding_partner: isFoundingPartner,
       internal_notes: internalNotes,
+      acquisition_source: acquisitionSource,
       subscription_end_date: endDate
         ? new Date(endDate + "T23:59:59").toISOString()
         : null,
@@ -451,6 +458,22 @@ export function TenantEditModal({
                 checked={showPoweredBy}
                 onCheckedChange={setShowPoweredBy}
               />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Origen</Label>
+              <select
+                className={selectClass}
+                value={acquisitionSource}
+                onChange={(e) => setAcquisitionSource(e.target.value)}
+              >
+                <option value="">Sin origen</option>
+                {ACQUISITION_SOURCES.map((s) => (
+                  <option key={s} value={s}>
+                    {ACQUISITION_LABELS[s]}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="flex items-center justify-between gap-3 rounded-lg border border-black/5 bg-background/50 px-3 py-2">

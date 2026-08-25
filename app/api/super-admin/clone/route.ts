@@ -29,6 +29,7 @@ export async function POST(request: Request) {
     theme_preset?: string;
     is_founding_partner?: boolean;
     internal_notes?: string;
+    acquisition_source?: string;
   };
 
   const sourceSlug = body.source_slug?.trim();
@@ -45,6 +46,21 @@ export async function POST(request: Request) {
   const isFoundingPartner = body.is_founding_partner === true;
   const internalNotes =
     typeof body.internal_notes === "string" ? body.internal_notes.trim() : "";
+  const acquisitionSourceRaw =
+    typeof body.acquisition_source === "string"
+      ? body.acquisition_source.trim()
+      : "";
+  const allowedOrigin = [
+    "",
+    "landing",
+    "dur_local",
+    "redes",
+    "boca_a_boca",
+    "otro",
+  ];
+  const acquisitionSource = allowedOrigin.includes(acquisitionSourceRaw)
+    ? acquisitionSourceRaw
+    : "";
   const themeOverride =
     themePresetKey && THEME_PRESETS[themePresetKey]
       ? THEME_PRESETS[themePresetKey]
@@ -155,6 +171,7 @@ export async function POST(request: Request) {
         is_active: true,
         is_founding_partner: isFoundingPartner,
         internal_notes: internalNotes,
+        acquisition_source: acquisitionSource,
         subscription_end_date: subscriptionEnd,
         theme_config: themeOverride ?? template.theme_config,
         slogan: "",
@@ -206,6 +223,7 @@ export async function POST(request: Request) {
         is_active: true,
         is_founding_partner: isFoundingPartner,
         internal_notes: internalNotes,
+        acquisition_source: acquisitionSource,
         subscription_end_date: subscriptionEnd,
         theme_config: themeOverride ?? source.theme_config,
       })

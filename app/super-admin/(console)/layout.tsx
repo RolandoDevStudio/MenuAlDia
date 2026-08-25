@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { requireSuperAdmin } from "@/lib/super-admin";
 import { BrandLogo } from "@/components/brand/brand-logo";
+import { SuperAdminNav } from "@/components/super-admin/super-admin-nav";
 
 export default async function SuperAdminConsoleLayout({
   children,
@@ -18,45 +18,7 @@ export default async function SuperAdminConsoleLayout({
             Super Admin · control global menualdia.com.mx
           </p>
         </div>
-        <nav className="flex flex-wrap gap-3 text-sm font-semibold">
-          <Link href="/super-admin" className="text-brand">
-            Resumen
-          </Link>
-          <Link href="/super-admin/tenants" className="text-muted hover:text-brand">
-            Tenants
-          </Link>
-          <Link
-            href="/super-admin/finanzas"
-            className="text-muted hover:text-brand"
-          >
-            Finanzas
-          </Link>
-          <Link
-            href="/super-admin/solicitudes"
-            className="text-muted hover:text-brand"
-          >
-            Solicitudes
-          </Link>
-          <Link
-            href="/super-admin/promociones"
-            className="text-muted hover:text-brand"
-          >
-            Promociones
-          </Link>
-          <Link
-            href="/super-admin/templates"
-            className="text-muted hover:text-brand"
-            title="Semillas demo por giro × plan"
-          >
-            Semillas
-          </Link>
-          <Link
-            href="/super-admin/settings"
-            className="text-muted hover:text-brand"
-          >
-            CMS
-          </Link>
-        </nav>
+        <SuperAdminNav />
       </header>
       <div className="min-w-0 w-full">{children}</div>
     </div>

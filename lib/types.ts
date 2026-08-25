@@ -52,6 +52,8 @@ export interface Restaurant {
   is_founding_partner?: boolean;
   /** Superadmin-only internal CRM notes */
   internal_notes?: string;
+  /** How they found Menu al Día */
+  acquisition_source?: string;
   terms_version_accepted?: string | null;
   terms_accepted_at?: string | null;
   loyalty_goal?: number;

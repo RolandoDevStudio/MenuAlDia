@@ -71,6 +71,7 @@ const RESTAURANT_FIELDS = [
   "show_powered_by",
   "is_founding_partner",
   "internal_notes",
+  "acquisition_source",
   "subscription_end_date",
   "business_type",
   "city",
@@ -93,7 +94,9 @@ export async function PATCH(request: Request) {
     show_powered_by?: boolean;
     is_founding_partner?: boolean;
     internal_notes?: string;
+    acquisition_source?: string;
     subscription_end_date?: string | null;
+    extend_days?: number;
     business_type?: string;
     city?: string;
     state?: string;
@@ -136,6 +139,21 @@ export async function PATCH(request: Request) {
     updates.is_founding_partner = body.is_founding_partner;
   if (typeof body.internal_notes === "string")
     updates.internal_notes = body.internal_notes.trim();
+  if (typeof body.acquisition_source === "string") {
+    const src = body.acquisition_source.trim();
+    const allowed = [
+      "",
+      "landing",
+      "dur_local",
+      "redes",
+      "boca_a_boca",
+      "otro",
+    ];
+    if (!allowed.includes(src)) {
+      return NextResponse.json({ error: "origen inválido" }, { status: 400 });
+    }
+    updates.acquisition_source = src;
+  }
   if (typeof body.business_type === "string")
     updates.business_type = body.business_type;
   if (typeof body.city === "string") updates.city = body.city.trim();
@@ -153,10 +171,21 @@ export async function PATCH(request: Request) {
   if (body.subscription_end_date !== undefined) {
     updates.subscription_end_date = body.subscription_end_date;
   }
+  if (typeof body.extend_days === "number" && body.extend_days > 0) {
+    const days = Math.min(90, Math.round(body.extend_days));
+    const currentEnd = new Date(String(before.subscription_end_date)).getTime();
+    const base = Number.isFinite(currentEnd)
+      ? Math.max(Date.now(), currentEnd)
+      : Date.now();
+    updates.subscription_end_date = new Date(
+      base + days * 24 * 60 * 60 * 1000,
+    ).toISOString();
+  }
 
   // Reactivating / extending clears grace-purge window
   const reactivating =
     (typeof body.is_active === "boolean" && body.is_active === true) ||
+    (typeof body.extend_days === "number" && body.extend_days > 0) ||
     (body.subscription_end_date !== undefined &&
       body.subscription_end_date &&
       new Date(String(body.subscription_end_date)).getTime() > Date.now());

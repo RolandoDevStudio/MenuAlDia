@@ -21,7 +21,7 @@ export default async function HistoryPage() {
     supabase
       .from("audit_logs")
       .select(
-        "id, restaurant_id, action, field_name, old_value, new_value, summary, created_at",
+        "id, restaurant_id, action, field_name, old_value, new_value, summary, actor_label, created_at",
       )
       .eq("restaurant_id", restaurantId)
       .order("created_at", { ascending: false })
@@ -67,6 +67,9 @@ export default async function HistoryPage() {
                     {new Date(log.created_at).toLocaleString("es-MX")}
                   </p>
                 </div>
+                {log.actor_label ? (
+                  <p className="mt-0.5 text-xs text-muted">{log.actor_label}</p>
+                ) : null}
                 {log.field_name ? (
                   <p className="mt-1 text-xs text-muted">
                     Campo: {log.field_name}

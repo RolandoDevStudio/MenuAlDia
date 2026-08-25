@@ -15,6 +15,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
+  ACQUISITION_LABELS,
+  ACQUISITION_SOURCES,
+} from "@/lib/super-admin-crm";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -53,6 +57,7 @@ export function CreateAdminModal({
   const [ownerPassword, setOwnerPassword] = useState("");
   const [isFoundingPartner, setIsFoundingPartner] = useState(false);
   const [internalNotes, setInternalNotes] = useState("");
+  const [acquisitionSource, setAcquisitionSource] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [sourceSlug, setSourceSlug] = useState("");
   const [busy, setBusy] = useState(false);
@@ -104,6 +109,7 @@ export function CreateAdminModal({
     setOwnerPassword("");
     setIsFoundingPartner(false);
     setInternalNotes("");
+    setAcquisitionSource("");
     setSourceSlug("");
     setShowAdvanced(false);
     setError(null);
@@ -125,6 +131,7 @@ export function CreateAdminModal({
       theme_preset: themePreset,
       is_founding_partner: isFoundingPartner,
       internal_notes: internalNotes,
+      acquisition_source: acquisitionSource,
     };
     if (showAdvanced && sourceSlug.trim()) {
       body.source_slug = sourceSlug.trim();
@@ -319,6 +326,22 @@ export function CreateAdminModal({
                   autoComplete="new-password"
                 />
               </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Origen</Label>
+              <select
+                className={selectClass}
+                value={acquisitionSource}
+                onChange={(e) => setAcquisitionSource(e.target.value)}
+              >
+                <option value="">Sin origen</option>
+                {ACQUISITION_SOURCES.map((s) => (
+                  <option key={s} value={s}>
+                    {ACQUISITION_LABELS[s]}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="flex items-center justify-between gap-3 rounded-lg border border-black/5 bg-background/50 px-3 py-2">

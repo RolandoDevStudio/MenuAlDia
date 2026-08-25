@@ -7,6 +7,7 @@ export type TenantSession = {
   restaurant: Restaurant;
   userId: string;
   role: MemberRole;
+  supportMode?: boolean;
 };
 
 /**
