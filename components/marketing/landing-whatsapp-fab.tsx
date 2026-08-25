@@ -1,11 +1,7 @@
 "use client";
 
 import { MessageCircle } from "lucide-react";
-import {
-  buildWaMeUrl,
-  formatSalesWhatsAppDisplay,
-  SALES_WHATSAPP,
-} from "@/lib/whatsapp";
+import { buildWaMeUrl, SALES_WHATSAPP } from "@/lib/whatsapp";
 
 type Props = {
   phone?: string;
@@ -20,14 +16,13 @@ export function LandingWhatsAppFab({
     ? `Hola, quiero información de Menú al Día para mi negocio (${giroLabel}).`
     : "Hola, quiero información de Menú al Día para mi negocio.";
   const url = buildWaMeUrl(phone, message);
-  const display = formatSalesWhatsAppDisplay(phone);
 
   return (
     <a
       href={url}
       target="_blank"
       rel="noreferrer"
-      aria-label={`WhatsApp ventas ${display}`}
+      aria-label="WhatsApp ventas"
       className="landing-fab-pulse fixed bottom-[4.75rem] right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg transition duration-200 hover:scale-105 active:scale-95 motion-safe:animate-[rise_0.7s_ease-out] md:bottom-5 md:z-50"
       style={{
         marginBottom: "env(safe-area-inset-bottom)",

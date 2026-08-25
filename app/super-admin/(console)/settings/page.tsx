@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { DEFAULT_SPEI_INFO, type SpeiInfo } from "@/lib/coupons";
+import { normalizeWhatsAppPhone } from "@/lib/whatsapp";
 
 const GIROS: { id: CanonicalDemoId; label: string }[] = [
   { id: "restaurante", label: "Restaurante" },
@@ -92,6 +93,9 @@ export default function SuperAdminSettingsPage() {
             raw.contactBlurb ?? DEFAULT_LANDING_CONTENT.contactBlurb,
           socialProofLine:
             raw.socialProofLine ?? DEFAULT_LANDING_CONTENT.socialProofLine,
+          salesWhatsApp:
+            raw.salesWhatsApp?.trim() ||
+            DEFAULT_LANDING_CONTENT.salesWhatsApp,
           testimonials: Array.isArray(raw.testimonials)
             ? raw.testimonials.slice(0, 3)
             : [],
@@ -112,12 +116,8 @@ export default function SuperAdminSettingsPage() {
     })();
   }, []);
 
-  async function save() {
-    setSaving(true);
-    setError(null);
-    setMessage(null);
-
-    const cleanedTestimonials = landing.testimonials
+  function buildLandingPayload(source: LandingContent): LandingContent | null {
+    const cleanedTestimonials = source.testimonials
       .map((t) => ({
         quote: t.quote.trim(),
         author: t.author.trim(),
@@ -127,29 +127,69 @@ export default function SuperAdminSettingsPage() {
       .filter((t) => t.quote && t.author)
       .slice(0, 3);
 
-    const cleanedFaq = landing.faq
+    const cleanedFaq = source.faq
       .map((f) => ({ q: f.q.trim(), a: f.a.trim() }))
       .filter((f) => f.q && f.a);
 
-    const payload: LandingContent = {
-      heroTitle: landing.heroTitle.trim(),
-      heroSubtitle: landing.heroSubtitle.trim(),
-      contactBlurb: landing.contactBlurb.trim(),
-      socialProofLine: landing.socialProofLine.trim(),
+    const salesDigits = normalizeWhatsAppPhone(source.salesWhatsApp);
+    if (salesDigits.length < 10) {
+      setError("WhatsApp de ventas: indica un número válido (mín. 10 dígitos).");
+      return null;
+    }
+
+    return {
+      heroTitle: source.heroTitle.trim(),
+      heroSubtitle: source.heroSubtitle.trim(),
+      contactBlurb: source.contactBlurb.trim(),
+      socialProofLine: source.socialProofLine.trim(),
+      salesWhatsApp: salesDigits,
       testimonials: cleanedTestimonials,
       faq: cleanedFaq.length > 0 ? cleanedFaq : DEFAULT_LANDING_FAQ,
       demoPosters: {
-        restaurante: landing.demoPosters.restaurante?.trim() || undefined,
-        servicios: landing.demoPosters.servicios?.trim() || undefined,
-        tienda: landing.demoPosters.tienda?.trim() || undefined,
+        restaurante: source.demoPosters.restaurante?.trim() || undefined,
+        servicios: source.demoPosters.servicios?.trim() || undefined,
+        tienda: source.demoPosters.tienda?.trim() || undefined,
       },
       comparisonImages: Object.fromEntries(
         COMPARISON_IMAGE_SLOTS.map((slot) => {
-          const url = landing.comparisonImages[slot]?.trim();
+          const url = source.comparisonImages[slot]?.trim();
           return url ? [slot, url] : null;
         }).filter(Boolean) as [ComparisonImageSlot, string][],
       ),
     };
+  }
+
+  async function persistLandingContent(
+    source: LandingContent,
+  ): Promise<LandingContent | null> {
+    const payload = buildLandingPayload(source);
+    if (!payload) return null;
+    const res = await fetch("/api/super-admin/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        key: "landing_content",
+        value: payload,
+      }),
+    });
+    if (!res.ok) {
+      setError("No se pudo guardar el CMS (¿migración 004 aplicada?)");
+      return null;
+    }
+    setLanding(payload);
+    return payload;
+  }
+
+  async function save() {
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+
+    const payload = buildLandingPayload(landing);
+    if (!payload) {
+      setSaving(false);
+      return;
+    }
 
     const r1 = await fetch("/api/super-admin/settings", {
       method: "PATCH",
@@ -234,23 +274,30 @@ export default function SuperAdminSettingsPage() {
         return;
       }
       const data = (await res.json()) as { url: string };
-      setLanding((prev) => ({
-        ...prev,
-        demoPosters: { ...prev.demoPosters, [giro]: data.url },
-      }));
-      setMessage(`Captura ${giro} subida — recuerda Guardar`);
+      const next: LandingContent = {
+        ...landing,
+        demoPosters: { ...landing.demoPosters, [giro]: data.url },
+      };
+      setLanding(next);
+      const saved = await persistLandingContent(next);
+      setMessage(
+        saved
+          ? `Captura ${giro} subida y guardada`
+          : `Captura ${giro} subida — pulsa Guardar`,
+      );
     } catch (e) {
       setUploadingGiro(null);
       setError(e instanceof Error ? e.message : "Error al comprimir");
     }
   }
 
-  function clearPoster(giro: CanonicalDemoId) {
+  async function clearPoster(giro: CanonicalDemoId) {
     const previousUrl = landing.demoPosters[giro];
-    setLanding((p) => ({
-      ...p,
-      demoPosters: { ...p.demoPosters, [giro]: "" },
-    }));
+    const next: LandingContent = {
+      ...landing,
+      demoPosters: { ...landing.demoPosters, [giro]: "" },
+    };
+    setLanding(next);
     if (previousUrl) {
       void fetch("/api/super-admin/marketing-upload", {
         method: "DELETE",
@@ -258,7 +305,12 @@ export default function SuperAdminSettingsPage() {
         body: JSON.stringify({ url: previousUrl }),
       });
     }
-    setMessage(`Captura ${giro} quitada — recuerda Guardar`);
+    const saved = await persistLandingContent(next);
+    setMessage(
+      saved
+        ? `Captura ${giro} quitada y guardada`
+        : `Captura ${giro} quitada — pulsa Guardar`,
+    );
   }
 
   async function uploadCompare(slot: ComparisonImageSlot, file: File | null) {
@@ -283,24 +335,29 @@ export default function SuperAdminSettingsPage() {
         return;
       }
       const data = (await res.json()) as { url: string };
-      setLanding((prev) => ({
-        ...prev,
-        comparisonImages: { ...prev.comparisonImages, [slot]: data.url },
-      }));
-      setMessage(`${COMPARE_LABELS[slot]} subida — recuerda Guardar`);
+      const next: LandingContent = {
+        ...landing,
+        comparisonImages: { ...landing.comparisonImages, [slot]: data.url },
+      };
+      setLanding(next);
+      const saved = await persistLandingContent(next);
+      setMessage(
+        saved
+          ? `${COMPARE_LABELS[slot]} subida y guardada`
+          : `${COMPARE_LABELS[slot]} subida — pulsa Guardar`,
+      );
     } catch (e) {
       setUploadingSlot(null);
       setError(e instanceof Error ? e.message : "Error al comprimir");
     }
   }
 
-  function clearCompare(slot: ComparisonImageSlot) {
+  async function clearCompare(slot: ComparisonImageSlot) {
     const previousUrl = landing.comparisonImages[slot];
-    setLanding((p) => {
-      const next = { ...p.comparisonImages };
-      delete next[slot];
-      return { ...p, comparisonImages: next };
-    });
+    const nextImages = { ...landing.comparisonImages };
+    delete nextImages[slot];
+    const next: LandingContent = { ...landing, comparisonImages: nextImages };
+    setLanding(next);
     if (previousUrl) {
       void fetch("/api/super-admin/marketing-upload", {
         method: "DELETE",
@@ -308,7 +365,12 @@ export default function SuperAdminSettingsPage() {
         body: JSON.stringify({ url: previousUrl }),
       });
     }
-    setMessage(`${COMPARE_LABELS[slot]} quitada — recuerda Guardar`);
+    const saved = await persistLandingContent(next);
+    setMessage(
+      saved
+        ? `${COMPARE_LABELS[slot]} quitada y guardada`
+        : `${COMPARE_LABELS[slot]} quitada — pulsa Guardar`,
+    );
   }
 
   return (
@@ -322,6 +384,24 @@ export default function SuperAdminSettingsPage() {
 
       <section className="space-y-3 rounded-2xl border border-black/5 bg-surface p-4">
         <h2 className="text-sm font-semibold">Hero / contacto</h2>
+        <div className="space-y-1.5">
+          <Label htmlFor="sales-whatsapp">WhatsApp de ventas (landing)</Label>
+          <Input
+            id="sales-whatsapp"
+            className="min-h-11"
+            inputMode="tel"
+            autoComplete="tel"
+            placeholder="+52 81 3094 7324"
+            value={landing.salesWhatsApp}
+            onChange={(e) =>
+              setLanding((p) => ({ ...p, salesWhatsApp: e.target.value }))
+            }
+          />
+          <p className="text-xs text-muted">
+            Todos los CTAs de la landing (nav, FAB, precios, contacto) abren
+            este número. Puedes pegar con +52; se guardan solo dígitos.
+          </p>
+        </div>
         <div className="space-y-1.5">
           <Label>Título hero</Label>
           <Textarea
@@ -575,8 +655,8 @@ export default function SuperAdminSettingsPage() {
       <section className="space-y-3 rounded-2xl border border-black/5 bg-surface p-4">
         <h2 className="text-sm font-semibold">Capturas por giro</h2>
         <p className="text-xs text-muted">
-          Opcional. Si hay URL, el Product Stage muestra un thumb. Sube o pega
-          URL pública.
+          Opcional. Al subir o quitar, se guarda solo en el CMS (sin pulsar
+          Guardar). Si hay URL, el Product Stage de la landing la usa.
         </p>
         {GIROS.map(({ id, label }) => (
           <div

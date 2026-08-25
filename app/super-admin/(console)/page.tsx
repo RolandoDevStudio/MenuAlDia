@@ -4,7 +4,8 @@ import { requireSuperAdmin } from "@/lib/super-admin";
 import { getPlanPrices, PLAN_LABELS, type PlanType } from "@/lib/plans";
 import { formatMxn } from "@/lib/money";
 import { stateLabel } from "@/lib/mx-locations";
-import { buildWaMeUrl, SALES_WHATSAPP } from "@/lib/whatsapp";
+import { buildWaMeUrl, resolveSalesWhatsApp } from "@/lib/whatsapp";
+import { getLandingContent } from "@/lib/landing-content";
 import { CANONICAL_DEMOS } from "@/lib/canonical-demos";
 import type { Restaurant } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -13,13 +14,14 @@ import { AlertsFeed } from "@/components/super-admin/alerts-feed";
 export default async function SuperAdminHomePage() {
   await requireSuperAdmin();
   const supabase = await createClient();
-  const [{ data }, planPrices] = await Promise.all([
+  const [{ data }, planPrices, landing] = await Promise.all([
     supabase
       .from("restaurants")
       .select(
         "id, slug, name, phone_whatsapp, plan_type, is_active, subscription_end_date, state, city",
       ),
     getPlanPrices(),
+    getLandingContent(),
   ]);
   const restaurants = (data ?? []) as Restaurant[];
 
@@ -57,8 +59,7 @@ export default async function SuperAdminHomePage() {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5);
 
-  const salesPhone =
-    process.env.NEXT_PUBLIC_SALES_WHATSAPP || SALES_WHATSAPP;
+  const salesPhone = resolveSalesWhatsApp(landing.salesWhatsApp);
 
   return (
     <div className="space-y-6">

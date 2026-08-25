@@ -230,12 +230,26 @@ export function buildAppointmentMessage(params: {
   return lines.join("\n");
 }
 
-/** Sales WhatsApp (landing FAB / contact). */
-export const SALES_WHATSAPP = "5218130947324";
+/** Sales WhatsApp (landing FAB / contact) — fallback if CMS vacío. */
+export const SALES_WHATSAPP = "528130947324";
 
 /**
- * Display form for MX sales numbers (strip leading 521 country+mobile marker).
- * e.g. 5218130947324 → "81 3094 7324"
+ * Digits for wa.me from CMS / env / default.
+ * Accepts "+52 81 3094 7324", "5218130947324", etc.
+ */
+export function resolveSalesWhatsApp(cmsPhone?: string | null): string {
+  const fromCms = normalizeWhatsAppPhone(cmsPhone ?? "");
+  if (fromCms.length >= 10) return fromCms;
+  const fromEnv = normalizeWhatsAppPhone(
+    process.env.NEXT_PUBLIC_SALES_WHATSAPP || "",
+  );
+  if (fromEnv.length >= 10) return fromEnv;
+  return SALES_WHATSAPP;
+}
+
+/**
+ * Display form for MX sales numbers (strip leading 521/52 country marker).
+ * e.g. 528130947324 → "81 3094 7324"
  */
 export function formatSalesWhatsAppDisplay(
   phone: string = SALES_WHATSAPP,

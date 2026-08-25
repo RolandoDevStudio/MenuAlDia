@@ -13,8 +13,7 @@ import {
 import { formatMxn } from "@/lib/money";
 import {
   buildWaMeUrl,
-  formatSalesWhatsAppDisplay,
-  SALES_WHATSAPP,
+  resolveSalesWhatsApp,
 } from "@/lib/whatsapp";
 import {
   CANONICAL_DEMOS,
@@ -113,9 +112,7 @@ export default function HomePage() {
     faq: [...DEFAULT_LANDING_FAQ],
   });
 
-  const salesPhone =
-    process.env.NEXT_PUBLIC_SALES_WHATSAPP || SALES_WHATSAPP;
-  const salesPhoneDisplay = formatSalesWhatsAppDisplay(salesPhone);
+  const salesPhone = resolveSalesWhatsApp(landing.salesWhatsApp);
 
   const fromDaily =
     planPrices.daily?.monthly ?? FALLBACK_PLAN_PRICES.daily.monthly;
@@ -230,7 +227,6 @@ export default function HomePage() {
       <LandingNav
         onContactClick={scrollToContact}
         onWhatsAppClick={() => contactSalesQuick("nav")}
-        whatsAppLabel={`WhatsApp ${salesPhoneDisplay}`}
       />
 
       <section
@@ -393,7 +389,6 @@ export default function HomePage() {
           planPrices={planPrices}
           fromDaily={fromDaily}
           onSelectPlan={contactSales}
-          selectPlanLabel={`Quiero este plan · ${salesPhoneDisplay}`}
         />
 
         <Reveal className="mt-10" delayMs={80}>
@@ -404,10 +399,7 @@ export default function HomePage() {
       </SectionShell>
 
       <SectionShell tone="brand">
-        <LandingBreathStrip
-          onCtaClick={() => contactSalesQuick("breath")}
-          ctaLabel={`WhatsApp ${salesPhoneDisplay}`}
-        />
+        <LandingBreathStrip onCtaClick={() => contactSalesQuick("breath")} />
       </SectionShell>
 
       <SectionShell id="faq" tone="surface">
@@ -498,7 +490,7 @@ export default function HomePage() {
               size="lg"
               onClick={() => contactSalesQuick("form")}
             >
-              Escribir al {salesPhoneDisplay}
+              Escribir por WhatsApp
             </Button>
           </Reveal>
         </div>

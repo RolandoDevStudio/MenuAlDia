@@ -1,5 +1,6 @@
 import { createPublicClient } from "@/lib/supabase/public";
 import type { CanonicalDemoId } from "@/lib/canonical-demos";
+import { SALES_WHATSAPP, normalizeWhatsAppPhone } from "@/lib/whatsapp";
 
 export type LandingTestimonial = {
   quote: string;
@@ -99,6 +100,8 @@ export type LandingContent = {
   heroSubtitle: string;
   contactBlurb: string;
   socialProofLine: string;
+  /** Digits for wa.me (landing CTAs). Empty → fallback SALES_WHATSAPP. */
+  salesWhatsApp: string;
   testimonials: LandingTestimonial[];
   faq: LandingFaqItem[];
   demoPosters: LandingDemoPosters;
@@ -132,6 +135,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
   contactBlurb:
     "Te respondemos por WhatsApp y te activamos en el mismo día.",
   socialProofLine: "Hecho para locales en México · activación el mismo día",
+  salesWhatsApp: SALES_WHATSAPP,
   testimonials: [],
   faq: DEFAULT_LANDING_FAQ,
   demoPosters: {},
@@ -211,6 +215,7 @@ export function parseLandingContent(raw: unknown): LandingContent {
     };
   }
   const row = raw as Record<string, unknown>;
+  const salesDigits = normalizeWhatsAppPhone(asString(row.salesWhatsApp));
   return {
     heroTitle: asString(row.heroTitle) || DEFAULT_LANDING_CONTENT.heroTitle,
     heroSubtitle:
@@ -220,6 +225,10 @@ export function parseLandingContent(raw: unknown): LandingContent {
     socialProofLine:
       asString(row.socialProofLine) ||
       DEFAULT_LANDING_CONTENT.socialProofLine,
+    salesWhatsApp:
+      salesDigits.length >= 10
+        ? salesDigits
+        : DEFAULT_LANDING_CONTENT.salesWhatsApp,
     testimonials: parseTestimonials(row.testimonials),
     faq: parseFaq(row.faq),
     demoPosters: parseDemoPosters(row.demoPosters),
