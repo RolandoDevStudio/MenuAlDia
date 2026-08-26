@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -26,25 +27,41 @@ const LINKS: {
 
 export function SuperAdminNav() {
   const pathname = usePathname();
+  const activeRef = useRef<HTMLAnchorElement>(null);
+
+  useEffect(() => {
+    activeRef.current?.scrollIntoView({
+      inline: "center",
+      block: "nearest",
+      behavior: "smooth",
+    });
+  }, [pathname]);
+
   return (
-    <nav className="flex flex-wrap gap-3 text-sm font-semibold">
-      {LINKS.map((l) => {
-        const active = l.exact
-          ? pathname === l.href
-          : pathname === l.href || pathname.startsWith(`${l.href}/`);
-        return (
-          <Link
-            key={l.href}
-            href={l.href}
-            title={l.title}
-            className={cn(
-              active ? "text-brand" : "text-muted hover:text-brand",
-            )}
-          >
-            {l.label}
-          </Link>
-        );
-      })}
+    <nav className="min-w-0" aria-label="Super admin">
+      <div className="-mx-1 flex flex-nowrap gap-1 overflow-x-auto px-1 scrollbar-thin lg:flex-wrap lg:overflow-visible">
+        {LINKS.map((l) => {
+          const active = l.exact
+            ? pathname === l.href
+            : pathname === l.href || pathname.startsWith(`${l.href}/`);
+          return (
+            <Link
+              key={l.href}
+              href={l.href}
+              title={l.title}
+              ref={active ? activeRef : undefined}
+              className={cn(
+                "min-h-10 shrink-0 whitespace-nowrap rounded-full px-3 py-2 text-sm font-semibold",
+                active
+                  ? "bg-brand/10 text-brand"
+                  : "text-muted hover:bg-black/5 hover:text-brand",
+              )}
+            >
+              {l.label}
+            </Link>
+          );
+        })}
+      </div>
     </nav>
   );
 }

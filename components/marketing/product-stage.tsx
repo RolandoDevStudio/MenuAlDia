@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
+import { trackLandingEvent } from "@/lib/landing-events";
 import { cn } from "@/lib/utils";
 
 const ICONS = {
@@ -128,6 +129,7 @@ export function ProductStage({
   }, [modalOpen]);
 
   function openDemoModal() {
+    trackLandingEvent("demo_open");
     setModalOpen(true);
   }
 
@@ -204,6 +206,7 @@ export function ProductStage({
           href={`/${demo.slug}`}
           target="_blank"
           rel="noreferrer"
+          onClick={() => trackLandingEvent("demo_open")}
           className="inline-flex items-center gap-1 text-xs font-medium text-muted transition-colors hover:text-foreground hover:underline"
         >
           Abrir en pestaña

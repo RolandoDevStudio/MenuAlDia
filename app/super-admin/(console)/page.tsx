@@ -12,12 +12,13 @@ import { Button } from "@/components/ui/button";
 import { AlertsFeed } from "@/components/super-admin/alerts-feed";
 import { Emoji } from "@/components/ui-emoji";
 import { UI_EMOJI } from "@/lib/ui-emoji";
+import { getLandingAnalyticsBundle } from "@/lib/landing-analytics";
 import { formatMexicoCityDate } from "@/lib/dates";
 
 export default async function SuperAdminHomePage() {
   await requireSuperAdmin();
   const supabase = await createClient();
-  const [{ data }, planPrices, landing] = await Promise.all([
+  const [{ data }, planPrices, landing, landing7, landing30] = await Promise.all([
     supabase
       .from("restaurants")
       .select(
@@ -25,6 +26,8 @@ export default async function SuperAdminHomePage() {
       ),
     getPlanPrices(),
     getLandingContent(),
+    getLandingAnalyticsBundle("7d"),
+    getLandingAnalyticsBundle("30d"),
   ]);
   const restaurants = (data ?? []) as Restaurant[];
 
@@ -66,32 +69,31 @@ export default async function SuperAdminHomePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Button asChild size="sm" className="min-h-11">
           <Link href="/super-admin/tenants">
             <Emoji char={UI_EMOJI.create} />
             Crear / ver tenants
           </Link>
         </Button>
-        <Button asChild size="sm" variant="secondary" className="min-h-11">
-          <Link href="/super-admin/finanzas">Finanzas</Link>
-        </Button>
-        <Button asChild size="sm" variant="secondary" className="min-h-11">
-          <Link href="/super-admin/settings">CMS Landing</Link>
-        </Button>
-        {CANONICAL_DEMOS.map((d) => (
-          <Button
-            key={d.slug}
-            asChild
-            size="sm"
-            variant="outline"
-            className="min-h-11"
-          >
-            <a href={`/${d.slug}`} target="_blank" rel="noreferrer">
-              Demo {d.label}
-            </a>
-          </Button>
-        ))}
+        <details className="relative">
+          <summary className="inline-flex min-h-11 cursor-pointer list-none items-center rounded-lg border border-black/10 bg-surface px-3 text-sm font-semibold marker:content-none [&::-webkit-details-marker]:hidden">
+            Demos
+          </summary>
+          <div className="absolute left-0 z-20 mt-1 flex min-w-[12rem] flex-col gap-1 rounded-xl border border-black/10 bg-surface p-1.5 shadow-lg">
+            {CANONICAL_DEMOS.map((d) => (
+              <a
+                key={d.slug}
+                href={`/${d.slug}`}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-black/5"
+              >
+                Demo {d.label}
+              </a>
+            ))}
+          </div>
+        </details>
       </div>
 
       <AlertsFeed />
@@ -112,6 +114,38 @@ export default async function SuperAdminHomePage() {
       </div>
 
       <section>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-sm font-semibold">Landing (7 días)</h2>
+          <Link
+            href="/super-admin/settings"
+            className="text-xs font-medium text-brand underline-offset-2 hover:underline"
+          >
+            Ver detalle en CMS
+          </Link>
+        </div>
+        <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-black/5 bg-surface p-4">
+            <p className="text-xs text-muted">Visitas</p>
+            <p className="mt-1 text-3xl font-semibold tabular-nums">
+              {landing7.kpis.views}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-black/5 bg-surface p-4">
+            <p className="text-xs text-muted">Clics WhatsApp</p>
+            <p className="mt-1 text-3xl font-semibold tabular-nums">
+              {landing7.kpis.waClicks}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-black/5 bg-surface p-4">
+            <p className="text-xs text-muted">Tenants origen landing (30d)</p>
+            <p className="mt-1 text-3xl font-semibold tabular-nums">
+              {landing30.kpis.tenantsLanding}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section>
         <h2 className="text-sm font-semibold">MRR por plan</h2>
         <ul className="mt-2 grid gap-2 sm:grid-cols-3">
           {mrrByPlan.map(({ plan, count, amount }) => (
@@ -128,18 +162,21 @@ export default async function SuperAdminHomePage() {
         </ul>
       </section>
 
-      <section>
-        <h2 className="text-sm font-semibold">Activos por estado</h2>
+      <details className="rounded-2xl border border-black/5 bg-surface">
+        <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold marker:content-none [&::-webkit-details-marker]:hidden">
+          Activos por estado
+        </summary>
+        <div className="border-t border-black/5 px-4 pb-4 pt-2">
         {topStates.length === 0 ? (
-          <p className="mt-2 text-sm text-muted">
+          <p className="text-sm text-muted">
             Sin estados canónicos aún. Edita tenants o ajustes del negocio.
           </p>
         ) : (
-          <ul className="mt-2 space-y-1 text-sm">
+          <ul className="space-y-1 text-sm">
             {topStates.map(([code, n]) => (
               <li
                 key={code}
-                className="flex justify-between rounded-lg border border-black/5 bg-surface px-3 py-2"
+                className="flex justify-between rounded-lg border border-black/5 bg-background px-3 py-2"
               >
                 <span>{stateLabel(code)}</span>
                 <span className="font-semibold">{n}</span>
@@ -147,7 +184,8 @@ export default async function SuperAdminHomePage() {
             ))}
           </ul>
         )}
-      </section>
+        </div>
+      </details>
 
       <section>
         <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -200,16 +238,19 @@ export default async function SuperAdminHomePage() {
         )}
       </section>
 
-      <section>
-        <h2 className="text-sm font-semibold">Vencidos (muestra)</h2>
+      <details className="rounded-2xl border border-black/5 bg-surface">
+        <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold marker:content-none [&::-webkit-details-marker]:hidden">
+          Vencidos (muestra)
+        </summary>
+        <div className="border-t border-black/5 px-4 pb-4 pt-2">
         {expired.length === 0 ? (
-          <p className="mt-2 text-sm text-muted">Ninguno vencido.</p>
+          <p className="text-sm text-muted">Ninguno vencido.</p>
         ) : (
-          <ul className="mt-2 space-y-2">
+          <ul className="space-y-2">
             {expired.map((r) => (
               <li
                 key={r.id}
-                className="flex justify-between rounded-xl border border-black/5 bg-surface px-3 py-2 text-sm"
+                className="flex justify-between rounded-xl border border-black/5 bg-background px-3 py-2 text-sm"
               >
                 <span>
                   {r.name} <span className="text-muted">/{r.slug}</span>
@@ -224,7 +265,8 @@ export default async function SuperAdminHomePage() {
             ))}
           </ul>
         )}
-      </section>
+        </div>
+      </details>
     </div>
   );
 }

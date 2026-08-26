@@ -96,3 +96,29 @@ export function label(
 ): string {
   return labelsFor(businessType)[key];
 }
+
+const SCAN_CTA: Record<BusinessType, string> = {
+  restaurante: "Escanea para ver el menú",
+  servicios: "Escanea para ver servicios",
+  productos: "Escanea para ver el catálogo",
+};
+
+const SHARE_CTA: Record<BusinessType, string> = {
+  restaurante: "Mira el menú y pide aquí",
+  servicios: "Conoce nuestros servicios aquí",
+  productos: "Conoce nuestro catálogo aquí",
+};
+
+export const STICKER_CTA = "Vuelve a pedir aquí";
+
+export function scanCtaFor(
+  businessType: BusinessType | string | null | undefined,
+): string {
+  return SCAN_CTA[normalizeBusinessType(businessType)];
+}
+
+export function shareCtaFor(
+  businessType: BusinessType | string | null | undefined,
+): string {
+  return SHARE_CTA[normalizeBusinessType(businessType)];
+}

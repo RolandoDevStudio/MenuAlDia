@@ -166,6 +166,7 @@ export function buildBroadcastMessage(params: {
   dailyLabel?: string;
   itemNames?: string[];
   packagePrice?: number | null;
+  shareCta?: string;
 }): string {
   const lines: string[] = [];
   lines.push(`✨ *${params.businessName}*`);
@@ -183,7 +184,8 @@ export function buildBroadcastMessage(params: {
     }
     lines.push("");
   }
-  lines.push("Mira el menú y pide aquí 👉");
+  const cta = params.shareCta?.trim() || "Mira el menú y pide aquí";
+  lines.push(`${cta} 👉`);
   lines.push(params.menuUrl);
   return lines.join("\n");
 }

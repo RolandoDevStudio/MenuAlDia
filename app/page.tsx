@@ -33,7 +33,9 @@ import { ProductStage } from "@/components/marketing/product-stage";
 import { ProductShots } from "@/components/marketing/product-shots";
 import { ComparisonCards } from "@/components/marketing/comparison-cards";
 import { ValueMatrix } from "@/components/marketing/value-matrix";
+import { LandingViewBeacon } from "@/components/marketing/landing-view-beacon";
 import { LandingStickyCta } from "@/components/marketing/landing-sticky-cta";
+import { trackLandingEvent } from "@/lib/landing-events";
 import { LandingBreathStrip } from "@/components/marketing/landing-breath-strip";
 import { TrustStrip } from "@/components/marketing/trust-strip";
 import { FaqSection } from "@/components/marketing/faq-section";
@@ -163,6 +165,11 @@ export default function HomePage() {
       return;
     }
     setGiroError(false);
+    if (plan === "catalog" || plan === "daily" || plan === "pro") {
+      trackLandingEvent(`wa_plan_${plan}`);
+    } else {
+      trackLandingEvent("wa_form");
+    }
     const giroLabel = getCanonicalDemo(giro)?.label ?? giro;
     const lines = [
       `*Prospecto ${OFFICIAL_DOMAIN}*`,
@@ -191,6 +198,7 @@ export default function HomePage() {
     if (kind === "form") setGiroError(false);
 
     if (kind === "nav") {
+      trackLandingEvent("wa_nav");
       openSalesWhatsApp(
         giroLabel
           ? `Hola, quiero info de Menú al Día para mi negocio (${giroLabel}).`
@@ -199,6 +207,7 @@ export default function HomePage() {
       return;
     }
     if (kind === "breath") {
+      trackLandingEvent("wa_breath");
       openSalesWhatsApp(
         giroLabel
           ? `Hola, quiero activarme hoy con Menú al Día (${giroLabel}).`
@@ -217,6 +226,7 @@ export default function HomePage() {
 
   return (
     <main className="relative min-h-full overflow-x-clip bg-background pb-24 md:pb-0">
+      <LandingViewBeacon />
       <div
         className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
         aria-hidden

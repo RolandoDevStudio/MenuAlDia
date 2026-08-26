@@ -24,6 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { DEFAULT_SPEI_INFO, type SpeiInfo } from "@/lib/coupons";
 import { normalizeWhatsAppPhone } from "@/lib/whatsapp";
+import { LandingMetrics } from "@/components/super-admin/landing-metrics";
 import { Emoji } from "@/components/ui-emoji";
 import { UI_EMOJI } from "@/lib/ui-emoji";
 
@@ -46,6 +47,32 @@ const COMPARE_LABELS: Record<ComparisonImageSlot, string> = {
 
 function emptyTestimonial(): LandingTestimonial {
   return { quote: "", author: "", role: "", initial: "" };
+}
+
+function CmsFold({
+  title,
+  defaultOpen,
+  children,
+}: {
+  title: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(Boolean(defaultOpen));
+  return (
+    <details
+      open={open}
+      onToggle={(e) => setOpen(e.currentTarget.open)}
+      className="rounded-2xl border border-black/5 bg-surface"
+    >
+      <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold marker:content-none [&::-webkit-details-marker]:hidden">
+        {title}
+      </summary>
+      <div className="space-y-3 border-t border-black/5 px-4 pb-4 pt-3">
+        {children}
+      </div>
+    </details>
+  );
 }
 
 export default function SuperAdminSettingsPage() {
@@ -375,8 +402,28 @@ export default function SuperAdminSettingsPage() {
     );
   }
 
+  function renderSave() {
+    return (
+      <Button
+        type="button"
+        className="min-h-11 w-full"
+        disabled={saving}
+        onClick={() => void save()}
+      >
+        {saving ? (
+          "Guardando…"
+        ) : (
+          <>
+            <Emoji char={UI_EMOJI.save} />
+            Guardar
+          </>
+        )}
+      </Button>
+    );
+  }
+
   return (
-    <div className="mx-auto max-w-2xl space-y-8 px-4 py-6">
+    <div className="space-y-6 pb-24 md:pb-0">
       <div>
         <h1 className="text-xl font-semibold">
           <Emoji char={UI_EMOJI.cms} />
@@ -387,8 +434,10 @@ export default function SuperAdminSettingsPage() {
         </p>
       </div>
 
-      <section className="space-y-3 rounded-2xl border border-black/5 bg-surface p-4">
-        <h2 className="text-sm font-semibold">Hero / contacto</h2>
+      <LandingMetrics />
+
+      <div className="mx-auto max-w-2xl space-y-3">
+      <CmsFold title="Hero / contacto" defaultOpen>
         <div className="space-y-1.5">
           <Label htmlFor="sales-whatsapp">WhatsApp de ventas (landing)</Label>
           <Input
@@ -448,11 +497,10 @@ export default function SuperAdminSettingsPage() {
             }
           />
         </div>
-      </section>
+      </CmsFold>
 
-      <section className="space-y-3 rounded-2xl border border-black/5 bg-surface p-4">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold">Testimonios (0–3)</h2>
+      <CmsFold title="Testimonios (0–3)">
+        <div className="flex justify-end">
           <Button
             type="button"
             variant="secondary"
@@ -528,10 +576,9 @@ export default function SuperAdminSettingsPage() {
             </div>
           </div>
         ))}
-      </section>
+      </CmsFold>
 
-      <section className="space-y-3 rounded-2xl border border-black/5 bg-surface p-4">
-        <h2 className="text-sm font-semibold">FAQ</h2>
+      <CmsFold title="FAQ">
         {landing.faq.map((f, i) => (
           <div
             key={i}
@@ -576,10 +623,9 @@ export default function SuperAdminSettingsPage() {
         >
           Añadir pregunta
         </Button>
-      </section>
+      </CmsFold>
 
-      <section className="space-y-3 rounded-2xl border border-black/5 bg-surface p-4">
-        <h2 className="text-sm font-semibold">Comparación (ilustraciones)</h2>
+      <CmsFold title="Comparación (ilustraciones)">
         <p className="text-xs text-muted">
           Opcional. Si no hay URL, la landing usa los SVG por defecto. Sube
           recortes WebP de tu arte (problema / solución por fila).
@@ -655,10 +701,9 @@ export default function SuperAdminSettingsPage() {
             );
           })}
         </div>
-      </section>
+      </CmsFold>
 
-      <section className="space-y-3 rounded-2xl border border-black/5 bg-surface p-4">
-        <h2 className="text-sm font-semibold">Capturas por giro</h2>
+      <CmsFold title="Capturas por giro">
         <p className="text-xs text-muted">
           Opcional. Al subir o quitar, se guarda solo en el CMS (sin pulsar
           Guardar). Si hay URL, el Product Stage de la landing la usa.
@@ -725,10 +770,9 @@ export default function SuperAdminSettingsPage() {
             </div>
           </div>
         ))}
-      </section>
+      </CmsFold>
 
-      <section className="space-y-3 rounded-2xl border border-black/5 bg-surface p-4">
-        <h2 className="text-sm font-semibold">Datos SPEI (suscripción)</h2>
+      <CmsFold title="Datos SPEI (suscripción)">
         <p className="text-xs text-muted">
           Se muestran a tenants en Ajustes → Suscripción.
         </p>
@@ -767,10 +811,9 @@ export default function SuperAdminSettingsPage() {
             />
           </div>
         </div>
-      </section>
+      </CmsFold>
 
-      <section className="space-y-3 rounded-2xl border border-black/5 bg-surface p-4">
-        <h2 className="text-sm font-semibold">Precios mensuales (MXN)</h2>
+      <CmsFold title="Precios mensuales (MXN)">
         {(["catalog", "daily", "pro"] as PlanType[]).map((plan) => (
           <div key={plan} className="flex items-center gap-3">
             <Label className="w-24 capitalize">{plan}</Label>
@@ -782,23 +825,16 @@ export default function SuperAdminSettingsPage() {
             />
           </div>
         ))}
-      </section>
+      </CmsFold>
 
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
       {message ? <p className="text-sm text-green-700">{message}</p> : null}
-      <Button
-        type="button"
-        className="min-h-11 w-full"
-        disabled={saving}
-        onClick={() => void save()}
-      >
-        {saving ? "Guardando…" : (
-          <>
-            <Emoji char={UI_EMOJI.save} />
-            Guardar
-          </>
-        )}
-      </Button>
+      <div className="hidden md:block">{renderSave()}</div>
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-black/10 bg-background/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur md:hidden">
+        {renderSave()}
+      </div>
     </div>
   );
 }

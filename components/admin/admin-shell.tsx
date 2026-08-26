@@ -112,7 +112,6 @@ export function AdminShell({
         ? Store
         : UtensilsCrossed;
   const hasDaily = can(planType, "daily_menu");
-  const hasFlyer = can(planType, "flyer");
   const hasCrm = can(planType, "crm");
   const hasCombos = can(planType, "combos");
 
@@ -134,30 +133,13 @@ export function AdminShell({
     match: (p) => p.startsWith("/admin/catalog"),
   });
 
-  if (hasFlyer) {
-    primary.push({
-      href: "/admin/difusion",
-      label: "Difusión",
-      icon: Megaphone,
-      match: (p) =>
-        p.startsWith("/admin/difusion") ||
-        p.startsWith("/admin/flyer"),
-    });
-  } else if (hasCombos) {
-    primary.push({
-      href: "/admin/combos",
-      label: label(businessType, "combos"),
-      icon: Package,
-      match: (p) => p.startsWith("/admin/combos"),
-    });
-  } else {
-    primary.push({
-      href: "/admin/promociones",
-      label: "Promos",
-      icon: Megaphone,
-      match: (p) => p.startsWith("/admin/promociones"),
-    });
-  }
+  primary.push({
+    href: "/admin/difusion",
+    label: "Difusión",
+    icon: Megaphone,
+    match: (p) =>
+      p.startsWith("/admin/difusion") || p.startsWith("/admin/flyer"),
+  });
 
   if (hasCrm) {
     primary.push({
@@ -166,21 +148,12 @@ export function AdminShell({
       icon: Users,
       match: (p) => p.startsWith("/admin/customers"),
     });
-  } else if (hasCombos && hasFlyer) {
+  } else if (hasCombos) {
     primary.push({
       href: "/admin/combos",
       label: label(businessType, "combos"),
       icon: Package,
       match: (p) => p.startsWith("/admin/combos"),
-    });
-  } else if (!hasFlyer) {
-    /* already used promos/combos in slot 3 */
-  } else {
-    primary.push({
-      href: "/admin/promociones",
-      label: "Promos",
-      icon: Megaphone,
-      match: (p) => p.startsWith("/admin/promociones"),
     });
   }
 

@@ -228,7 +228,7 @@ export function CrmConsole() {
         <CrmHelpDialog helpId="overview" variant="text" />
       </div>
 
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <Kpi label="Activos" value={String(k.active)} helpId="active" />
         <Kpi
           label="Fundadores activos"
@@ -236,11 +236,42 @@ export function CrmConsole() {
           helpId="foundersActive"
         />
         <Kpi label="MRR lista" value={formatMxn(k.mrr)} helpId="mrr" />
-        <Kpi label="ARR" value={formatMxn(k.arr)} helpId="arr" />
         <Kpi label="Caja del mes" value={formatMxn(k.cashMonth)} helpId="cashMonth" />
         <Kpi label="Churn 30d" value={pct(k.churn30)} helpId="churn30" />
-        <Kpi label="Retención M1" value={pct(k.retentionM1)} helpId="retentionM1" />
         <Kpi label="CTR WA 30d" value={pct(k.ctr30)} helpId="ctr30" />
+      </section>
+      <details className="rounded-2xl border border-black/5 bg-surface lg:hidden">
+        <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold marker:content-none [&::-webkit-details-marker]:hidden">
+          Más cifras
+        </summary>
+        <div className="grid grid-cols-2 gap-3 border-t border-black/5 p-3">
+          <Kpi label="ARR" value={formatMxn(k.arr)} helpId="arr" />
+          <Kpi label="Retención M1" value={pct(k.retentionM1)} helpId="retentionM1" />
+          <Kpi
+            label="Conversión pago"
+            value={pct(k.paidConversion)}
+            helpId="paidConversion"
+          />
+          <Kpi
+            label="LTV medio"
+            value={k.ltvAvg != null ? formatMxn(k.ltvAvg) : "—"}
+            helpId="ltv"
+          />
+          <Kpi
+            label="Pedidos mes"
+            value={`${k.ordersMonth} · ${k.ordersPickup} rec / ${k.ordersDelivery} env`}
+            helpId="ordersMonth"
+          />
+          <Kpi
+            label="Fundadores con pago"
+            value={pct(k.foundersPaidPct)}
+            helpId="foundersPaid"
+          />
+        </div>
+      </details>
+      <section className="hidden grid-cols-2 gap-3 sm:grid-cols-3 lg:grid lg:grid-cols-6">
+        <Kpi label="ARR" value={formatMxn(k.arr)} helpId="arr" />
+        <Kpi label="Retención M1" value={pct(k.retentionM1)} helpId="retentionM1" />
         <Kpi
           label="Conversión pago"
           value={pct(k.paidConversion)}
@@ -301,72 +332,17 @@ export function CrmConsole() {
         )}
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-2xl border border-black/5 bg-surface p-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold">Mix global</h2>
-            <CrmHelpDialog helpId="mix" />
-          </div>
-          <ul className="mt-2 space-y-1 text-sm">
-            {data.mix.byPlan.map((p) => (
-              <li key={p.plan} className="flex justify-between">
-                <span>{PLAN_LABELS[p.plan]}</span>
-                <span className="font-medium">{p.count}</span>
-              </li>
-            ))}
-            <li className="flex justify-between border-t border-black/5 pt-1">
-              <span>Socios fundadores</span>
-              <span className="font-medium">{data.mix.founders}</span>
-            </li>
-          </ul>
-          <p className="mt-3 text-xs font-semibold text-muted">Origen</p>
-          <ul className="mt-1 space-y-1 text-sm">
-            {data.mix.byOrigin
-              .filter((o) => o.count > 0)
-              .map((o) => (
-                <li key={o.source || "none"} className="flex justify-between">
-                  <span>
-                    {ACQUISITION_LABELS[
-                      (o.source || "") as keyof typeof ACQUISITION_LABELS
-                    ] ?? o.source}
-                  </span>
-                  <span className="font-medium">{o.count}</span>
-                </li>
-              ))}
-          </ul>
+      <details className="rounded-2xl border border-black/5 bg-surface lg:hidden">
+        <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold marker:content-none [&::-webkit-details-marker]:hidden">
+          Cifras de mix / retención
+        </summary>
+        <div className="space-y-4 border-t border-black/5 p-4">
+          <MixRetention data={data} />
         </div>
-        <div className="rounded-2xl border border-black/5 bg-surface p-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold">Retención M0 → M1</h2>
-            <CrmHelpDialog helpId="cohorts" />
-          </div>
-          <table className="mt-2 w-full text-left text-sm">
-            <thead className="text-xs text-muted">
-              <tr>
-                <th className="py-1 font-semibold">Alta</th>
-                <th className="py-1 font-semibold">N</th>
-                <th className="py-1 font-semibold">Activos M1</th>
-                <th className="py-1 font-semibold">%</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.cohorts.map((c) => (
-                <tr key={c.month} className="border-t border-black/5">
-                  <td className="py-1.5">
-                    {c.month}
-                    {c.inProgress ? (
-                      <span className="ml-1 text-[10px] text-muted">en curso</span>
-                    ) : null}
-                  </td>
-                  <td className="py-1.5">{c.signedUp}</td>
-                  <td className="py-1.5">{c.retained}</td>
-                  <td className="py-1.5">{pct(c.rate)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      </details>
+      <div className="hidden lg:block">
+        <MixRetention data={data} />
+      </div>
 
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -376,7 +352,7 @@ export function CrmConsole() {
           <CrmHelpDialog helpId="charts" />
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-nowrap items-center gap-2 overflow-x-auto pb-1 lg:flex-wrap lg:overflow-visible">
           <Filter
             value={planFilter}
             onChange={setPlanFilter}
@@ -534,28 +510,103 @@ export function CrmConsole() {
         )}
       </section>
 
-      <section className="rounded-2xl border border-black/5 bg-surface p-4">
-        <h2 className="text-sm font-semibold">Uso</h2>
-        <p className="mt-1 text-sm text-muted">
-          Fotos vs límite (promedio) {pct(data.usage.photoFillAvg)} · Pro{" "}
-          {pct(data.usage.proPct)}
-        </p>
-        <ul className="mt-3 space-y-1 text-sm">
-          {data.usage.topOrders.map((r) => (
-            <li key={r.id} className="flex justify-between gap-2">
-              <Link
-                className="font-medium hover:underline"
-                href={`/${r.slug}`}
-                target="_blank"
-              >
-                {r.name}
-              </Link>
-              <span className="text-muted">{r.orders} pedidos mes</span>
+      <details className="rounded-2xl border border-black/5 bg-surface">
+        <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold marker:content-none [&::-webkit-details-marker]:hidden">
+          Uso
+        </summary>
+        <div className="border-t border-black/5 px-4 pb-4 pt-3">
+          <p className="text-sm text-muted">
+            Fotos vs límite (promedio) {pct(data.usage.photoFillAvg)} · Pro{" "}
+            {pct(data.usage.proPct)}
+          </p>
+          <ul className="mt-3 space-y-1 text-sm">
+            {data.usage.topOrders.map((r) => (
+              <li key={r.id} className="flex justify-between gap-2">
+                <Link
+                  className="font-medium hover:underline"
+                  href={`/${r.slug}`}
+                  target="_blank"
+                >
+                  {r.name}
+                </Link>
+                <span className="text-muted">{r.orders} pedidos mes</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </details>
+    </div>
+  );
+}
+
+function MixRetention({ data }: { data: CrmPayload }) {
+  return (
+    <section className="grid gap-4 lg:grid-cols-2">
+      <div className="rounded-2xl border border-black/5 bg-surface p-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold">Mix global</h2>
+          <CrmHelpDialog helpId="mix" />
+        </div>
+        <ul className="mt-2 space-y-1 text-sm">
+          {data.mix.byPlan.map((p) => (
+            <li key={p.plan} className="flex justify-between">
+              <span>{PLAN_LABELS[p.plan]}</span>
+              <span className="font-medium">{p.count}</span>
             </li>
           ))}
+          <li className="flex justify-between border-t border-black/5 pt-1">
+            <span>Socios fundadores</span>
+            <span className="font-medium">{data.mix.founders}</span>
+          </li>
         </ul>
-      </section>
-    </div>
+        <p className="mt-3 text-xs font-semibold text-muted">Origen</p>
+        <ul className="mt-1 space-y-1 text-sm">
+          {data.mix.byOrigin
+            .filter((o) => o.count > 0)
+            .map((o) => (
+              <li key={o.source || "none"} className="flex justify-between">
+                <span>
+                  {ACQUISITION_LABELS[
+                    (o.source || "") as keyof typeof ACQUISITION_LABELS
+                  ] ?? o.source}
+                </span>
+                <span className="font-medium">{o.count}</span>
+              </li>
+            ))}
+        </ul>
+      </div>
+      <div className="rounded-2xl border border-black/5 bg-surface p-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold">Retención M0 → M1</h2>
+          <CrmHelpDialog helpId="cohorts" />
+        </div>
+        <table className="mt-2 w-full text-left text-sm">
+          <thead className="text-xs text-muted">
+            <tr>
+              <th className="py-1 font-semibold">Alta</th>
+              <th className="py-1 font-semibold">N</th>
+              <th className="py-1 font-semibold">Activos M1</th>
+              <th className="py-1 font-semibold">%</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.cohorts.map((c) => (
+              <tr key={c.month} className="border-t border-black/5">
+                <td className="py-1.5">
+                  {c.month}
+                  {c.inProgress ? (
+                    <span className="ml-1 text-[10px] text-muted">en curso</span>
+                  ) : null}
+                </td>
+                <td className="py-1.5">{c.signedUp}</td>
+                <td className="py-1.5">{c.retained}</td>
+                <td className="py-1.5">{pct(c.rate)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
@@ -590,7 +641,7 @@ function Filter({
 }) {
   return (
     <select
-      className="h-10 min-w-0 rounded-lg border border-black/10 bg-surface px-2 text-xs"
+      className="h-10 min-w-[7.5rem] shrink-0 rounded-lg border border-black/10 bg-surface px-2 text-xs"
       value={value}
       onChange={(e) => onChange(e.target.value)}
     >
@@ -600,6 +651,68 @@ function Filter({
         </option>
       ))}
     </select>
+  );
+}
+
+function ExtendPauseButtons({
+  busy,
+  active,
+  stacked,
+  onExtend,
+  onPause,
+}: {
+  busy: boolean;
+  active: boolean;
+  stacked?: boolean;
+  onExtend: (days: number) => void;
+  onPause: () => void;
+}) {
+  const btn = stacked ? "min-h-10 w-full justify-start" : "min-h-10";
+  return (
+    <>
+      <Button
+        type="button"
+        size="sm"
+        variant="ghost"
+        className={btn}
+        disabled={busy}
+        onClick={() => onExtend(7)}
+      >
+        <Emoji char={UI_EMOJI.extend} />
+        +7d
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant="ghost"
+        className={btn}
+        disabled={busy}
+        onClick={() => onExtend(30)}
+      >
+        <Emoji char={UI_EMOJI.extend} />
+        +30d
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant="ghost"
+        className={btn}
+        disabled={busy}
+        onClick={onPause}
+      >
+        {active ? (
+          <>
+            <Emoji char={UI_EMOJI.pause} />
+            Pausar
+          </>
+        ) : (
+          <>
+            <Emoji char={UI_EMOJI.resume} />
+            Reactivar
+          </>
+        )}
+      </Button>
+    </>
   );
 }
 
@@ -688,48 +801,28 @@ function TenantTable({
                   <Emoji char={UI_EMOJI.support} />
                   Soporte
                 </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  className="min-h-10"
-                  disabled={busy}
-                  onClick={() => onExtend(r.id, 7)}
-                >
-                  <Emoji char={UI_EMOJI.extend} />
-                  +7d
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  className="min-h-10"
-                  disabled={busy}
-                  onClick={() => onExtend(r.id, 30)}
-                >
-                  <Emoji char={UI_EMOJI.extend} />
-                  +30d
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  className="min-h-10"
-                  disabled={busy}
-                  onClick={() => onPause(r.id, !r.is_active)}
-                >
-                  {r.is_active ? (
-                    <>
-                      <Emoji char={UI_EMOJI.pause} />
-                      Pausar
-                    </>
-                  ) : (
-                    <>
-                      <Emoji char={UI_EMOJI.resume} />
-                      Reactivar
-                    </>
-                  )}
-                </Button>
+                <div className="hidden flex-wrap gap-1.5 md:flex">
+                  <ExtendPauseButtons
+                    busy={busy}
+                    active={r.is_active}
+                    onExtend={(days) => onExtend(r.id, days)}
+                    onPause={() => onPause(r.id, !r.is_active)}
+                  />
+                </div>
+                <details className="relative md:hidden">
+                  <summary className="inline-flex min-h-10 cursor-pointer list-none items-center rounded-md border border-black/10 bg-surface px-3 text-xs font-semibold marker:content-none [&::-webkit-details-marker]:hidden">
+                    Más
+                  </summary>
+                  <div className="absolute right-0 z-20 mt-1 flex min-w-[10rem] flex-col gap-1 rounded-xl border border-black/10 bg-surface p-1.5 shadow-lg">
+                    <ExtendPauseButtons
+                      busy={busy}
+                      active={r.is_active}
+                      stacked
+                      onExtend={(days) => onExtend(r.id, days)}
+                      onPause={() => onPause(r.id, !r.is_active)}
+                    />
+                  </div>
+                </details>
               </div>
             </div>
           </li>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Printer } from "lucide-react";
 import {
   buildBroadcastMessage,
   buildWaMeUrl,
@@ -20,6 +19,7 @@ type Props = {
   packagePrice: number | null;
   /** Owner WhatsApp — used for "probar mensaje" (send to self / open composer). */
   ownerPhone?: string | null;
+  shareCta?: string;
 };
 
 export function BroadcastTools({
@@ -29,6 +29,7 @@ export function BroadcastTools({
   itemNames,
   packagePrice,
   ownerPhone,
+  shareCta,
 }: Props) {
   const defaultMsg = useMemo(
     () =>
@@ -38,8 +39,9 @@ export function BroadcastTools({
         dailyLabel,
         itemNames,
         packagePrice,
+        shareCta,
       }),
-    [businessName, menuUrl, dailyLabel, itemNames, packagePrice],
+    [businessName, menuUrl, dailyLabel, itemNames, packagePrice, shareCta],
   );
   const [message, setMessage] = useState(defaultMsg);
   const [copied, setCopied] = useState(false);
@@ -60,8 +62,6 @@ export function BroadcastTools({
       window.open(buildWaMeUrl(phone, message), "_blank", "noopener,noreferrer");
       return;
     }
-    // Without a destination number, open WhatsApp share via web with text only
-    // (user picks chat / list).
     window.open(
       `https://wa.me/?text=${encodeURIComponent(message)}`,
       "_blank",
@@ -103,72 +103,6 @@ export function BroadcastTools({
             <Emoji char={UI_EMOJI.copy} />
           )}
           {copied ? "Copiado" : "Copiar"}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-export function QrPrintCard({
-  businessName,
-  menuUrl,
-  slogan,
-}: {
-  businessName: string;
-  menuUrl: string;
-  slogan?: string | null;
-}) {
-  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=8&data=${encodeURIComponent(menuUrl)}`;
-
-  function printSheet() {
-    window.print();
-  }
-
-  return (
-    <div className="space-y-3 rounded-2xl border border-black/5 bg-surface p-4 print:border-0 print:bg-white print:p-0">
-      <div className="print:hidden">
-        <h2 className="text-sm font-semibold">QR para imprimir / PDF</h2>
-        <p className="text-xs text-muted">
-          Imprime o guarda como PDF (Ctrl+P → Guardar como PDF). Ideal para mesa,
-          escaparate o tarjeta.
-        </p>
-      </div>
-
-      <div
-        id="qr-print-sheet"
-        className="mx-auto flex max-w-sm flex-col items-center gap-3 rounded-2xl border border-black/10 bg-white px-6 py-8 text-center print:max-w-none print:border-0 print:px-8 print:py-12"
-      >
-        <p className="font-[family-name:var(--font-display)] text-2xl text-brand-dark">
-          {businessName}
-        </p>
-        {slogan ? (
-          <p className="text-sm text-muted">{slogan}</p>
-        ) : (
-          <p className="text-sm text-muted">Escanea y pide por WhatsApp</p>
-        )}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={qrSrc}
-          alt={`Código QR de ${businessName}`}
-          width={280}
-          height={280}
-          className="h-56 w-56 rounded-lg border border-black/5 bg-white p-2 sm:h-64 sm:w-64 print:h-72 print:w-72"
-        />
-        <p className="break-all text-xs text-muted">{menuUrl}</p>
-        <p className="text-[10px] uppercase tracking-wide text-muted">
-          Menú al Día
-        </p>
-      </div>
-
-      <div className="flex flex-wrap gap-2 print:hidden">
-        <Button type="button" className="min-h-11 flex-1" onClick={printSheet}>
-          <Printer className="h-4 w-4" />
-          Imprimir / PDF
-        </Button>
-        <Button type="button" variant="secondary" className="min-h-11" asChild>
-          <a href={qrSrc} download={`${businessName}-qr.png`} target="_blank" rel="noreferrer">
-            Descargar PNG
-          </a>
         </Button>
       </div>
     </div>

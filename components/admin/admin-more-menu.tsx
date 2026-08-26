@@ -165,13 +165,14 @@ export function AdminMoreMenu({
               </div>
             );
           })}
-          {can(planType, "flyer") ? (
-            <div className="mb-2 border-t border-black/5 px-3 pt-3">
+          <div className="mb-2 border-t border-black/5 px-3 pt-3">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">
                 Difusión
               </p>
               <p className="mt-1 text-xs text-muted">
-                Mensaje, Flyer y Galería están en la pestaña Difusión.
+                {can(planType, "flyer")
+                  ? "Mensaje, Kit, Flyer y Galería están en la pestaña Difusión."
+                  : "Mensaje y Kit están en la pestaña Difusión."}
               </p>
               <div className="mt-2 flex flex-wrap gap-2">
                 <Link
@@ -182,22 +183,32 @@ export function AdminMoreMenu({
                   <Megaphone className="h-3.5 w-3.5" /> Mensaje
                 </Link>
                 <Link
-                  href="/admin/flyer"
+                  href="/admin/difusion/kit"
                   onClick={() => onOpenChange(false)}
                   className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-black/[0.04] px-2.5 text-xs font-medium"
                 >
-                  <ImageIcon className="h-3.5 w-3.5" /> Flyer
+                  <Megaphone className="h-3.5 w-3.5" /> Kit
                 </Link>
-                <Link
-                  href="/admin/flyers"
-                  onClick={() => onOpenChange(false)}
-                  className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-black/[0.04] px-2.5 text-xs font-medium"
-                >
-                  <ImageIcon className="h-3.5 w-3.5" /> Galería
-                </Link>
+                {can(planType, "flyer") ? (
+                  <>
+                    <Link
+                      href="/admin/flyer"
+                      onClick={() => onOpenChange(false)}
+                      className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-black/[0.04] px-2.5 text-xs font-medium"
+                    >
+                      <ImageIcon className="h-3.5 w-3.5" /> Flyer
+                    </Link>
+                    <Link
+                      href="/admin/flyers"
+                      onClick={() => onOpenChange(false)}
+                      className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-black/[0.04] px-2.5 text-xs font-medium"
+                    >
+                      <ImageIcon className="h-3.5 w-3.5" /> Galería
+                    </Link>
+                  </>
+                ) : null}
               </div>
             </div>
-          ) : null}
         </div>
       </div>
     </>

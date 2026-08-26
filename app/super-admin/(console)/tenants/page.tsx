@@ -128,6 +128,13 @@ function TenantsPageInner() {
     owners,
   ]);
 
+  const extraFilterCount = [
+    giroFilter !== "all",
+    founderFilter !== "all",
+    stateFilter !== "all",
+    cityFilter.trim().length > 0,
+  ].filter(Boolean).length;
+
   function handleSaved(updated?: Restaurant) {
     if (updated) {
       setRows((prev) =>
@@ -178,18 +185,6 @@ function TenantsPageInner() {
         </select>
         <select
           className={`${selectClass} w-full sm:w-auto`}
-          value={giroFilter}
-          onChange={(e) => setGiroFilter(e.target.value)}
-        >
-          <option value="all">Todos los giros</option>
-          {BUSINESS_TYPES.map((bt: BusinessType) => (
-            <option key={bt} value={bt}>
-              {BUSINESS_TYPE_LABELS[bt]}
-            </option>
-          ))}
-        </select>
-        <select
-          className={`${selectClass} w-full sm:w-auto`}
           value={activeFilter}
           onChange={(e) => setActiveFilter(e.target.value)}
         >
@@ -197,34 +192,99 @@ function TenantsPageInner() {
           <option value="active">Solo activos</option>
           <option value="inactive">Solo inactivos</option>
         </select>
-        <select
-          className={`${selectClass} w-full sm:w-auto`}
-          value={founderFilter}
-          onChange={(e) => setFounderFilter(e.target.value)}
-        >
-          <option value="all">Fundadores: todos</option>
-          <option value="yes">Socios fundadores</option>
-          <option value="no">Sin fundador</option>
-        </select>
-        <select
-          className={`${selectClass} w-full sm:w-auto`}
-          value={stateFilter}
-          onChange={(e) => setStateFilter(e.target.value)}
-        >
-          <option value="all">Todos los estados</option>
-          {MX_STATES.map((s) => (
-            <option key={s.code} value={s.code}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-        <Input
-          placeholder="Ciudad…"
-          value={cityFilter}
-          onChange={(e) => setCityFilter(e.target.value)}
-          className="w-full min-w-0 sm:max-w-[10rem]"
-        />
+        <div className="hidden lg:contents">
+          <select
+            className={`${selectClass} w-full sm:w-auto`}
+            value={giroFilter}
+            onChange={(e) => setGiroFilter(e.target.value)}
+          >
+            <option value="all">Todos los giros</option>
+            {BUSINESS_TYPES.map((bt: BusinessType) => (
+              <option key={bt} value={bt}>
+                {BUSINESS_TYPE_LABELS[bt]}
+              </option>
+            ))}
+          </select>
+          <select
+            className={`${selectClass} w-full sm:w-auto`}
+            value={founderFilter}
+            onChange={(e) => setFounderFilter(e.target.value)}
+          >
+            <option value="all">Fundadores: todos</option>
+            <option value="yes">Socios fundadores</option>
+            <option value="no">Sin fundador</option>
+          </select>
+          <select
+            className={`${selectClass} w-full sm:w-auto`}
+            value={stateFilter}
+            onChange={(e) => setStateFilter(e.target.value)}
+          >
+            <option value="all">Todos los estados</option>
+            {MX_STATES.map((s) => (
+              <option key={s.code} value={s.code}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+          <Input
+            placeholder="Ciudad…"
+            value={cityFilter}
+            onChange={(e) => setCityFilter(e.target.value)}
+            className="w-full min-w-0 sm:max-w-[10rem]"
+          />
+        </div>
       </div>
+      <details className="rounded-xl border border-black/5 bg-surface lg:hidden">
+        <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold marker:content-none [&::-webkit-details-marker]:hidden">
+          Más filtros
+          {extraFilterCount > 0 ? (
+            <span className="ml-2 text-xs font-medium text-muted">
+              ({extraFilterCount})
+            </span>
+          ) : null}
+        </summary>
+        <div className="flex flex-col gap-2 border-t border-black/5 px-3 pb-3 pt-2">
+          <select
+            className={`${selectClass} w-full`}
+            value={giroFilter}
+            onChange={(e) => setGiroFilter(e.target.value)}
+          >
+            <option value="all">Todos los giros</option>
+            {BUSINESS_TYPES.map((bt: BusinessType) => (
+              <option key={bt} value={bt}>
+                {BUSINESS_TYPE_LABELS[bt]}
+              </option>
+            ))}
+          </select>
+          <select
+            className={`${selectClass} w-full`}
+            value={founderFilter}
+            onChange={(e) => setFounderFilter(e.target.value)}
+          >
+            <option value="all">Fundadores: todos</option>
+            <option value="yes">Socios fundadores</option>
+            <option value="no">Sin fundador</option>
+          </select>
+          <select
+            className={`${selectClass} w-full`}
+            value={stateFilter}
+            onChange={(e) => setStateFilter(e.target.value)}
+          >
+            <option value="all">Todos los estados</option>
+            {MX_STATES.map((s) => (
+              <option key={s.code} value={s.code}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+          <Input
+            placeholder="Ciudad…"
+            value={cityFilter}
+            onChange={(e) => setCityFilter(e.target.value)}
+            className="w-full min-w-0"
+          />
+        </div>
+      </details>
 
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
       {message ? <p className="text-sm text-accent">{message}</p> : null}

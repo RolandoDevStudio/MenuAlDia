@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, Fragment } from "react";
 import type { BusinessType, PlanTemplate } from "@/lib/types";
 import type { PlanType } from "@/lib/plans";
 import { PLAN_LABELS } from "@/lib/plans";
@@ -17,6 +17,30 @@ import { formatMexicoCityDateTime } from "@/lib/dates";
 import { UI_EMOJI } from "@/lib/ui-emoji";
 
 const PLAN_TYPES = Object.keys(PLAN_LABELS) as PlanType[];
+
+function MobileGiroFold({
+  label,
+  startOpen,
+  children,
+}: {
+  label: string;
+  startOpen: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(startOpen);
+  return (
+    <details
+      className="rounded-2xl border border-black/5 bg-surface md:hidden"
+      open={open}
+      onToggle={(e) => setOpen(e.currentTarget.open)}
+    >
+      <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-brand marker:content-none [&::-webkit-details-marker]:hidden">
+        {label}
+      </summary>
+      <div className="border-t border-black/5 p-3">{children}</div>
+    </details>
+  );
+}
 
 export default function TemplatesPage() {
   const [templates, setTemplates] = useState<PlanTemplate[]>([]);
@@ -140,11 +164,8 @@ export default function TemplatesPage() {
       {message ? <p className="text-sm text-accent">{message}</p> : null}
 
       <div className="space-y-6">
-        {BUSINESS_TYPES.map((bt: BusinessType) => (
-          <section key={bt} className="space-y-3">
-            <h2 className="text-sm font-semibold text-brand">
-              {BUSINESS_TYPE_LABELS[bt]}
-            </h2>
+        {BUSINESS_TYPES.map((bt: BusinessType, i) => {
+          const renderGrid = () => (
             <div className="grid gap-3 md:grid-cols-3">
               {PLAN_TYPES.map((plan) => {
                 const t = byKey.get(`${bt}:${plan}`);
@@ -209,7 +230,9 @@ export default function TemplatesPage() {
                           disabled={draft.busy || draft.name === t.name}
                           onClick={() => void saveName(t)}
                         >
-                          {draft.busy ? "Guardando…" : (
+                          {draft.busy ? (
+                            "Guardando…"
+                          ) : (
                             <>
                               <Emoji char={UI_EMOJI.save} />
                               Guardar
@@ -257,8 +280,24 @@ export default function TemplatesPage() {
                 );
               })}
             </div>
-          </section>
-        ))}
+          );
+          return (
+            <Fragment key={bt}>
+              <MobileGiroFold
+                label={BUSINESS_TYPE_LABELS[bt]}
+                startOpen={i === 0}
+              >
+                {renderGrid()}
+              </MobileGiroFold>
+              <section className="hidden space-y-3 md:block">
+                <h2 className="text-sm font-semibold text-brand">
+                  {BUSINESS_TYPE_LABELS[bt]}
+                </h2>
+                {renderGrid()}
+              </section>
+            </Fragment>
+          );
+        })}
       </div>
     </div>
   );

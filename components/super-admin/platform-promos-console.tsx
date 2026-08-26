@@ -129,7 +129,11 @@ export function PlatformPromosConsole() {
         </p>
       </div>
 
-      <div className="grid gap-3 rounded-xl border border-black/5 bg-surface p-4 sm:grid-cols-2">
+      <details className="rounded-xl border border-black/5 bg-surface">
+        <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold marker:content-none [&::-webkit-details-marker]:hidden">
+          Nuevo cupón
+        </summary>
+        <div className="grid gap-3 border-t border-black/5 p-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label>Código</Label>
           <Input
@@ -200,7 +204,8 @@ export function PlatformPromosConsole() {
             Crear cupón
           </Button>
         </div>
-      </div>
+        </div>
+      </details>
 
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
 

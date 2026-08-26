@@ -302,7 +302,106 @@ export function FinanceConsole() {
           Sin pagos en este filtro ({month}).
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-black/5">
+        <>
+        <ul className="space-y-3 lg:hidden">
+          {visible.map((p) => {
+            const status = resolveInvoiceStatus(p);
+            const voided = Boolean(p.voided_at);
+            const rid = p.restaurants?.id ?? p.restaurant_id;
+            return (
+              <li
+                key={p.id}
+                className={`rounded-2xl border border-black/5 bg-surface p-4 ${voided ? "opacity-60" : ""}`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <Link
+                      href={`/super-admin/tenants?edit=${encodeURIComponent(rid)}`}
+                      className="font-semibold text-brand hover:underline"
+                    >
+                      {p.restaurants?.name ?? "—"}
+                    </Link>
+                    <p className="text-xs text-muted">
+                      /{p.restaurants?.slug} · {formatMexicoCityDate(p.paid_at)}
+                    </p>
+                  </div>
+                  <p className="shrink-0 text-sm font-semibold">
+                    {formatMxn(Number(p.amount))}
+                  </p>
+                </div>
+                <p className="mt-2 text-xs text-muted">
+                  {PLAN_LABELS[p.plan_type as PlanType] ?? p.plan_type} ·{" "}
+                  {p.period_days}d
+                  {p.reference ? ` · ${p.reference}` : ""}
+                  {voided ? " · anulado" : ""}
+                </p>
+                {p.invoice_folio && !voided ? (
+                  <p className="mt-1 text-[10px] text-muted">{p.invoice_folio}</p>
+                ) : null}
+                <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-black/5 pt-3">
+                  {!voided ? (
+                    <select
+                      className="h-10 min-w-0 flex-1 rounded-md border border-black/10 bg-background px-2 text-xs"
+                      value={status}
+                      disabled={busyId === p.id}
+                      onChange={(e) =>
+                        void onInvoiceChange(
+                          p,
+                          e.target.value as InvoiceStatus,
+                        )
+                      }
+                    >
+                      {(
+                        Object.keys(INVOICE_STATUS_LABELS) as InvoiceStatus[]
+                      ).map((k) => (
+                        <option key={k} value={k}>
+                          {INVOICE_STATUS_LABELS[k]}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="text-xs text-muted">
+                      {p.void_reason || "Anulado"}
+                    </span>
+                  )}
+                  {p.receipt_url ? (
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={p.receipt_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs font-semibold text-brand"
+                      >
+                        Comprobante
+                      </a>
+                      {!voided ? (
+                        <button
+                          type="button"
+                          className="text-xs text-muted hover:text-red-700"
+                          disabled={busyId === p.id}
+                          onClick={() => void onClearReceipt(p)}
+                        >
+                          Quitar
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  {!voided ? (
+                    <button
+                      type="button"
+                      className="text-xs font-semibold text-red-700 hover:underline disabled:opacity-50"
+                      disabled={busyId === p.id}
+                      onClick={() => void onVoid(p)}
+                    >
+                      Anular
+                    </button>
+                  ) : null}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+        <div className="hidden overflow-x-auto rounded-xl border border-black/5 lg:block">
           <table className="w-full min-w-[960px] text-left text-sm">
             <thead className="bg-surface text-xs text-muted">
               <tr>
@@ -438,6 +537,7 @@ export function FinanceConsole() {
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       <p className="text-xs text-muted">
