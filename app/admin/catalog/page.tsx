@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireTenantSession } from "@/lib/admin-session";
 import {
@@ -9,6 +8,8 @@ import {
 } from "@/lib/plans";
 import { labelsFor } from "@/lib/business-labels";
 import { Button } from "@/components/ui/button";
+import { Emoji } from "@/components/ui-emoji";
+import { UI_EMOJI } from "@/lib/ui-emoji";
 import { CategoriesManager } from "@/components/admin/categories-manager";
 import { CatalogDishList } from "@/components/admin/catalog-dish-list";
 import type { Category, Dish } from "@/lib/types";
@@ -47,7 +48,10 @@ export default async function CatalogPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold">{labels.catalog}</h1>
+          <h1 className="text-lg font-semibold">
+            <Emoji char={UI_EMOJI.catalog} />
+            {labels.catalog}
+          </h1>
           <p className="text-sm text-muted">
             {labels.dishes} y {labels.sides.toLowerCase()} · {list.length} ·
             fotos {photoCount}/{photoLimit} ({PLAN_LABELS[planType]})
@@ -55,7 +59,7 @@ export default async function CatalogPage() {
         </div>
         <Button asChild size="sm" className="min-h-11">
           <Link href="/admin/catalog/new">
-            <Plus className="h-4 w-4" />
+            <Emoji char={UI_EMOJI.create} />
             Nuevo
           </Link>
         </Button>
@@ -93,6 +97,7 @@ export default async function CatalogPage() {
           </p>
           <Button asChild className="mt-4">
             <Link href="/admin/catalog/new">
+              <Emoji char={UI_EMOJI.create} />
               Nuevo {labels.dish.toLowerCase()}
             </Link>
           </Button>

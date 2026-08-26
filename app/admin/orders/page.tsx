@@ -5,6 +5,8 @@ import { OpenMapsButton } from "@/components/admin/open-maps-button";
 import { can } from "@/lib/plans";
 import { formatMxn } from "@/lib/money";
 import type { Order, OrderLogPayload } from "@/lib/types";
+import { Emoji } from "@/components/ui-emoji";
+import { UI_EMOJI } from "@/lib/ui-emoji";
 
 function customerName(p: OrderLogPayload) {
   return p.customer_name || p.customerName || "Cliente";
@@ -39,13 +41,17 @@ export default async function OrdersPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold">Pedidos</h1>
+          <h1 className="text-lg font-semibold">
+            <Emoji char={UI_EMOJI.orders} />
+            Pedidos
+          </h1>
           <p className="text-sm text-muted">Últimos pedidos registrados.</p>
         </div>
-        <a
+          <a
           href="/api/admin/export?type=orders"
           className="text-sm font-semibold text-brand"
         >
+          <Emoji char={UI_EMOJI.csv} />
           CSV
         </a>
       </div>

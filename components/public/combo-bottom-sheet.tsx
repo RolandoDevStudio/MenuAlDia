@@ -14,9 +14,9 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { StorageImage } from "@/components/ui/storage-image";
 import { cn } from "@/lib/utils";
 import { Share2 } from "lucide-react";
+import { ZoomableMenuPhoto } from "@/components/public/zoomable-menu-photo";
 
 type Props = {
   combo: ComboWithItems | null;
@@ -138,12 +138,11 @@ export function ComboBottomSheet({
         {combo ? (
           <div className="space-y-4 px-5 pt-5">
             {combo.photo_url ? (
-              <div className="relative h-40 w-full overflow-hidden rounded-2xl">
-                <StorageImage
+              <div className="h-40 w-full overflow-hidden rounded-2xl">
+                <ZoomableMenuPhoto
                   src={combo.photo_url}
                   alt={combo.title}
-                  fill
-                  sizes="(max-width: 640px) 100vw, 512px"
+                  className="h-40"
                 />
               </div>
             ) : null}

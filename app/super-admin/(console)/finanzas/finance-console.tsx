@@ -13,6 +13,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Emoji } from "@/components/ui-emoji";
+import { UI_EMOJI } from "@/lib/ui-emoji";
 
 type PaymentRow = {
   id: string;
@@ -201,7 +203,10 @@ export function FinanceConsole() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold">Finanzas</h1>
+          <h1 className="text-lg font-semibold">
+            <Emoji char={UI_EMOJI.finance} />
+            Finanzas
+          </h1>
           <p className="text-sm text-muted">
             Pagos SPEI del mes, cola CFDI y export para el contador.
           </p>

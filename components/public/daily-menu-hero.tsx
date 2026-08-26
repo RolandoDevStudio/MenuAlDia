@@ -8,8 +8,8 @@ import { formatMxn } from "@/lib/money";
 import { useCartStore } from "@/stores/cart-store";
 import { SideChecklist } from "@/components/public/side-checklist";
 import { Button } from "@/components/ui/button";
-import { StorageImage } from "@/components/ui/storage-image";
 import { cn } from "@/lib/utils";
+import { ZoomableMenuPhoto } from "@/components/public/zoomable-menu-photo";
 
 type Props = {
   dishes: Dish[];
@@ -128,11 +128,10 @@ export function DailyMenuHero({
             photoFrameClass(photoFrame).replace("object-cover", ""),
           )}
         >
-          <StorageImage
+          <ZoomableMenuPhoto
             src={active.photo_url}
             alt={active.name}
-            fill
-            sizes="(max-width: 640px) 100vw, 512px"
+            className="h-48"
           />
         </div>
       ) : (

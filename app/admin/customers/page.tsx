@@ -4,6 +4,8 @@ import { PlanGate } from "@/components/admin/plan-gate";
 import { CustomersCrm } from "@/components/admin/customers-crm";
 import { can } from "@/lib/plans";
 import type { Customer } from "@/lib/types";
+import { Emoji } from "@/components/ui-emoji";
+import { UI_EMOJI } from "@/lib/ui-emoji";
 
 export default async function CustomersPage() {
   const session = await requireTenantSession();
@@ -38,7 +40,10 @@ export default async function CustomersPage() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-lg font-semibold">Clientes</h1>
+            <h1 className="text-lg font-semibold">
+              <Emoji char={UI_EMOJI.customers} />
+              Clientes
+            </h1>
             <span className="rounded bg-brand/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand">
               Pro
             </span>
@@ -51,6 +56,7 @@ export default async function CustomersPage() {
           href="/api/admin/export?type=customers"
           className="text-sm font-semibold text-brand"
         >
+          <Emoji char={UI_EMOJI.csv} />
           CSV
         </a>
       </div>

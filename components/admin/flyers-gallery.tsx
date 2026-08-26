@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Emoji } from "@/components/ui-emoji";
+import { UI_EMOJI } from "@/lib/ui-emoji";
 
 type FlyerRow = {
   id: string;
@@ -154,7 +156,10 @@ export function FlyersGallery({
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold">Galería de flyers</h1>
+          <h1 className="text-lg font-semibold">
+            <Emoji char={UI_EMOJI.gallery} />
+            Galería de flyers
+          </h1>
           <p className="text-sm text-muted">
             Generados en el studio o subidos (Canva, fotos). Comparte el enlace
             inteligente para vista previa en WhatsApp.
@@ -267,6 +272,7 @@ export function FlyersGallery({
                     variant="secondary"
                     onClick={() => shareWa(f)}
                   >
+                    <Emoji char={UI_EMOJI.whatsapp} />
                     WhatsApp
                   </Button>
                   <Button

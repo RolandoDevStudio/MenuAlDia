@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { requireTenantSession } from "@/lib/admin-session";
 import { label } from "@/lib/business-labels";
 import { DishForm } from "@/components/admin/dish-form";
+import { Emoji } from "@/components/ui-emoji";
+import { UI_EMOJI } from "@/lib/ui-emoji";
 import type { Category, Dish } from "@/lib/types";
 
 type Props = { params: Promise<{ dishId: string }> };
@@ -44,9 +46,17 @@ export default async function DishEditPage({ params }: Props) {
   return (
     <div className="space-y-4">
       <h1 className="text-lg font-semibold">
-        {dish
-          ? `Editar ${dishLabel.toLowerCase()}`
-          : `Nuevo ${dishLabel.toLowerCase()}`}
+        {dish ? (
+          <>
+            <Emoji char={UI_EMOJI.edit} />
+            Editar {dishLabel.toLowerCase()}
+          </>
+        ) : (
+          <>
+            <Emoji char={UI_EMOJI.create} />
+            Nuevo {dishLabel.toLowerCase()}
+          </>
+        )}
       </h1>
       <DishForm
         restaurantId={session.restaurant.id}

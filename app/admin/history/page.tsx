@@ -3,6 +3,8 @@ import { requireTenantSession } from "@/lib/admin-session";
 import { formatMxn } from "@/lib/money";
 import { PLAN_LABELS } from "@/lib/plans";
 import type { AuditLog, PlanType, TenantPayment } from "@/lib/types";
+import { Emoji } from "@/components/ui-emoji";
+import { UI_EMOJI } from "@/lib/ui-emoji";
 
 const METHOD_LABELS: Record<TenantPayment["method"], string> = {
   transfer: "Transferencia",
@@ -40,7 +42,10 @@ export default async function HistoryPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-lg font-semibold">Historial</h1>
+        <h1 className="text-lg font-semibold">
+          <Emoji char={UI_EMOJI.history} />
+          Historial
+        </h1>
         <p className="text-sm text-muted">
           Cambios y pagos de suscripción (solo lectura).
         </p>

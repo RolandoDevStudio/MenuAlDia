@@ -8,6 +8,8 @@ import { formatMxn } from "@/lib/money";
 import { Bell } from "lucide-react";
 import { buildWaMeUrl } from "@/lib/whatsapp";
 import { Button } from "@/components/ui/button";
+import { Emoji } from "@/components/ui-emoji";
+import { UI_EMOJI } from "@/lib/ui-emoji";
 
 function formatEndDate(iso: string | null | undefined): string {
   if (!iso) return "sin fecha";
@@ -82,7 +84,12 @@ export function RemindPaymentButton({
       title="Recordar pago por WhatsApp"
       aria-label="Recordar pago por WhatsApp"
     >
-      {compact ? <Bell className="h-4 w-4" /> : "Recordar Pago"}
+      {compact ? <Bell className="h-4 w-4" /> : (
+        <>
+          <Emoji char={UI_EMOJI.remind} />
+          Recordar Pago
+        </>
+      )}
     </Button>
   );
 }

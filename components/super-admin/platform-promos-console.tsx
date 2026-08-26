@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PLAN_LABELS, type PlanType } from "@/lib/plans";
+import { Emoji } from "@/components/ui-emoji";
+import { UI_EMOJI } from "@/lib/ui-emoji";
 
 type Coupon = {
   id: string;
@@ -117,7 +119,10 @@ export function PlatformPromosConsole() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-lg font-semibold">Promociones (cupones B2B)</h1>
+        <h1 className="text-lg font-semibold">
+          <Emoji char={UI_EMOJI.promos} />
+          Promociones (cupones B2B)
+        </h1>
         <p className="text-sm text-muted">
           Descuentos sobre planes de suscripción. El canje ocurre al registrar
           el pago SPEI. Elimina un cupón para liberar el código y reutilizarlo.
@@ -191,6 +196,7 @@ export function PlatformPromosConsole() {
         </div>
         <div className="flex items-end">
           <Button type="button" disabled={busy} onClick={() => void create()}>
+            <Emoji char={UI_EMOJI.create} />
             Crear cupón
           </Button>
         </div>

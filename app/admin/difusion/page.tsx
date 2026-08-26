@@ -9,6 +9,8 @@ import { can } from "@/lib/plans";
 import { labelsFor } from "@/lib/business-labels";
 import { getAppOrigin, publicMenuUrl } from "@/lib/site-url";
 import { DifusionSubnav } from "@/components/admin/difusion-subnav";
+import { Emoji } from "@/components/ui-emoji";
+import { UI_EMOJI } from "@/lib/ui-emoji";
 
 export default async function DifusionPage() {
   const session = await requireTenantSession();
@@ -69,7 +71,10 @@ export default async function DifusionPage() {
     <div className="space-y-4 print:space-y-0">
       <div className="print:hidden">
         <DifusionSubnav />
-        <h1 className="text-lg font-semibold">Difundir</h1>
+        <h1 className="text-lg font-semibold">
+          <Emoji char={UI_EMOJI.broadcast} />
+          Difundir
+        </h1>
         <p className="text-sm text-muted">
           Comparte tu menú por WhatsApp e imprime el QR.
         </p>

@@ -92,6 +92,8 @@ export type CrmPayload = {
   foundersQueue: CrmTenantRow[];
   guidedQueue: CrmTenantRow[];
   risk: CrmTenantRow[];
+  /** All non-demo tenants — charts + action list filters */
+  tenants: CrmTenantRow[];
   usage: {
     topOrders: { id: string; name: string; slug: string; orders: number }[];
     photoFillAvg: number | null;

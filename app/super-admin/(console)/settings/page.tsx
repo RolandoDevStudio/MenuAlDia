@@ -24,6 +24,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { DEFAULT_SPEI_INFO, type SpeiInfo } from "@/lib/coupons";
 import { normalizeWhatsAppPhone } from "@/lib/whatsapp";
+import { Emoji } from "@/components/ui-emoji";
+import { UI_EMOJI } from "@/lib/ui-emoji";
 
 const GIROS: { id: CanonicalDemoId; label: string }[] = [
   { id: "restaurante", label: "Restaurante" },
@@ -376,7 +378,10 @@ export default function SuperAdminSettingsPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-8 px-4 py-6">
       <div>
-        <h1 className="text-xl font-semibold">CMS Landing y precios</h1>
+        <h1 className="text-xl font-semibold">
+          <Emoji char={UI_EMOJI.cms} />
+          CMS Landing y precios
+        </h1>
         <p className="text-sm text-muted">
           Edita copy, testimonios, FAQ, capturas y precios sin redeploy.
         </p>
@@ -787,7 +792,12 @@ export default function SuperAdminSettingsPage() {
         disabled={saving}
         onClick={() => void save()}
       >
-        {saving ? "Guardando…" : "Guardar"}
+        {saving ? "Guardando…" : (
+          <>
+            <Emoji char={UI_EMOJI.save} />
+            Guardar
+          </>
+        )}
       </Button>
     </div>
   );

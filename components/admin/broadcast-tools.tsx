@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, Copy, MessageCircle, Printer } from "lucide-react";
+import { Printer } from "lucide-react";
 import {
   buildBroadcastMessage,
   buildWaMeUrl,
@@ -9,6 +9,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Emoji } from "@/components/ui-emoji";
+import { UI_EMOJI } from "@/lib/ui-emoji";
 
 type Props = {
   businessName: string;
@@ -86,7 +88,7 @@ export function BroadcastTools({
       </div>
       <div className="flex flex-wrap gap-2">
         <Button type="button" className="min-h-11 flex-1" onClick={openWa}>
-          <MessageCircle className="h-4 w-4" />
+          <Emoji char={UI_EMOJI.whatsapp} />
           Abrir WhatsApp
         </Button>
         <Button
@@ -96,9 +98,9 @@ export function BroadcastTools({
           onClick={() => void copyMsg()}
         >
           {copied ? (
-            <Check className="h-4 w-4 text-accent" />
+            <Emoji char={UI_EMOJI.save} />
           ) : (
-            <Copy className="h-4 w-4" />
+            <Emoji char={UI_EMOJI.copy} />
           )}
           {copied ? "Copiado" : "Copiar"}
         </Button>

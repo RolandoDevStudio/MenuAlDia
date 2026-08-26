@@ -19,6 +19,8 @@ import { BUSINESS_TYPE_LABELS } from "@/lib/business-labels";
 import { formatSalesWhatsAppDisplay } from "@/lib/whatsapp";
 import { Button } from "@/components/ui/button";
 import { RemindPaymentButton } from "@/components/super-admin/remind-payment-button";
+import { Emoji } from "@/components/ui-emoji";
+import { UI_EMOJI } from "@/lib/ui-emoji";
 import { cn } from "@/lib/utils";
 
 const PLAN_SHORT: Record<PlanType, string> = {
@@ -340,6 +342,7 @@ export function TenantsTable({ restaurants, owners, onEdit }: Props) {
                       className="min-h-10"
                       onClick={() => onEdit(r)}
                     >
+                      <Emoji char={UI_EMOJI.edit} />
                       Editar
                     </Button>
                   </div>

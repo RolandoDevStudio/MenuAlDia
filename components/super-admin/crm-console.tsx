@@ -3,6 +3,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+} from "recharts";
 import { formatMxn } from "@/lib/money";
 import { PLAN_LABELS, type PlanType } from "@/lib/plans";
 import { buildWaMeUrl } from "@/lib/whatsapp";
@@ -11,7 +20,18 @@ import {
   type CrmPayload,
   type CrmTenantRow,
 } from "@/lib/super-admin-crm";
+import {
+  actionFilterLabel,
+  buildCrmInsights,
+  type ActionFilterKey,
+} from "@/lib/crm-insights";
 import { Button } from "@/components/ui/button";
+import { CrmHelpDialog } from "@/components/super-admin/crm-help-dialog";
+import { cn } from "@/lib/utils";
+import { Emoji } from "@/components/ui-emoji";
+import { UI_EMOJI } from "@/lib/ui-emoji";
+
+type ChartView = "mix" | "retention" | "funnel";
 
 function pct(n: number | null | undefined): string {
   if (n == null || Number.isNaN(n)) return "—";
@@ -28,6 +48,36 @@ async function copyText(text: string) {
   await navigator.clipboard.writeText(text);
 }
 
+function idsOf(rows: CrmTenantRow[]): Set<string> {
+  return new Set(rows.map((r) => r.id));
+}
+
+function byActionFilter(
+  data: CrmPayload,
+  key: ActionFilterKey | null,
+): CrmTenantRow[] {
+  const all = data.tenants ?? [];
+  if (key === "founders_onboarding") {
+    const ids = idsOf(data.foundersQueue);
+    return all.filter((t) => ids.has(t.id));
+  }
+  if (key === "guided_onboarding") {
+    const ids = idsOf(data.guidedQueue);
+    return all.filter((t) => ids.has(t.id));
+  }
+  if (key === "sin_visitas") return all.filter((t) => t.ctrLabel === "sin_visitas");
+  if (key === "visitas_sin_clic")
+    return all.filter((t) => t.ctrLabel === "visitas_sin_clic");
+  if (key === "inactive_5d") return all.filter((t) => t.inactive5d);
+  if (key === "expires_7d") return all.filter((t) => t.expiresIn7d);
+  const attention = new Set([
+    ...data.foundersQueue.map((r) => r.id),
+    ...data.guidedQueue.map((r) => r.id),
+    ...data.risk.map((r) => r.id),
+  ]);
+  return all.filter((t) => attention.has(t.id));
+}
+
 export function CrmConsole() {
   const searchParams = useSearchParams();
   const supportQ = searchParams.get("support");
@@ -39,9 +89,9 @@ export function CrmConsole() {
 
   const [planFilter, setPlanFilter] = useState("all");
   const [originFilter, setOriginFilter] = useState("all");
-  const [onboardingFilter, setOnboardingFilter] = useState("all");
   const [founderFilter, setFounderFilter] = useState("all");
-  const [healthFilter, setHealthFilter] = useState("all");
+  const [actionFilter, setActionFilter] = useState<ActionFilterKey | null>(null);
+  const [chartView, setChartView] = useState<ChartView>("mix");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -60,23 +110,40 @@ export function CrmConsole() {
     void load();
   }, [load]);
 
-  const filteredRisk = useMemo(() => {
+  const insights = useMemo(() => (data ? buildCrmInsights(data) : []), [data]);
+
+  const filteredTenants = useMemo(() => {
     if (!data) return [];
-    return data.risk.filter((r) => {
+    return byActionFilter(data, actionFilter).filter((r) => {
       if (planFilter !== "all" && r.plan_type !== planFilter) return false;
       if (originFilter !== "all" && (r.acquisition_source || "") !== originFilter)
         return false;
       if (founderFilter === "yes" && !r.is_founding_partner) return false;
       if (founderFilter === "no" && r.is_founding_partner) return false;
-      if (onboardingFilter === "incomplete" && r.onboardingScore >= 100)
-        return false;
-      if (onboardingFilter === "complete" && r.onboardingScore < 100)
-        return false;
-      if (healthFilter === "low" && r.healthScore >= 50) return false;
-      if (healthFilter === "ok" && r.healthScore < 50) return false;
       return true;
     });
-  }, [data, planFilter, originFilter, founderFilter, onboardingFilter, healthFilter]);
+  }, [data, actionFilter, planFilter, originFilter, founderFilter]);
+
+  const mixChart = useMemo(() => {
+    const counts: Record<PlanType, number> = { catalog: 0, daily: 0, pro: 0 };
+    for (const t of filteredTenants) {
+      const p = (t.plan_type || "catalog") as PlanType;
+      counts[p] += 1;
+    }
+    return (Object.keys(counts) as PlanType[]).map((plan) => ({
+      name: PLAN_LABELS[plan],
+      n: counts[plan],
+    }));
+  }, [filteredTenants]);
+
+  const funnelChart = useMemo(() => {
+    const views = filteredTenants.reduce((s, t) => s + t.views30, 0);
+    const clicks = filteredTenants.reduce((s, t) => s + t.clicks30, 0);
+    return [
+      { name: "Visitas", n: views },
+      { name: "Clics WA", n: clicks },
+    ];
+  }, [filteredTenants]);
 
   async function patchTenant(
     id: string,
@@ -117,6 +184,19 @@ export function CrmConsole() {
     window.location.href = json.url;
   }
 
+  function applyInsight(key: ActionFilterKey) {
+    setActionFilter(key);
+    setPlanFilter("all");
+    setOriginFilter("all");
+    setFounderFilter("all");
+    requestAnimationFrame(() => {
+      document.getElementById("crm-action-list")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  }
+
   if (loading && !data) {
     return <p className="text-sm text-muted">Cargando CRM…</p>;
   }
@@ -126,9 +206,13 @@ export function CrmConsole() {
   if (!data) return null;
 
   const k = data.kpis;
+  const retentionChart = data.cohorts.map((c) => ({
+    name: c.month.slice(5),
+    pct: c.rate != null ? Math.round(c.rate * 100) : 0,
+  }));
 
   return (
-    <div className="space-y-8">
+    <div className="min-w-0 space-y-8 overflow-x-hidden">
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
       {supportQ === "expired" || supportQ === "invalid" ? (
         <p className="text-sm text-amber-800">
@@ -137,27 +221,92 @@ export function CrmConsole() {
       ) : null}
       {message ? <p className="text-sm text-green-700">{message}</p> : null}
 
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[11px] font-medium uppercase tracking-wide text-muted">
+          Cifras globales de la plataforma
+        </p>
+        <CrmHelpDialog helpId="overview" variant="text" />
+      </div>
+
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <Kpi label="Activos" value={String(k.active)} />
-        <Kpi label="Fundadores activos" value={String(k.foundersActive)} />
-        <Kpi label="MRR lista" value={formatMxn(k.mrr)} />
-        <Kpi label="ARR" value={formatMxn(k.arr)} />
-        <Kpi label="Caja del mes" value={formatMxn(k.cashMonth)} />
-        <Kpi label="Churn 30d" value={pct(k.churn30)} />
-        <Kpi label="Retención M1" value={pct(k.retentionM1)} />
-        <Kpi label="CTR WA 30d" value={pct(k.ctr30)} />
-        <Kpi label="Conversión pago" value={pct(k.paidConversion)} />
-        <Kpi label="LTV medio" value={k.ltvAvg != null ? formatMxn(k.ltvAvg) : "—"} />
+        <Kpi label="Activos" value={String(k.active)} helpId="active" />
+        <Kpi
+          label="Fundadores activos"
+          value={String(k.foundersActive)}
+          helpId="foundersActive"
+        />
+        <Kpi label="MRR lista" value={formatMxn(k.mrr)} helpId="mrr" />
+        <Kpi label="ARR" value={formatMxn(k.arr)} helpId="arr" />
+        <Kpi label="Caja del mes" value={formatMxn(k.cashMonth)} helpId="cashMonth" />
+        <Kpi label="Churn 30d" value={pct(k.churn30)} helpId="churn30" />
+        <Kpi label="Retención M1" value={pct(k.retentionM1)} helpId="retentionM1" />
+        <Kpi label="CTR WA 30d" value={pct(k.ctr30)} helpId="ctr30" />
+        <Kpi
+          label="Conversión pago"
+          value={pct(k.paidConversion)}
+          helpId="paidConversion"
+        />
+        <Kpi
+          label="LTV medio"
+          value={k.ltvAvg != null ? formatMxn(k.ltvAvg) : "—"}
+          helpId="ltv"
+        />
         <Kpi
           label="Pedidos mes"
           value={`${k.ordersMonth} · ${k.ordersPickup} rec / ${k.ordersDelivery} env`}
+          helpId="ordersMonth"
         />
-        <Kpi label="Fundadores con pago" value={pct(k.foundersPaidPct)} />
+        <Kpi
+          label="Fundadores con pago"
+          value={pct(k.foundersPaidPct)}
+          helpId="foundersPaid"
+        />
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-sm font-semibold">Hoy conviene</h2>
+        {insights.length === 0 ? (
+          <p className="text-sm text-muted">
+            Sin alertas fuertes; sigue las colas de onboarding.
+          </p>
+        ) : (
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {insights.map((ins) => (
+              <li key={ins.id}>
+                <button
+                  type="button"
+                  onClick={() => applyInsight(ins.filterKey)}
+                  className={cn(
+                    "h-full w-full rounded-2xl border bg-surface px-3 py-3 text-left hover:border-brand/30",
+                    actionFilter === ins.filterKey
+                      ? "border-brand/40 bg-brand/5"
+                      : "border-black/5",
+                  )}
+                >
+                  <p className="text-sm font-semibold">{ins.title}</p>
+                  <p className="mt-1 text-xs text-muted">{ins.body}</p>
+                  {ins.extraHref ? (
+                    <Link
+                      href={ins.extraHref.href}
+                      className="mt-2 inline-block text-xs font-medium text-brand underline-offset-2 hover:underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {ins.extraHref.label}
+                    </Link>
+                  ) : null}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-2xl border border-black/5 bg-surface p-4">
-          <h2 className="text-sm font-semibold">Mix</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold">Mix global</h2>
+            <CrmHelpDialog helpId="mix" />
+          </div>
           <ul className="mt-2 space-y-1 text-sm">
             {data.mix.byPlan.map((p) => (
               <li key={p.plan} className="flex justify-between">
@@ -187,7 +336,10 @@ export function CrmConsole() {
           </ul>
         </div>
         <div className="rounded-2xl border border-black/5 bg-surface p-4">
-          <h2 className="text-sm font-semibold">Retención M0 → M1</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold">Retención M0 → M1</h2>
+            <CrmHelpDialog helpId="cohorts" />
+          </div>
           <table className="mt-2 w-full text-left text-sm">
             <thead className="text-xs text-muted">
               <tr>
@@ -216,113 +368,170 @@ export function CrmConsole() {
         </div>
       </section>
 
-      <Queue
-        title="Fundadores — onboarding incompleto"
-        hint="Hazlo tú: entra al panel o anota. Sin plantilla de video."
-        rows={data.foundersQueue}
-        busyId={busyId}
-        founder
-        onSupport={openSupport}
-        onExtend={(id, days) =>
-          patchTenant(id, { extend_days: days }, `+${days} días`)
-        }
-        onPause={(id, active) =>
-          patchTenant(id, { is_active: active }, active ? "Reactivado" : "Pausado")
-        }
-      />
-
-      <Queue
-        title="Onboarding guiado"
-        hint="Mándales el WhatsApp corto. Si no hay número, copia el mensaje."
-        rows={data.guidedQueue}
-        busyId={busyId}
-        founder={false}
-        onSupport={openSupport}
-        onExtend={(id, days) =>
-          patchTenant(id, { extend_days: days }, `+${days} días`)
-        }
-        onPause={(id, active) =>
-          patchTenant(id, { is_active: active }, active ? "Reactivado" : "Pausado")
-        }
-      />
-
       <section className="space-y-3">
-        <div className="flex flex-wrap items-end justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-muted">
+            Vista filtrada
+          </p>
+          <CrmHelpDialog helpId="charts" />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Filter
+            value={planFilter}
+            onChange={setPlanFilter}
+            options={[
+              ["all", "Plan"],
+              ["catalog", "Catálogo"],
+              ["daily", "Menú al Día"],
+              ["pro", "Pro"],
+            ]}
+          />
+          <Filter
+            value={originFilter}
+            onChange={setOriginFilter}
+            options={[
+              ["all", "Origen"],
+              ["", "Sin origen"],
+              ["landing", "Landing"],
+              ["dur_local", "Durango"],
+              ["redes", "Redes"],
+              ["boca_a_boca", "Boca a boca"],
+              ["otro", "Otro"],
+            ]}
+          />
+          <Filter
+            value={founderFilter}
+            onChange={setFounderFilter}
+            options={[
+              ["all", "Fundador"],
+              ["yes", "Sí"],
+              ["no", "No"],
+            ]}
+          />
+          <Filter
+            value={chartView}
+            onChange={(v) => setChartView(v as ChartView)}
+            options={[
+              ["mix", "Gráfico: mix"],
+              ["retention", "Gráfico: retención"],
+              ["funnel", "Gráfico: embudo WA"],
+            ]}
+          />
+        </div>
+
+        {actionFilter ? (
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-brand/20 bg-brand/5 px-3 py-2 text-sm">
+            <span>
+              Viendo: <span className="font-semibold">{actionFilterLabel(actionFilter)}</span>
+              {" · "}
+              {filteredTenants.length}
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="min-h-9"
+              onClick={() => setActionFilter(null)}
+            >
+              Quitar filtro
+            </Button>
+          </div>
+        ) : null}
+
+        <div className="rounded-2xl border border-black/5 bg-surface p-4">
+          <div className="h-[220px] w-full min-w-0 overflow-hidden">
+            {chartView === "mix" ? (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={mixChart} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#00000010" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={28} />
+                  <Tooltip />
+                  <Bar dataKey="n" name="Negocios" fill="#2a6f6f" radius={4} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : null}
+            {chartView === "retention" ? (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart
+                  data={retentionChart}
+                  margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#00000010" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                  <YAxis
+                    allowDecimals={false}
+                    tick={{ fontSize: 11 }}
+                    width={32}
+                    domain={[0, 100]}
+                  />
+                  <Tooltip formatter={(v) => [`${String(v)}%`, "% M1"]} />
+                  <Bar dataKey="pct" name="% M1" fill="#c45c26" radius={4} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : null}
+            {chartView === "funnel" ? (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart
+                  data={funnelChart}
+                  margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#00000010" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={36} />
+                  <Tooltip />
+                  <Bar dataKey="n" name="Eventos 30d" fill="#c45c26" radius={4} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : null}
+          </div>
+          {chartView === "retention" ? (
+            <p className="mt-2 text-[11px] text-muted">
+              Este gráfico es global (no usa plan/origen). La lista de abajo sí se filtra.
+            </p>
+          ) : (
+            <p className="mt-2 text-[11px] text-muted">
+              Mix y embudo usan el mismo subset que la lista ({filteredTenants.length}).
+            </p>
+          )}
+        </div>
+      </section>
+
+      <section id="crm-action-list" className="scroll-mt-4 space-y-2">
+        <div className="flex items-start justify-between gap-2">
           <div>
-            <h2 className="text-sm font-semibold">Riesgo</h2>
+            <h2 className="text-sm font-semibold">Lista de acción</h2>
             <p className="text-xs text-muted">
-              Health bajo, CTR roto, inactivos 5d o vencen en 7 días
+              {actionFilter
+                ? actionFilterLabel(actionFilter)
+                : "Onboarding incompleto y riesgo. Elige una tarjeta de Hoy conviene para acotar."}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Filter
-              value={planFilter}
-              onChange={setPlanFilter}
-              options={[
-                ["all", "Plan"],
-                ["catalog", "Catálogo"],
-                ["daily", "Menú al Día"],
-                ["pro", "Pro"],
-              ]}
-            />
-            <Filter
-              value={originFilter}
-              onChange={setOriginFilter}
-              options={[
-                ["all", "Origen"],
-                ["", "Sin origen"],
-                ["landing", "Landing"],
-                ["dur_local", "Durango"],
-                ["redes", "Redes"],
-                ["boca_a_boca", "Boca a boca"],
-                ["otro", "Otro"],
-              ]}
-            />
-            <Filter
-              value={founderFilter}
-              onChange={setFounderFilter}
-              options={[
-                ["all", "Fundador"],
-                ["yes", "Sí"],
-                ["no", "No"],
-              ]}
-            />
-            <Filter
-              value={onboardingFilter}
-              onChange={setOnboardingFilter}
-              options={[
-                ["all", "Onboarding"],
-                ["incomplete", "Incompleto"],
-                ["complete", "Completo"],
-              ]}
-            />
-            <Filter
-              value={healthFilter}
-              onChange={setHealthFilter}
-              options={[
-                ["all", "Health"],
-                ["low", "Bajo"],
-                ["ok", "OK"],
-              ]}
-            />
-          </div>
+          <CrmHelpDialog helpId="actionList" />
         </div>
-        <TenantTable
-          rows={filteredRisk}
-          busyId={busyId}
-          showWa
-          onSupport={openSupport}
-          onExtend={(id, days) =>
-            patchTenant(id, { extend_days: days }, `+${days} días`)
-          }
-          onPause={(id, active) =>
-            patchTenant(
-              id,
-              { is_active: active },
-              active ? "Reactivado" : "Pausado",
-            )
-          }
-        />
+        {filteredTenants.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-black/10 px-4 py-6 text-center text-sm text-muted">
+            Nadie con este filtro.
+          </p>
+        ) : (
+          <TenantTable
+            rows={filteredTenants}
+            busyId={busyId}
+            showNotes
+            onSupport={openSupport}
+            onExtend={(id, days) =>
+              patchTenant(id, { extend_days: days }, `+${days} días`)
+            }
+            onPause={(id, active) =>
+              patchTenant(
+                id,
+                { is_active: active },
+                active ? "Reactivado" : "Pausado",
+              )
+            }
+          />
+        )}
       </section>
 
       <section className="rounded-2xl border border-black/5 bg-surface p-4">
@@ -334,7 +543,11 @@ export function CrmConsole() {
         <ul className="mt-3 space-y-1 text-sm">
           {data.usage.topOrders.map((r) => (
             <li key={r.id} className="flex justify-between gap-2">
-              <Link className="font-medium hover:underline" href={`/${r.slug}`} target="_blank">
+              <Link
+                className="font-medium hover:underline"
+                href={`/${r.slug}`}
+                target="_blank"
+              >
                 {r.name}
               </Link>
               <span className="text-muted">{r.orders} pedidos mes</span>
@@ -346,10 +559,21 @@ export function CrmConsole() {
   );
 }
 
-function Kpi({ label, value }: { label: string; value: string }) {
+function Kpi({
+  label,
+  value,
+  helpId,
+}: {
+  label: string;
+  value: string;
+  helpId: string;
+}) {
   return (
     <div className="rounded-2xl border border-black/5 bg-surface p-3">
-      <p className="text-[11px] text-muted">{label}</p>
+      <div className="flex items-start justify-between gap-1">
+        <p className="text-[11px] text-muted">{label}</p>
+        <CrmHelpDialog helpId={helpId} />
+      </div>
       <p className="mt-1 text-lg font-semibold leading-tight">{value}</p>
     </div>
   );
@@ -366,12 +590,12 @@ function Filter({
 }) {
   return (
     <select
-      className="h-10 rounded-lg border border-black/10 bg-surface px-2 text-xs"
+      className="h-10 min-w-0 rounded-lg border border-black/10 bg-surface px-2 text-xs"
       value={value}
       onChange={(e) => onChange(e.target.value)}
     >
       {options.map(([v, l]) => (
-        <option key={v || "empty"} value={v}>
+        <option key={`${v}-${l}`} value={v}>
           {l}
         </option>
       ))}
@@ -379,54 +603,9 @@ function Filter({
   );
 }
 
-function Queue({
-  title,
-  hint,
-  rows,
-  busyId,
-  founder,
-  onSupport,
-  onExtend,
-  onPause,
-}: {
-  title: string;
-  hint: string;
-  rows: CrmTenantRow[];
-  busyId: string | null;
-  founder: boolean;
-  onSupport: (id: string) => void;
-  onExtend: (id: string, days: number) => void;
-  onPause: (id: string, active: boolean) => void;
-}) {
-  return (
-    <section className="space-y-2">
-      <div>
-        <h2 className="text-sm font-semibold">{title}</h2>
-        <p className="text-xs text-muted">{hint}</p>
-      </div>
-      {rows.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-black/10 px-4 py-6 text-center text-sm text-muted">
-          Nadie en esta cola.
-        </p>
-      ) : (
-        <TenantTable
-          rows={rows}
-          busyId={busyId}
-          showWa={!founder}
-          showNotes={founder}
-          onSupport={onSupport}
-          onExtend={onExtend}
-          onPause={onPause}
-        />
-      )}
-    </section>
-  );
-}
-
 function TenantTable({
   rows,
   busyId,
-  showWa,
   showNotes,
   onSupport,
   onExtend,
@@ -434,7 +613,6 @@ function TenantTable({
 }: {
   rows: CrmTenantRow[];
   busyId: string | null;
-  showWa?: boolean;
   showNotes?: boolean;
   onSupport: (id: string) => void;
   onExtend: (id: string, days: number) => void;
@@ -443,10 +621,13 @@ function TenantTable({
   return (
     <ul className="space-y-2">
       {rows.map((r) => {
+        const showWa = !r.is_founding_partner;
+        const digits = r.phone_whatsapp.replace(/\D/g, "");
         const waHref =
-          showWa && r.phone_whatsapp.replace(/\D/g, "").length >= 10 && r.waMessage
+          showWa && digits.length >= 10 && r.waMessage
             ? buildWaMeUrl(r.phone_whatsapp, r.waMessage)
             : null;
+        const showCopy = showWa && !waHref && Boolean(r.waMessage);
         const busy = busyId === r.id;
         return (
           <li
@@ -476,14 +657,15 @@ function TenantTable({
                 ) : null}
               </div>
               <div className="flex flex-wrap gap-1.5">
-                {showWa && waHref ? (
+                {waHref ? (
                   <Button asChild size="sm" className="min-h-10">
                     <a href={waHref} target="_blank" rel="noreferrer">
+                      <Emoji char={UI_EMOJI.whatsapp} />
                       WhatsApp
                     </a>
                   </Button>
                 ) : null}
-                {showWa && !waHref && r.waMessage ? (
+                {showCopy ? (
                   <Button
                     type="button"
                     size="sm"
@@ -491,6 +673,7 @@ function TenantTable({
                     className="min-h-10"
                     onClick={() => void copyText(r.waMessage)}
                   >
+                    <Emoji char={UI_EMOJI.copy} />
                     Copiar mensaje
                   </Button>
                 ) : null}
@@ -502,6 +685,7 @@ function TenantTable({
                   disabled={busy}
                   onClick={() => onSupport(r.id)}
                 >
+                  <Emoji char={UI_EMOJI.support} />
                   Soporte
                 </Button>
                 <Button
@@ -512,6 +696,7 @@ function TenantTable({
                   disabled={busy}
                   onClick={() => onExtend(r.id, 7)}
                 >
+                  <Emoji char={UI_EMOJI.extend} />
                   +7d
                 </Button>
                 <Button
@@ -522,6 +707,7 @@ function TenantTable({
                   disabled={busy}
                   onClick={() => onExtend(r.id, 30)}
                 >
+                  <Emoji char={UI_EMOJI.extend} />
                   +30d
                 </Button>
                 <Button
@@ -532,7 +718,17 @@ function TenantTable({
                   disabled={busy}
                   onClick={() => onPause(r.id, !r.is_active)}
                 >
-                  {r.is_active ? "Pausar" : "Reactivar"}
+                  {r.is_active ? (
+                    <>
+                      <Emoji char={UI_EMOJI.pause} />
+                      Pausar
+                    </>
+                  ) : (
+                    <>
+                      <Emoji char={UI_EMOJI.resume} />
+                      Reactivar
+                    </>
+                  )}
                 </Button>
               </div>
             </div>

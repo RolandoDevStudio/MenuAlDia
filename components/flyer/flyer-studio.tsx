@@ -36,6 +36,9 @@ import { Switch } from "@/components/ui/switch";
 import { createClient } from "@/lib/supabase/client";
 import { compressImage } from "@/lib/compress-image";
 import { cn } from "@/lib/utils";
+import { Emoji } from "@/components/ui-emoji";
+import { UI_EMOJI } from "@/lib/ui-emoji";
+import { labelsFor } from "@/lib/business-labels";
 import { formatMxn } from "@/lib/money";
 
 type LibraryFlyer = {
@@ -113,6 +116,7 @@ export function FlyerStudio({
 
   const phone = formatWhatsappDisplay(restaurant.phone_whatsapp);
   const hasWa = Boolean(phone);
+  const giroLabels = labelsFor(restaurant.business_type);
 
   const selectedDishes = useMemo(
     () => dishes.filter((d) => activeMainIds.includes(d.id)),
@@ -573,7 +577,7 @@ export function FlyerStudio({
 
       {dishes.length > 0 ? (
         <div className="space-y-2">
-          <Label>Platillos en el flyer</Label>
+          <Label>{giroLabels.dishes} en el flyer</Label>
           <div className="flex flex-wrap gap-2">
             {dishes
               .filter((d) => !d.is_side)
@@ -594,7 +598,7 @@ export function FlyerStudio({
 
       {sides.length > 0 ? (
         <div className="space-y-2">
-          <Label>Guarniciones</Label>
+          <Label>{giroLabels.sides}</Label>
           <div className="flex flex-wrap gap-2">
             {sides.map((d) => (
               <Chip
@@ -616,7 +620,12 @@ export function FlyerStudio({
         disabled={saving}
         onClick={() => void saveToLibrary()}
       >
-        {saving ? "Guardando…" : "Guardar en biblioteca"}
+        {saving ? "Guardando…" : (
+          <>
+            <Emoji char={UI_EMOJI.save} />
+            Guardar en biblioteca
+          </>
+        )}
       </Button>
       {libMsg ? (
         <p className="text-xs text-muted" role="status">
@@ -714,6 +723,7 @@ export function FlyerStudio({
     <div className="space-y-4">
       <div>
         <h1 className="text-lg font-semibold">
+          <Emoji char={UI_EMOJI.flyer} />
           {fromToday ? "Flyer — Especiales de hoy" : "Generar Flyer"}
         </h1>
         <p className="text-sm text-muted">

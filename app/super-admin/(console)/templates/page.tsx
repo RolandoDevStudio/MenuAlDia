@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Emoji } from "@/components/ui-emoji";
+import { UI_EMOJI } from "@/lib/ui-emoji";
 
 const PLAN_TYPES = Object.keys(PLAN_LABELS) as PlanType[];
 
@@ -123,7 +125,10 @@ export default function TemplatesPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-lg font-semibold">Semillas demo</h1>
+        <h1 className="text-lg font-semibold">
+          <Emoji char={UI_EMOJI.seeds} />
+          Semillas demo
+        </h1>
         <p className="text-sm text-muted">
           Contenido inicial por giro × plan. Al crear un admin se usa sola;
           aquí sincronizas o activas semillas.
@@ -203,7 +208,12 @@ export default function TemplatesPage() {
                           disabled={draft.busy || draft.name === t.name}
                           onClick={() => void saveName(t)}
                         >
-                          Guardar
+                          {draft.busy ? "Guardando…" : (
+                            <>
+                              <Emoji char={UI_EMOJI.save} />
+                              Guardar
+                            </>
+                          )}
                         </Button>
                       </div>
                     </div>
@@ -230,6 +240,7 @@ export default function TemplatesPage() {
                           disabled={draft.busy || !draft.syncSlug.trim()}
                           onClick={() => void syncFromSlug(t)}
                         >
+                          <Emoji char={UI_EMOJI.clone} />
                           Sincronizar desde slug
                         </Button>
                       </div>

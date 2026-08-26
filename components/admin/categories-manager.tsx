@@ -19,7 +19,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, ChevronDown, Pencil, Plus, Trash2 } from "lucide-react";
+import { GripVertical, ChevronDown, Pencil, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { can, type PlanType } from "@/lib/plans";
 import { label } from "@/lib/business-labels";
@@ -29,6 +29,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import { Emoji } from "@/components/ui-emoji";
+import { UI_EMOJI } from "@/lib/ui-emoji";
 
 type CatRow = Category & { dish_count: number };
 
@@ -109,6 +111,7 @@ function SortableRow({
                 className="min-h-11"
                 onClick={() => onSaveEdit(cat.id)}
               >
+                <Emoji char={UI_EMOJI.save} />
                 Guardar
               </Button>
               <Button
@@ -448,7 +451,7 @@ export function CategoriesManager({
                 disabled={busy}
                 onClick={() => void createCategory()}
               >
-                <Plus className="h-4 w-4" />
+                <Emoji char={UI_EMOJI.create} />
                 Añadir
               </Button>
             </div>

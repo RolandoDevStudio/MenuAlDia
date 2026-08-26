@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { normalizeCouponCode } from "@/lib/coupons";
+import { Emoji } from "@/components/ui-emoji";
+import { UI_EMOJI } from "@/lib/ui-emoji";
 
 type Coupon = {
   id: string;
@@ -82,7 +84,10 @@ export default function AdminPromocionesPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-lg font-semibold">Promociones</h1>
+        <h1 className="text-lg font-semibold">
+          <Emoji char={UI_EMOJI.tenantPromos} />
+          Promociones
+        </h1>
         <p className="text-sm text-muted">
           Cupones para el carrito de tu menú público (WhatsApp).
         </p>
@@ -146,6 +151,7 @@ export default function AdminPromocionesPage() {
           </div>
         </div>
         <Button type="button" onClick={() => void create()}>
+          <Emoji char={UI_EMOJI.create} />
           Crear
         </Button>
       </div>

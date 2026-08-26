@@ -2,6 +2,8 @@ import { requireTenantSession } from "@/lib/admin-session";
 import { PlanGate } from "@/components/admin/plan-gate";
 import { AnalyticsDashboard } from "@/components/admin/analytics-dashboard";
 import { can } from "@/lib/plans";
+import { Emoji } from "@/components/ui-emoji";
+import { UI_EMOJI } from "@/lib/ui-emoji";
 
 export default async function AnalyticsPage() {
   const session = await requireTenantSession();
@@ -17,7 +19,10 @@ export default async function AnalyticsPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-lg font-semibold">Métricas</h1>
+        <h1 className="text-lg font-semibold">
+          <Emoji char={UI_EMOJI.metrics} />
+          Métricas
+        </h1>
         <p className="text-sm text-muted">
           Visitas, conversión y rendimiento del menú (zona horaria CDMX).
         </p>

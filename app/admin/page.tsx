@@ -14,6 +14,8 @@ import { can } from "@/lib/plans";
 import { labelsFor } from "@/lib/business-labels";
 import { effectiveAcceptingOrders } from "@/lib/store-hours";
 import type { Dish } from "@/lib/types";
+import { Emoji } from "@/components/ui-emoji";
+import { dailyMenuEmoji, UI_EMOJI } from "@/lib/ui-emoji";
 
 export default async function AdminDashboardPage() {
   const session = await requireTenantSession();
@@ -121,7 +123,10 @@ export default async function AdminDashboardPage() {
   const dailyBlock = (
     <>
       <div>
-        <h1 className="text-lg font-semibold">{labels.dailyMenu}</h1>
+        <h1 className="text-lg font-semibold">
+          <Emoji char={dailyMenuEmoji(businessType)} />
+          {labels.dailyMenu}
+        </h1>
         <p className="text-sm text-muted">
           Marca las <strong>opciones</strong> de hoy. El cliente elige una y
           (si aplica) {labels.sides.toLowerCase()}.
@@ -158,7 +163,10 @@ export default async function AdminDashboardPage() {
             automático cuando quieras.
           </p>
           <Button asChild size="sm" variant="secondary" className="mt-2">
-            <Link href="/admin/settings#horario">Ir a horario</Link>
+            <Link href="/admin/settings#horario">
+              <Emoji char={UI_EMOJI.hours} />
+              Ir a horario
+            </Link>
           </Button>
         </div>
       ) : null}

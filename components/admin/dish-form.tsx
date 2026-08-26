@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { DishPhotoUpload } from "@/components/admin/dish-photo-upload";
+import { useAdminDockSave } from "@/components/admin/admin-dock";
 import {
   UNIT_TYPE_LABELS,
   defaultStepForUnit,
@@ -103,6 +104,13 @@ export function DishForm({
   useEffect(() => {
     void loadAddons();
   }, [loadAddons]);
+
+  useAdminDockSave({
+    formId: "dish-form",
+    label: "Guardar",
+    disabled: saving || deleting,
+    pending: saving,
+  });
 
   async function revalidate() {
     await fetch("/api/revalidate", {
@@ -253,7 +261,7 @@ export function DishForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4 pb-4">
+    <form id="dish-form" onSubmit={onSubmit} className="space-y-4 pb-4">
       <Link
         href="/admin/catalog"
         className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-brand"
@@ -460,22 +468,18 @@ export function DishForm({
       )}
 
       {formError ? <p className="text-sm text-red-600">{formError}</p> : null}
-      <div className="sticky bottom-0 space-y-2 bg-background/95 py-3 backdrop-blur">
-        <Button type="submit" className="w-full min-h-11" disabled={saving || deleting}>
-          {saving ? "Guardando…" : "Guardar"}
+      {dish ? (
+        <Button
+          type="button"
+          variant="destructive"
+          size="sm"
+          className="w-full"
+          onClick={onArchive}
+          disabled={saving || deleting}
+        >
+          {deleting ? "Archivando…" : "Archivar"}
         </Button>
-        {dish ? (
-          <Button
-            type="button"
-            variant="destructive"
-            className="w-full min-h-11"
-            onClick={onArchive}
-            disabled={saving || deleting}
-          >
-            {deleting ? "Archivando…" : "Archivar"}
-          </Button>
-        ) : null}
-      </div>
+      ) : null}
     </form>
   );
 }

@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Emoji } from "@/components/ui-emoji";
+import { UI_EMOJI } from "@/lib/ui-emoji";
 
 type Faq = {
   id: string;
@@ -139,6 +141,7 @@ export function AdminFaqsPanel({
           size="sm"
           onClick={() => void create(question, answer)}
         >
+          <Emoji char={UI_EMOJI.create} />
           Agregar
         </Button>
       </div>

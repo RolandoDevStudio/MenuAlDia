@@ -1,12 +1,63 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Copy } from "lucide-react";
 import { formatMxn } from "@/lib/money";
 import { PLAN_LABELS, type PlanType } from "@/lib/plans";
 import { normalizeCouponCode, type SpeiInfo } from "@/lib/coupons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+function speiAmountText(n: number): string {
+  return (Math.round(n * 100) / 100).toFixed(2);
+}
+
+function CopyRow({
+  label,
+  display,
+  copyValue,
+  mono,
+}: {
+  label: string;
+  display: string;
+  copyValue: string;
+  mono?: boolean;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(copyValue);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-2 py-1">
+      <div className="min-w-0">
+        <p className="text-[11px] font-medium text-muted">{label}</p>
+        <p className={mono ? "break-all font-mono text-sm" : "text-sm"}>
+          {display}
+        </p>
+      </div>
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        className="min-h-11 shrink-0"
+        onClick={() => void copy()}
+        aria-label={`Copiar ${label}`}
+      >
+        <Copy className="h-4 w-4" />
+        {copied ? "Copiado" : "Copiar"}
+      </Button>
+    </div>
+  );
+}
 
 export function SubscriptionPanel({
   planType,
@@ -70,6 +121,8 @@ export function SubscriptionPanel({
     setMsg("Cupón aplicado (vista previa). No consume usos hasta el pago.");
   }
 
+  const transferAmount = payAmount ?? listAmount;
+
   return (
     <div id="suscripcion" className="space-y-3 rounded-xl border border-black/5 bg-surface p-4">
       <div>
@@ -82,15 +135,32 @@ export function SubscriptionPanel({
       </div>
 
       {spei && (spei.clabe || spei.bank) ? (
-        <div className="rounded-lg bg-background/80 px-3 py-2 text-xs">
-          <p className="font-semibold">Datos SPEI</p>
-          {spei.bank ? <p>Banco: {spei.bank}</p> : null}
-          {spei.beneficiary ? <p>Beneficiario: {spei.beneficiary}</p> : null}
+        <div className="divide-y divide-black/5 rounded-lg bg-background/80 px-3 py-1 text-xs">
+          <p className="py-2 font-semibold">Datos SPEI</p>
+          {spei.bank ? (
+            <p className="py-2 text-sm">Banco: {spei.bank}</p>
+          ) : null}
+          {spei.beneficiary ? (
+            <CopyRow
+              label="Beneficiario"
+              display={spei.beneficiary}
+              copyValue={spei.beneficiary}
+            />
+          ) : null}
           {spei.clabe ? (
-            <p className="font-mono">CLABE: {spei.clabe}</p>
+            <CopyRow
+              label="CLABE"
+              display={spei.clabe}
+              copyValue={spei.clabe.replace(/\s/g, "")}
+              mono
+            />
           ) : null}
           {spei.concept_hint ? (
-            <p className="mt-1 text-muted">{spei.concept_hint}</p>
+            <CopyRow
+              label="Concepto"
+              display={spei.concept_hint}
+              copyValue={spei.concept_hint}
+            />
           ) : null}
         </div>
       ) : (
@@ -116,15 +186,15 @@ export function SubscriptionPanel({
         </div>
       </div>
 
-      <p className="text-sm font-semibold text-brand">
-        Monto a transferir: {formatMxn(payAmount ?? listAmount)}
-        {discount > 0 ? (
-          <span className="ml-2 text-xs font-normal text-muted">
-            (lista {formatMxn(listAmount)} − {formatMxn(discount)}
-            {label ? ` · ${label}` : ""})
-          </span>
-        ) : null}
-      </p>
+      <CopyRow
+        label="Monto a transferir"
+        display={
+          discount > 0
+            ? `${formatMxn(transferAmount)} (lista ${formatMxn(listAmount)} − ${formatMxn(discount)}${label ? ` · ${label}` : ""})`
+            : formatMxn(transferAmount)
+        }
+        copyValue={speiAmountText(transferAmount)}
+      />
       {error ? <p className="text-xs text-red-600">{error}</p> : null}
       {msg ? <p className="text-xs text-accent">{msg}</p> : null}
     </div>

@@ -11,6 +11,8 @@ import { buildComboShareMessage } from "@/lib/whatsapp";
 import { label, normalizeBusinessType } from "@/lib/business-labels";
 import { DishPhotoUpload } from "@/components/admin/dish-photo-upload";
 import { Button } from "@/components/ui/button";
+import { Emoji } from "@/components/ui-emoji";
+import { UI_EMOJI } from "@/lib/ui-emoji";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -358,7 +360,10 @@ export function CombosManager({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-lg font-semibold">{combosLabel} Express</h1>
+        <h1 className="text-lg font-semibold">
+          <Emoji char={UI_EMOJI.combos} />
+          {combosLabel} Express
+        </h1>
         <p className="text-sm text-muted">
           Empaqueta {dishesLabel.toLowerCase()} y{" "}
           {sidesLabel.toLowerCase()} con cantidades y link viral{" "}
@@ -452,6 +457,7 @@ export function CombosManager({
                   className="min-h-11"
                   onClick={() => void copyLink(c)}
                 >
+                  <Emoji char={UI_EMOJI.copy} />
                   Copiar link
                 </Button>
                 <Button
@@ -460,6 +466,7 @@ export function CombosManager({
                   className="min-h-11"
                   onClick={() => void copyWaText(c)}
                 >
+                  <Emoji char={UI_EMOJI.whatsapp} />
                   Copiar texto WhatsApp
                 </Button>
                 <Button asChild variant="secondary" className="min-h-11">
@@ -473,6 +480,7 @@ export function CombosManager({
 
       <details className="space-y-3 rounded-2xl border border-black/5 bg-surface p-4">
         <summary className="cursor-pointer list-none text-sm font-semibold marker:content-none [&::-webkit-details-marker]:hidden">
+          <Emoji char={UI_EMOJI.create} />
           Nuevo {comboLabel.toLowerCase()} ▸
         </summary>
         <div className="mt-3 space-y-3 border-t border-black/5 pt-3">
@@ -571,7 +579,12 @@ export function CombosManager({
           disabled={!canCreate}
           onClick={() => void createCombo()}
         >
-          {saving ? "Guardando…" : `Crear ${comboLabel.toLowerCase()}`}
+          {saving ? "Guardando…" : (
+            <>
+              <Emoji char={UI_EMOJI.create} />
+              {`Crear ${comboLabel.toLowerCase()}`}
+            </>
+          )}
         </Button>
         </div>
       </details>

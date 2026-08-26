@@ -10,6 +10,8 @@ import { CANONICAL_DEMOS } from "@/lib/canonical-demos";
 import type { Restaurant } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { AlertsFeed } from "@/components/super-admin/alerts-feed";
+import { Emoji } from "@/components/ui-emoji";
+import { UI_EMOJI } from "@/lib/ui-emoji";
 
 export default async function SuperAdminHomePage() {
   await requireSuperAdmin();
@@ -65,7 +67,10 @@ export default async function SuperAdminHomePage() {
     <div className="space-y-6">
       <div className="flex flex-wrap gap-2">
         <Button asChild size="sm" className="min-h-11">
-          <Link href="/super-admin/tenants">Crear / ver tenants</Link>
+          <Link href="/super-admin/tenants">
+            <Emoji char={UI_EMOJI.create} />
+            Crear / ver tenants
+          </Link>
         </Button>
         <Button asChild size="sm" variant="secondary" className="min-h-11">
           <Link href="/super-admin/finanzas">Finanzas</Link>

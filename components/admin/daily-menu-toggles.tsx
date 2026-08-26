@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Emoji } from "@/components/ui-emoji";
+import { UI_EMOJI } from "@/lib/ui-emoji";
 
 type PricingMode = "package" | "individual";
 
@@ -267,7 +269,12 @@ export function DailyMenuToggles({
           </div>
         </div>
         <Button className="w-full" onClick={() => void saveMeta()} disabled={savingMeta}>
-          {savingMeta ? "Guardando…" : "Guardar configuración"}
+          {savingMeta ? "Guardando…" : (
+            <>
+              <Emoji char={UI_EMOJI.save} />
+              Guardar configuración
+            </>
+          )}
         </Button>
       </section>
 
@@ -309,7 +316,10 @@ export function DailyMenuToggles({
               No hay {labels.dishes.toLowerCase()} en el {labels.catalog.toLowerCase()}.
             </p>
             <Button asChild variant="secondary" size="sm" className="mt-3">
-              <Link href="/admin/catalog/new">Crear {labels.dish.toLowerCase()}</Link>
+              <Link href="/admin/catalog/new">
+                <Emoji char={UI_EMOJI.create} />
+                Crear {labels.dish.toLowerCase()}
+              </Link>
             </Button>
           </div>
         ) : filteredMains.length === 0 ? (

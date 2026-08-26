@@ -361,6 +361,7 @@ export async function loadSuperAdminCrm(): Promise<CrmPayload> {
     foundersQueue,
     guidedQueue,
     risk,
+    tenants: rows,
     usage: {
       topOrders: rows
         .slice()

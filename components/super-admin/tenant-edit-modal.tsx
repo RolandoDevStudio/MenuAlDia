@@ -33,6 +33,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Emoji } from "@/components/ui-emoji";
+import { UI_EMOJI } from "@/lib/ui-emoji";
 
 type Tab = "datos" | "pagos" | "cambios";
 
@@ -344,6 +346,7 @@ export function TenantEditModal({
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>
+            <Emoji char={UI_EMOJI.edit} />
             {restaurant ? restaurant.name : "Editar tenant"}
           </DialogTitle>
           <DialogDescription>
@@ -541,7 +544,12 @@ export function TenantEditModal({
               disabled={busy}
               onClick={() => void saveDatos()}
             >
-              {busy ? "Guardando…" : "Guardar"}
+              {busy ? "Guardando…" : (
+                <>
+                  <Emoji char={UI_EMOJI.save} />
+                  Guardar
+                </>
+              )}
             </Button>
           </div>
         ) : null}

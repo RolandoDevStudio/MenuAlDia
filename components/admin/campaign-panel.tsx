@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Cake, MessageCircle, AlertTriangle, UserX } from "lucide-react";
+import { Cake, AlertTriangle, UserX } from "lucide-react";
 import type { Customer } from "@/lib/types";
 import {
   CAMPAIGN_FILTER_LABELS,
@@ -16,6 +16,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { Emoji } from "@/components/ui-emoji";
+import { UI_EMOJI } from "@/lib/ui-emoji";
 
 type Props = {
   customers: Customer[];
@@ -158,7 +160,7 @@ export function CampaignPanel({
                     className="shrink-0"
                     onClick={() => sendTo(c)}
                   >
-                    <MessageCircle className="h-3.5 w-3.5" />
+                    <Emoji char={UI_EMOJI.whatsapp} />
                     WA
                   </Button>
                 </li>

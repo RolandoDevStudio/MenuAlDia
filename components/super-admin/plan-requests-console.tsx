@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { PLAN_LABELS, type PlanType } from "@/lib/plans";
 import { Button } from "@/components/ui/button";
+import { Emoji } from "@/components/ui-emoji";
+import { UI_EMOJI } from "@/lib/ui-emoji";
 
 type RequestRow = {
   id: string;
@@ -114,7 +116,10 @@ export function PlanRequestsConsole() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold">Solicitudes de plan</h1>
+          <h1 className="text-lg font-semibold">
+            <Emoji char={UI_EMOJI.requests} />
+            Solicitudes de plan
+          </h1>
           <p className="text-sm text-muted">
             Aprobar cancelaciones (gracia) o cambios de plan.
           </p>
@@ -193,6 +198,7 @@ export function PlanRequestsConsole() {
                       disabled={busyId === r.id}
                       onClick={() => void review(r.id, "approve")}
                     >
+                      <Emoji char={UI_EMOJI.approve} />
                       Aprobar
                     </Button>
                     <Button
@@ -202,6 +208,7 @@ export function PlanRequestsConsole() {
                       disabled={busyId === r.id}
                       onClick={() => void review(r.id, "reject")}
                     >
+                      <Emoji char={UI_EMOJI.reject} />
                       Rechazar
                     </Button>
                   </div>

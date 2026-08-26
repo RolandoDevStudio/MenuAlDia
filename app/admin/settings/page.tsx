@@ -24,6 +24,9 @@ import { SubscriptionPanel } from "@/components/admin/subscription-panel";
 import { AdminFaqsPanel } from "@/components/admin/admin-faqs-panel";
 import { DailyMenuVisibilitySwitch } from "@/components/admin/daily-menu-visibility-switch";
 import { toast } from "sonner";
+import { Emoji } from "@/components/ui-emoji";
+import { UI_EMOJI } from "@/lib/ui-emoji";
+import { useAdminDockSave } from "@/components/admin/admin-dock";
 import {
   StoreHoursEditor,
   scheduleHoursFromRestaurant,
@@ -90,6 +93,17 @@ export default function SettingsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useAdminDockSave(
+    !loading && restaurant && theme
+      ? {
+          formId: "settings-form",
+          label: "Guardar cambios",
+          disabled: saving,
+          pending: saving,
+        }
+      : null,
+  );
 
   if (loading) {
     return <p className="text-sm text-muted">Cargando ajustes…</p>;
@@ -196,9 +210,12 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-4 pb-24 md:pb-8">
+    <div className="space-y-4">
       <div>
-        <h1 className="text-lg font-semibold">Ajustes</h1>
+        <h1 className="text-lg font-semibold">
+          <Emoji char={UI_EMOJI.settings} />
+          Ajustes
+        </h1>
         <p className="text-sm text-muted">
           <a
             href={`/${restaurant.slug}`}
@@ -450,17 +467,6 @@ export default function SettingsPage() {
             </div>
           </details>
         </div>
-      </div>
-
-      <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 border-t border-black/10 bg-surface/95 px-4 py-3 backdrop-blur md:sticky md:bottom-0 md:inset-x-auto md:mx-0 md:rounded-xl md:border">
-        <Button
-          type="submit"
-          form="settings-form"
-          className="w-full min-h-11"
-          disabled={saving}
-        >
-          {saving ? "Guardando…" : "Guardar cambios"}
-        </Button>
       </div>
     </div>
   );

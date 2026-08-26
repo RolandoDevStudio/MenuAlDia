@@ -18,6 +18,8 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Emoji } from "@/components/ui-emoji";
+import { UI_EMOJI } from "@/lib/ui-emoji";
 import type { PlanType } from "@/lib/plans";
 import { can, PLAN_LABELS, isSubscriptionActive } from "@/lib/plans";
 import {
@@ -30,7 +32,7 @@ import { BrandLogo } from "@/components/brand/brand-logo";
 import { NotificationBell } from "@/components/admin/notification-bell";
 import { PwaInstallBanner } from "@/components/admin/pwa-install-banner";
 import { OnboardingProgress } from "@/components/admin/onboarding-progress";
-import { SupportHelpFab } from "@/components/admin/support-help-fab";
+import { AdminDockProvider } from "@/components/admin/admin-dock";
 import type { OnboardingFlags } from "@/lib/super-admin-crm";
 import {
   AdminMoreMenu,
@@ -215,11 +217,15 @@ export function AdminShell({
   }
 
   return (
-    <div className="mx-auto flex min-h-full w-full max-w-lg flex-col pb-[calc(6rem+env(safe-area-inset-bottom))] md:max-w-2xl lg:max-w-5xl print:max-w-none print:pb-0">
+    <AdminDockProvider
+      helpHref={salesHelpUrl && !supportMode ? salesHelpUrl : null}
+      className="mx-auto flex min-h-full w-full max-w-lg flex-col md:max-w-2xl lg:max-w-5xl print:max-w-none"
+    >
       <Toaster richColors position="top-center" closeButton />
       {supportMode ? (
         <div className="flex items-center justify-between gap-2 bg-amber-100 px-4 py-2 text-sm text-amber-950 print:hidden">
           <p className="font-medium">
+            <Emoji char={UI_EMOJI.support} />
             Modo soporte — {restaurantName}
           </p>
           <Button
@@ -229,6 +235,7 @@ export function AdminShell({
             className="min-h-9"
             onClick={() => void exitSupport()}
           >
+            <Emoji char={UI_EMOJI.exit} />
             Salir
           </Button>
         </div>
@@ -330,9 +337,6 @@ export function AdminShell({
         <OnboardingProgress score={onboardingScore} flags={onboardingFlags} />
       ) : null}
       <div className="flex-1 px-4 py-4 print:px-0 print:py-0">{children}</div>
-      {salesHelpUrl && !supportMode ? (
-        <SupportHelpFab href={salesHelpUrl} />
-      ) : null}
       <nav
         className="fixed bottom-0 left-0 right-0 z-30 border-t border-black/10 bg-surface/95 backdrop-blur print:hidden"
         style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
@@ -367,6 +371,6 @@ export function AdminShell({
         businessType={businessType}
         hideHrefs={primarySlots.map((p) => p.href)}
       />
-    </div>
+    </AdminDockProvider>
   );
 }

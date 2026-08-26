@@ -15,6 +15,8 @@ import { Input } from "@/components/ui/input";
 import { TenantsTable, type OwnerInfo } from "@/components/super-admin/tenants-table";
 import { CreateAdminModal } from "@/components/super-admin/create-admin-modal";
 import { TenantEditModal } from "@/components/super-admin/tenant-edit-modal";
+import { Emoji } from "@/components/ui-emoji";
+import { UI_EMOJI } from "@/lib/ui-emoji";
 
 const selectClass =
   "h-11 rounded-lg border border-black/10 bg-surface px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-brand";
@@ -140,13 +142,17 @@ function TenantsPageInner() {
     <div className="w-full min-w-0 space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-lg font-semibold">Tenants</h1>
+          <h1 className="text-lg font-semibold">
+            <Emoji char={UI_EMOJI.tenants} />
+            Tenants
+          </h1>
           <p className="text-sm text-muted">
             El slug es la URL pública; el acceso al admin es con email +
             contraseña.
           </p>
         </div>
         <Button type="button" className="shrink-0" onClick={() => setCreateOpen(true)}>
+          <Emoji char={UI_EMOJI.create} />
           Crear Nuevo Admin
         </Button>
       </div>

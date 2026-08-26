@@ -25,6 +25,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Emoji } from "@/components/ui-emoji";
+import { UI_EMOJI } from "@/lib/ui-emoji";
 
 type Props = {
   open: boolean;
@@ -171,7 +173,10 @@ export function CreateAdminModal({
     >
       <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Crear Nuevo Admin</DialogTitle>
+          <DialogTitle>
+            <Emoji char={UI_EMOJI.create} />
+            Crear Nuevo Admin
+          </DialogTitle>
           <DialogDescription>
             Elige giro, plan y tema. El menú inicial se arma solo desde la
             semilla correspondiente.
@@ -400,7 +405,12 @@ export function CreateAdminModal({
               disabled={busy || !canSubmit}
               onClick={() => void submit()}
             >
-              {busy ? "Creando…" : "Crear admin"}
+              {busy ? "Creando…" : (
+                <>
+                  <Emoji char={UI_EMOJI.create} />
+                  Crear admin
+                </>
+              )}
             </Button>
           </div>
         )}

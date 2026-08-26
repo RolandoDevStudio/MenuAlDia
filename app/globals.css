@@ -84,6 +84,15 @@ body {
   }
 }
 
+@keyframes menu-overlay-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
 @keyframes menu-dialog-in {
   /* Opacity only — do not touch transform/translate (Tailwind v4 uses
      the individual `translate` property for centering; animating
@@ -157,6 +166,10 @@ body {
 @media (prefers-reduced-motion: no-preference) {
   .menu-overlay-in {
     animation: menu-overlay-in 200ms ease-out both;
+  }
+
+  .menu-overlay-out {
+    animation: menu-overlay-out 200ms ease-in both;
   }
 
   .menu-dialog-in {
@@ -234,6 +247,7 @@ body {
   .landing-aurora,
   .landing-fab-pulse,
   .menu-overlay-in,
+  .menu-overlay-out,
   .menu-dialog-in,
   .menu-sheet-in,
   .menu-cart-bar-in,

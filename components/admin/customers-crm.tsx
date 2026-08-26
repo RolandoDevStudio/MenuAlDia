@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Cake, Plus, Search, Trash2, MessageCircle } from "lucide-react";
+import { Cake, Search, Trash2 } from "lucide-react";
 import type { BusinessType, Customer, CustomerPhoto } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import { compressImage } from "@/lib/compress-image";
@@ -18,6 +18,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Emoji } from "@/components/ui-emoji";
+import { UI_EMOJI } from "@/lib/ui-emoji";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { normalizeBusinessType } from "@/lib/business-labels";
@@ -314,6 +316,7 @@ export function CustomersCrm({
             className="min-h-11 w-full"
             onClick={() => void saveLoyaltySettings()}
           >
+            <Emoji char={UI_EMOJI.save} />
             Guardar meta
           </Button>
         </div>
@@ -335,7 +338,7 @@ export function CustomersCrm({
           disabled={busy}
           onClick={() => void createCustomer()}
         >
-          <Plus className="h-4 w-4" />
+          <Emoji char={UI_EMOJI.create} />
           Nuevo cliente
         </Button>
       </div>
@@ -462,7 +465,7 @@ export function CustomersCrm({
                     className="mt-2"
                     onClick={() => sendCampaignWa(selected)}
                   >
-                    <MessageCircle className="h-3.5 w-3.5" />
+                    <Emoji char={UI_EMOJI.whatsapp} />
                     WhatsApp campaña
                   </Button>
                 ) : null}
