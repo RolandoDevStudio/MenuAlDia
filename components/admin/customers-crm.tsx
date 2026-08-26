@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { mexicoCityTodayYmd } from "@/lib/dates";
 import { Emoji } from "@/components/ui-emoji";
 import { UI_EMOJI } from "@/lib/ui-emoji";
 import { cn } from "@/lib/utils";
@@ -38,9 +39,9 @@ type Props = {
 
 function isBirthdayToday(birthday: string | null | undefined) {
   if (!birthday) return false;
-  const d = new Date(birthday + "T12:00:00");
-  const now = new Date();
-  return d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+  const mmdd = birthday.slice(0, 10).slice(5);
+  if (!/^\d{2}-\d{2}$/.test(mmdd)) return false;
+  return mmdd === mexicoCityTodayYmd().slice(5);
 }
 
 export function CustomersCrm({

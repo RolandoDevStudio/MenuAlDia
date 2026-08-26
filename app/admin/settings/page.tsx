@@ -460,7 +460,13 @@ export default function SettingsPage() {
               Plan y suscripción
             </summary>
             <div className="space-y-4 border-t border-black/5 px-4 pb-4 pt-3">
-              <PlanRequestPanel currentPlan={restaurant.plan_type || "catalog"} />
+              <PlanRequestPanel
+                currentPlan={restaurant.plan_type || "catalog"}
+                subscriptionEndDate={restaurant.subscription_end_date}
+                isActive={restaurant.is_active}
+                graceEndsAt={restaurant.grace_ends_at}
+                purgeScheduledAt={restaurant.purge_scheduled_at}
+              />
               <SubscriptionPanel
                 planType={(restaurant.plan_type as PlanType) || "catalog"}
               />

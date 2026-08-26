@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Emoji } from "@/components/ui-emoji";
+import { formatMexicoCityDateTime } from "@/lib/dates";
 import { UI_EMOJI } from "@/lib/ui-emoji";
 
 const PLAN_TYPES = Object.keys(PLAN_LABELS) as PlanType[];
@@ -249,7 +250,7 @@ export default function TemplatesPage() {
                     <p className="text-[11px] text-muted">
                       Actualizado:{" "}
                       {t.updated_at
-                        ? new Date(t.updated_at).toLocaleString("es-MX")
+                        ? formatMexicoCityDateTime(t.updated_at)
                         : "—"}
                     </p>
                   </div>

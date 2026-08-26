@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { mexicoCityTodayYmd } from "@/lib/dates";
 
 export type SnapshotCategory = {
   temp_id: string;
@@ -235,7 +236,7 @@ function parseDaily(raw: unknown): SnapshotDailyMenu {
   return {
     package_price: Number(row.package_price ?? 0),
     max_sides: Number(row.max_sides ?? 2),
-    menu_date: String(row.menu_date ?? new Date().toISOString().slice(0, 10)),
+    menu_date: String(row.menu_date ?? mexicoCityTodayYmd()),
     main_temp_ids: mains.map(String),
     side_temp_ids: sides.map(String),
   };

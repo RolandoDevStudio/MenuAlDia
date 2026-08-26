@@ -1,5 +1,6 @@
 import type { PlanType } from "@/lib/plans";
 import { PLAN_LABELS, isSubscriptionActive } from "@/lib/plans";
+import { calendarDaysUntilMexicoCity } from "@/lib/dates";
 
 /** Days after cancel/expiry when tenant may still export data. */
 export const GRACE_DAYS = 30;
@@ -79,9 +80,7 @@ export function getLifecyclePhase(restaurant: {
 }
 
 export function daysUntil(iso: string | null | undefined): number | null {
-  if (!iso) return null;
-  const ms = new Date(iso).getTime() - Date.now();
-  return Math.ceil(ms / (24 * 60 * 60 * 1000));
+  return calendarDaysUntilMexicoCity(iso);
 }
 
 export function cancelConsequencesCopy(plan: PlanType | string): string[] {

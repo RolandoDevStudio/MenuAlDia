@@ -10,10 +10,11 @@ import { buildWaMeUrl } from "@/lib/whatsapp";
 import { Button } from "@/components/ui/button";
 import { Emoji } from "@/components/ui-emoji";
 import { UI_EMOJI } from "@/lib/ui-emoji";
+import { formatMexicoCityDate } from "@/lib/dates";
 
 function formatEndDate(iso: string | null | undefined): string {
   if (!iso) return "sin fecha";
-  return new Date(iso).toLocaleDateString("es-MX", {
+  return formatMexicoCityDate(iso, {
     day: "numeric",
     month: "long",
     year: "numeric",

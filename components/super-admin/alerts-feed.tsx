@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { AppNotification } from "@/lib/notifications/types";
 import { Button } from "@/components/ui/button";
+import { formatMexicoCityDateTime } from "@/lib/dates";
 
 export function AlertsFeed() {
   const [items, setItems] = useState<AppNotification[]>([]);
@@ -75,7 +76,7 @@ export function AlertsFeed() {
                 <p className="text-xs text-muted">{n.body}</p>
               ) : null}
               <p className="text-[10px] text-muted">
-                {new Date(n.created_at).toLocaleString("es-MX")}
+                {formatMexicoCityDateTime(n.created_at)}
                 {!n.read_at ? " · nueva" : ""}
               </p>
             </li>

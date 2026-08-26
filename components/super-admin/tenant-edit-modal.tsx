@@ -35,6 +35,14 @@ import {
 } from "@/components/ui/dialog";
 import { Emoji } from "@/components/ui-emoji";
 import { UI_EMOJI } from "@/lib/ui-emoji";
+import {
+  endOfMexicoCityDay,
+  formatMexicoCityDate,
+  formatMexicoCityDateTime,
+  mexicoCityTodayYmd,
+  ymdAtMexicoCityNoonIso,
+  ymdInMexicoCity,
+} from "@/lib/dates";
 
 type Tab = "datos" | "pagos" | "cambios";
 
@@ -139,7 +147,11 @@ export function TenantEditModal({
     setIsFoundingPartner(restaurant.is_founding_partner === true);
     setInternalNotes(restaurant.internal_notes ?? "");
     setAcquisitionSource(restaurant.acquisition_source ?? "");
-    setEndDate(restaurant.subscription_end_date?.slice(0, 10) ?? "");
+    setEndDate(
+      restaurant.subscription_end_date
+        ? ymdInMexicoCity(restaurant.subscription_end_date)
+        : "",
+    );
     setEmail(ownerEmail ?? "");
     setPassword("");
     setError(null);
@@ -147,7 +159,7 @@ export function TenantEditModal({
     setAmount(
       String(planPrices[plan]?.monthly ?? FALLBACK_PLAN_PRICES[plan].monthly),
     );
-    setPaidAt(new Date().toISOString().slice(0, 10));
+    setPaidAt(mexicoCityTodayYmd());
     setMethod("transfer");
     setPayPlan(plan);
     setPeriodDays("30");
@@ -215,9 +227,7 @@ export function TenantEditModal({
       is_founding_partner: isFoundingPartner,
       internal_notes: internalNotes,
       acquisition_source: acquisitionSource,
-      subscription_end_date: endDate
-        ? new Date(endDate + "T23:59:59").toISOString()
-        : null,
+      subscription_end_date: endDate ? endOfMexicoCityDay(endDate) : null,
       owner_email: email || undefined,
     };
     if (password.trim()) body.owner_password = password.trim();
@@ -306,9 +316,7 @@ export function TenantEditModal({
       body: JSON.stringify({
         restaurant_id: restaurant.id,
         amount: Number(amount),
-        paid_at: paidAt
-          ? new Date(paidAt + "T12:00:00").toISOString()
-          : undefined,
+        paid_at: paidAt ? ymdAtMexicoCityNoonIso(paidAt) : undefined,
         method,
         plan_type: payPlan,
         period_days: Number(periodDays) || 30,
@@ -576,7 +584,7 @@ export function TenantEditModal({
                     {payments.map((p) => (
                       <tr key={p.id} className="border-t border-black/5">
                         <td className="px-2 py-2">
-                          {new Date(p.paid_at).toLocaleDateString("es-MX")}
+                          {formatMexicoCityDate(p.paid_at)}
                         </td>
                         <td className="px-2 py-2">{formatMxn(p.amount)}</td>
                         <td className="px-2 py-2">{p.method}</td>
@@ -797,7 +805,7 @@ export function TenantEditModal({
                         </td>
                         <td className="px-2 py-2">{log.actor_label}</td>
                         <td className="whitespace-nowrap px-2 py-2">
-                          {new Date(log.created_at).toLocaleString("es-MX")}
+                          {formatMexicoCityDateTime(log.created_at)}
                         </td>
                       </tr>
                     ))}

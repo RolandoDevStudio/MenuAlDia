@@ -7,6 +7,7 @@ import {
   getAnalyticsBundle,
   resolveAnalyticsRange,
 } from "@/lib/analytics-queries";
+import { endOfMexicoCityDay, startOfMexicoCityDay } from "@/lib/dates";
 
 export async function GET(request: Request) {
   const session = await getSessionRestaurant();
@@ -73,8 +74,8 @@ export async function GET(request: Request) {
   }
 
   if (type === "coupons") {
-    const startIso = `${from}T00:00:00.000Z`;
-    const endIso = `${to}T23:59:59.999Z`;
+    const startIso = startOfMexicoCityDay(from);
+    const endIso = endOfMexicoCityDay(to);
     const { data } = await supabase
       .from("tenant_coupon_redemptions")
       .select(

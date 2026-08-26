@@ -7,6 +7,7 @@ import {
 } from "@/lib/plans";
 import { isCanonicalDemoSlug } from "@/lib/canonical-demos";
 import type { Restaurant } from "@/lib/types";
+import { addCalendarDaysYmd, mexicoCityTodayYmd } from "@/lib/dates";
 import {
   ACQUISITION_SOURCES,
   buildOnboardingWaMessage,
@@ -49,6 +50,7 @@ export async function loadSuperAdminCrm(): Promise<CrmPayload> {
   const d7 = nowMs + 7 * DAY_MS;
   const d30 = new Date(nowMs - 30 * DAY_MS);
   const d30Iso = d30.toISOString();
+  const viewDateFrom = addCalendarDaysYmd(mexicoCityTodayYmd(now), -30);
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
   const [
@@ -79,11 +81,11 @@ export async function loadSuperAdminCrm(): Promise<CrmPayload> {
     supabase
       .from("menu_view_days")
       .select("restaurant_id, views, view_date")
-      .gte("view_date", d30.toISOString().slice(0, 10)),
+      .gte("view_date", viewDateFrom),
     supabase
       .from("wa_click_days")
       .select("restaurant_id, clicks, view_date")
-      .gte("view_date", d30.toISOString().slice(0, 10)),
+      .gte("view_date", viewDateFrom),
     supabase
       .from("order_logs")
       .select("restaurant_id, payload, created_at")

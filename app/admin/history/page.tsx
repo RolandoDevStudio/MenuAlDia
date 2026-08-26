@@ -5,6 +5,7 @@ import { PLAN_LABELS } from "@/lib/plans";
 import type { AuditLog, PlanType, TenantPayment } from "@/lib/types";
 import { Emoji } from "@/components/ui-emoji";
 import { UI_EMOJI } from "@/lib/ui-emoji";
+import { formatMexicoCityDateTime } from "@/lib/dates";
 
 const METHOD_LABELS: Record<TenantPayment["method"], string> = {
   transfer: "Transferencia",
@@ -69,7 +70,7 @@ export default async function HistoryPage() {
                     {log.summary || log.action || "Cambio"}
                   </p>
                   <p className="shrink-0 text-xs text-muted">
-                    {new Date(log.created_at).toLocaleString("es-MX")}
+                    {formatMexicoCityDateTime(log.created_at)}
                   </p>
                 </div>
                 {log.actor_label ? (
@@ -112,7 +113,7 @@ export default async function HistoryPage() {
                   </p>
                 </div>
                 <p className="mt-1 text-xs text-muted">
-                  {new Date(p.paid_at).toLocaleString("es-MX")} ·{" "}
+                  {formatMexicoCityDateTime(p.paid_at)} ·{" "}
                   {METHOD_LABELS[p.method] ?? p.method} · {p.period_days} días
                   {p.coupon_code
                     ? ` · Campaña ${p.coupon_code}${

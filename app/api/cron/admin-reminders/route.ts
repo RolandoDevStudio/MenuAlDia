@@ -6,6 +6,7 @@ import {
 } from "@/lib/notifications/emit";
 import { can } from "@/lib/plans";
 import { mexicoCityTodayYmd } from "@/lib/dates";
+import { daysUntil } from "@/lib/subscription-lifecycle";
 
 function authorized(request: Request) {
   const secret = process.env.CRON_SECRET?.trim();
@@ -91,7 +92,7 @@ export async function POST(request: Request) {
       if (recent) {
         skipped += 1;
       } else {
-        const days = Math.ceil((end - Date.now()) / (24 * 60 * 60 * 1000));
+        const days = daysUntil(r.subscription_end_date) ?? 0;
         await emitTenantNotification({
           restaurantId: r.id,
           type: "reminder_subscription",

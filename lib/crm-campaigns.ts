@@ -1,5 +1,6 @@
 import type { Customer } from "@/lib/types";
 import { buildWaMeUrl } from "@/lib/whatsapp";
+import { addCalendarDaysYmd, mexicoCityTodayYmd } from "@/lib/dates";
 
 export type CampaignFilter = "all" | "inactive" | "birthday" | "risk";
 
@@ -29,29 +30,13 @@ export function isBirthdayWithinDays(
   now = new Date(),
 ): boolean {
   if (!birthday) return false;
-  const b = new Date(birthday + "T12:00:00");
-  const thisYear = new Date(
-    now.getFullYear(),
-    b.getMonth(),
-    b.getDate(),
-    12,
-    0,
-    0,
-  );
-  let next = thisYear;
-  const startOfToday = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-    0,
-    0,
-    0,
-  );
-  if (next.getTime() < startOfToday.getTime()) {
-    next = new Date(now.getFullYear() + 1, b.getMonth(), b.getDate(), 12, 0, 0);
+  const mmdd = birthday.trim().slice(0, 10).slice(5);
+  if (!/^\d{2}-\d{2}$/.test(mmdd)) return false;
+  const today = mexicoCityTodayYmd(now);
+  for (let i = 0; i <= withinDays; i++) {
+    if (addCalendarDaysYmd(today, i).slice(5) === mmdd) return true;
   }
-  const diff = Math.floor((next.getTime() - startOfToday.getTime()) / DAY_MS);
-  return diff >= 0 && diff <= withinDays;
+  return false;
 }
 
 export function isInactive30d(c: Customer, now = Date.now()): boolean {

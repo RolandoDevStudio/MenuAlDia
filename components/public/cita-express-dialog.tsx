@@ -21,6 +21,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import {
+  addCalendarDaysYmd,
+  formatMexicoCityDate,
+  mexicoCityTodayYmd,
+  ymdAtMexicoCityNoonIso,
+} from "@/lib/dates";
 
 export type CitaServiceLine = {
   name: string;
@@ -42,8 +48,7 @@ type Props = {
 
 function formatDateLabel(isoDate: string) {
   if (!isoDate) return "";
-  const d = new Date(isoDate + "T12:00:00");
-  return d.toLocaleDateString("es-MX", {
+  return formatMexicoCityDate(ymdAtMexicoCityNoonIso(isoDate), {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -72,11 +77,10 @@ export function CitaExpressDialog({
   planType,
   onBooked,
 }: Props) {
-  const tomorrow = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    return d.toISOString().slice(0, 10);
-  }, []);
+  const tomorrow = useMemo(
+    () => addCalendarDaysYmd(mexicoCityTodayYmd(), 1),
+    [],
+  );
 
   const [date, setDate] = useState(tomorrow);
   const [time, setTime] = useState("16:00");
@@ -251,7 +255,7 @@ export function CitaExpressDialog({
                   id="cita-date"
                   type="date"
                   value={date}
-                  min={new Date().toISOString().slice(0, 10)}
+                  min={mexicoCityTodayYmd()}
                   onChange={(e) => setDate(e.target.value)}
                 />
               </div>

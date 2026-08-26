@@ -22,6 +22,10 @@ import { RemindPaymentButton } from "@/components/super-admin/remind-payment-but
 import { Emoji } from "@/components/ui-emoji";
 import { UI_EMOJI } from "@/lib/ui-emoji";
 import { cn } from "@/lib/utils";
+import {
+  calendarDaysUntilMexicoCity,
+  formatMexicoCityDate,
+} from "@/lib/dates";
 
 const PLAN_SHORT: Record<PlanType, string> = {
   catalog: "Catálogo",
@@ -41,14 +45,13 @@ function hasInternalNotes(r: Restaurant) {
 
 function expiryMeta(iso: string | null | undefined) {
   if (!iso) return { label: "—", tone: "muted" as const };
-  const end = new Date(iso);
-  const label = end.toLocaleDateString("es-MX", {
+  const label = formatMexicoCityDate(iso, {
     day: "numeric",
     month: "short",
     year: "2-digit",
   });
-  const days = Math.ceil((end.getTime() - Date.now()) / (24 * 60 * 60 * 1000));
-  if (days < 0) return { label, tone: "danger" as const };
+  const days = calendarDaysUntilMexicoCity(iso);
+  if (days == null || days < 0) return { label, tone: "danger" as const };
   if (days <= 7) return { label, tone: "warn" as const };
   return { label, tone: "ok" as const };
 }

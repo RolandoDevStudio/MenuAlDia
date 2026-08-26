@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { can, type PlanType } from "@/lib/plans";
 import { daysUntil } from "@/lib/subscription-lifecycle";
+import { mexicoCityTodayYmd } from "@/lib/dates";
 
 export type AdminOpsStats = {
   planType: PlanType | string;
@@ -12,22 +13,13 @@ export type AdminOpsStats = {
   activeCoupons: number;
 };
 
-function todayCdmxYmd(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Mexico_City",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-}
-
 export async function getAdminOpsStats(
   restaurantId: string,
   planType: PlanType | string,
   subscriptionEndDate: string | null | undefined,
 ): Promise<AdminOpsStats> {
   const supabase = await createClient();
-  const today = todayCdmxYmd();
+  const today = mexicoCityTodayYmd();
 
   const [
     { data: selection },

@@ -6,6 +6,7 @@ import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { AppNotification } from "@/lib/notifications/types";
+import { formatMexicoCityDateTime } from "@/lib/dates";
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -176,7 +177,7 @@ export function NotificationBell() {
                       </p>
                     ) : null}
                     <p className="mt-0.5 text-[10px] text-muted">
-                      {new Date(n.created_at).toLocaleString("es-MX")}
+                      {formatMexicoCityDateTime(n.created_at)}
                     </p>
                   </Link>
                 </li>

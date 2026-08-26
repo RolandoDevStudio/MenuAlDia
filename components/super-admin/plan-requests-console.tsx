@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { PLAN_LABELS, type PlanType } from "@/lib/plans";
 import { Button } from "@/components/ui/button";
+import { formatMexicoCityDateTime } from "@/lib/dates";
 import { Emoji } from "@/components/ui-emoji";
 import { UI_EMOJI } from "@/lib/ui-emoji";
 
@@ -174,7 +175,7 @@ export function PlanRequestsConsole() {
                       </Link>
                     </p>
                     <p className="text-xs text-muted">
-                      {new Date(r.created_at).toLocaleString("es-MX")} ·{" "}
+                      {formatMexicoCityDateTime(r.created_at)} ·{" "}
                       {r.request_type === "cancel"
                         ? "Cancelación"
                         : `Cambio → ${PLAN_LABELS[(r.to_plan as PlanType) || "catalog"] ?? r.to_plan}`}{" "}

@@ -1,20 +1,37 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { PLAN_LABELS, type PlanType } from "@/lib/plans";
 import {
   cancelConsequencesCopy,
   changePlanConsequencesCopy,
+  daysUntil,
+  getLifecyclePhase,
   type PlanChangeRequest,
 } from "@/lib/subscription-lifecycle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { formatMexicoCityDate } from "@/lib/dates";
+import { cn } from "@/lib/utils";
+
+function daysLabel(n: number): string {
+  return n === 1 ? "1 día" : `${n} días`;
+}
 
 export function PlanRequestPanel({
   currentPlan,
+  subscriptionEndDate,
+  isActive,
+  graceEndsAt,
+  purgeScheduledAt,
 }: {
   currentPlan: PlanType;
+  subscriptionEndDate?: string | null;
+  isActive?: boolean;
+  graceEndsAt?: string | null;
+  purgeScheduledAt?: string | null;
 }) {
   const [requests, setRequests] = useState<PlanChangeRequest[]>([]);
   const [mode, setMode] = useState<"idle" | "cancel" | "change_plan">("idle");
@@ -41,6 +58,36 @@ export function PlanRequestPanel({
   }, [load]);
 
   const pending = requests.find((r) => r.status === "pending");
+  const phase = getLifecyclePhase({
+    is_active: isActive,
+    subscription_end_date: subscriptionEndDate,
+    grace_ends_at: graceEndsAt,
+    purge_scheduled_at: purgeScheduledAt,
+  });
+  const daysLeft = daysUntil(subscriptionEndDate);
+  const graceDaysLeft = daysUntil(graceEndsAt);
+  const vigenteHasta = subscriptionEndDate
+    ? formatMexicoCityDate(subscriptionEndDate, {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      })
+    : null;
+  let statusLine = "Sin fecha de vigencia";
+  if (phase === "active") {
+    if (daysLeft == null) statusLine = "Activo";
+    else if (daysLeft < 0) statusLine = "Vencido · menú público oculto";
+    else if (daysLeft === 0) statusLine = "Vence hoy";
+    else statusLine = `Activo · ${daysLabel(daysLeft)}`;
+  } else if (phase === "expired_grace") {
+    statusLine = "Vencido · menú público oculto";
+  } else if (phase === "expired_pre_purge" || phase === "purge_due") {
+    statusLine = "Vencido · exporta tus datos pronto";
+  } else if (phase === "purged") {
+    statusLine = "Cuenta en proceso de baja";
+  }
+  const warn =
+    phase !== "active" || (daysLeft != null && daysLeft <= 7);
 
   const consequences =
     mode === "cancel"
@@ -110,8 +157,48 @@ export function PlanRequestPanel({
       <div>
         <h2 className="text-sm font-semibold">Plan y suscripción</h2>
         <p className="mt-1 text-xs text-muted">
-          Plan actual: {PLAN_LABELS[currentPlan]}. Los cambios requieren
-          aprobación de soporte.
+          Los cambios de plan requieren aprobación de soporte.
+        </p>
+      </div>
+
+      <div
+        className={cn(
+          "rounded-lg px-3 py-2.5 text-xs",
+          warn
+            ? "bg-amber-50 text-amber-950"
+            : "border border-black/5 bg-background text-foreground",
+        )}
+      >
+        <p>
+          <span className="text-muted">Plan</span>{" "}
+          <span className="font-semibold">{PLAN_LABELS[currentPlan]}</span>
+        </p>
+        <p className="mt-1">
+          <span className="text-muted">Vigente hasta</span>{" "}
+          <span className="font-semibold">{vigenteHasta ?? "Sin fecha"}</span>
+        </p>
+        <p className="mt-1 font-medium">{statusLine}</p>
+        {phase === "expired_grace" && graceEndsAt ? (
+          <p className="mt-1 text-amber-900">
+            {graceDaysLeft != null && graceDaysLeft > 0
+              ? `Tienes ${daysLabel(graceDaysLeft)} de gracia para exportar (hasta ${formatMexicoCityDate(graceEndsAt, { day: "numeric", month: "long" })}).`
+              : "Estás en periodo de gracia: exporta tus datos pronto."}{" "}
+            Renueva con el SPEI de abajo o contacta a soporte.
+          </p>
+        ) : null}
+        {phase === "expired_pre_purge" || phase === "purge_due" ? (
+          <p className="mt-1 text-amber-900">
+            El periodo de gracia terminó. Renueva con soporte o exporta lo que
+            puedas.
+          </p>
+        ) : null}
+        <p className="mt-2">
+          <Link
+            href="/admin/history"
+            className="font-medium text-brand underline-offset-2 hover:underline"
+          >
+            Ver pagos
+          </Link>
         </p>
       </div>
 
@@ -244,7 +331,7 @@ export function PlanRequestPanel({
           <ul className="mt-1 space-y-1 text-[11px] text-muted">
             {requests.slice(0, 5).map((r) => (
               <li key={r.id}>
-                {new Date(r.created_at).toLocaleDateString("es-MX")} ·{" "}
+                {formatMexicoCityDate(r.created_at)} ·{" "}
                 {r.request_type === "cancel" ? "Cancelar" : "Cambio"} ·{" "}
                 {r.status}
               </li>

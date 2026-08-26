@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Emoji } from "@/components/ui-emoji";
 import { UI_EMOJI } from "@/lib/ui-emoji";
+import { formatMexicoCityDate } from "@/lib/dates";
 
 type PaymentRow = {
   id: string;
@@ -326,7 +327,7 @@ export function FinanceConsole() {
                     className={`border-t border-black/5 ${voided ? "opacity-60" : ""}`}
                   >
                     <td className="px-3 py-2 whitespace-nowrap">
-                      {new Date(p.paid_at).toLocaleDateString("es-MX")}
+                      {formatMexicoCityDate(p.paid_at)}
                     </td>
                     <td className="px-3 py-2">
                       <Link

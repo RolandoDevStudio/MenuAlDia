@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Emoji } from "@/components/ui-emoji";
 import { UI_EMOJI } from "@/lib/ui-emoji";
+import { mexicoCityTodayYmd } from "@/lib/dates";
 
 type PricingMode = "package" | "individual";
 
@@ -166,7 +167,7 @@ export function DailyMenuToggles({
         package_price: Number(packagePrice) || 0,
         max_sides: Number(maxSides) || 1,
         pricing_mode: pricingMode,
-        menu_date: new Date().toISOString().slice(0, 10),
+        menu_date: mexicoCityTodayYmd(),
       })
       .eq("id", dailyMenuId)
       .eq("restaurant_id", restaurantId);

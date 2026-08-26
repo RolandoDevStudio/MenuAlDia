@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { AlertsFeed } from "@/components/super-admin/alerts-feed";
 import { Emoji } from "@/components/ui-emoji";
 import { UI_EMOJI } from "@/lib/ui-emoji";
+import { formatMexicoCityDate } from "@/lib/dates";
 
 export default async function SuperAdminHomePage() {
   await requireSuperAdmin();
@@ -168,7 +169,7 @@ export default async function SuperAdminHomePage() {
                 [
                   `Hola${r.name ? ` — ${r.name}` : ""}`,
                   `Te contacto por MenuAlDía (/${r.slug}).`,
-                  `Tu suscripción vence el ${new Date(r.subscription_end_date).toLocaleDateString("es-MX")}.`,
+                  `Tu suscripción vence el ${formatMexicoCityDate(r.subscription_end_date)}.`,
                   "¿Confirmamos la renovación?",
                 ].join("\n"),
               );
@@ -181,9 +182,7 @@ export default async function SuperAdminHomePage() {
                     {r.name}{" "}
                     <span className="text-muted">/{r.slug}</span>
                     <span className="ml-2 text-xs text-muted">
-                      {new Date(r.subscription_end_date).toLocaleDateString(
-                        "es-MX",
-                      )}
+                      {formatMexicoCityDate(r.subscription_end_date)}
                     </span>
                   </span>
                   <a

@@ -1,5 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
-import { mexicoCityTodayYmd } from "@/lib/dates";
+import {
+  endOfMexicoCityDay,
+  mexicoCityTodayYmd,
+  startOfMexicoCityDay,
+  ymdInMexicoCity,
+} from "@/lib/dates";
 
 export type AnalyticsSeriesPoint = {
   date: string;
@@ -107,20 +112,10 @@ export function resolveAnalyticsRange(
 }
 
 function dayBoundsUtc(fromYmd: string, toYmd: string): { startIso: string; endIso: string } {
-  // CDMX is UTC-6 (or -5 DST); use generous UTC window around calendar days
   return {
-    startIso: `${fromYmd}T00:00:00.000Z`,
-    endIso: `${toYmd}T23:59:59.999Z`,
+    startIso: startOfMexicoCityDay(fromYmd),
+    endIso: endOfMexicoCityDay(toYmd),
   };
-}
-
-function cdmxYmdFromIso(iso: string): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Mexico_City",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(iso));
 }
 
 export async function getAnalyticsBundle(
@@ -208,7 +203,7 @@ export async function getAnalyticsBundle(
 
   const ordersByDay = new Map<string, number>();
   for (const r of logsRes.data ?? []) {
-    const day = cdmxYmdFromIso(r.created_at);
+    const day = ymdInMexicoCity(r.created_at);
     if (day < from || day > to) continue;
     ordersByDay.set(day, (ordersByDay.get(day) ?? 0) + 1);
   }

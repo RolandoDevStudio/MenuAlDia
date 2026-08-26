@@ -6,6 +6,7 @@ import { Copy, Download, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { FLYER_ASPECT_SIZE, type FlyerAspect } from "@/lib/flyer-types";
+import { mexicoCityTodayYmd } from "@/lib/dates";
 
 export type FlyerExportAction = "download" | "share" | "copy";
 
@@ -93,7 +94,7 @@ export function FlyerExportButton({
   }
 
   function filename() {
-    const date = new Date().toISOString().slice(0, 10);
+    const date = mexicoCityTodayYmd();
     return `especiales-${slug}-${date}.png`;
   }
 

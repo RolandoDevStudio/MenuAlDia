@@ -7,6 +7,7 @@ import { formatMxn } from "@/lib/money";
 import type { Order, OrderLogPayload } from "@/lib/types";
 import { Emoji } from "@/components/ui-emoji";
 import { UI_EMOJI } from "@/lib/ui-emoji";
+import { formatMexicoCityDateTime } from "@/lib/dates";
 
 function customerName(p: OrderLogPayload) {
   return p.customer_name || p.customerName || "Cliente";
@@ -76,7 +77,7 @@ export default async function OrdersPage() {
                   </p>
                 </div>
                 <p className="mt-1 text-xs text-muted">
-                  {new Date(o.created_at).toLocaleString("es-MX")} · {o.status}
+                  {formatMexicoCityDateTime(o.created_at)} · {o.status}
                 </p>
                 {payload.address ? (
                   <p className="mt-1 text-xs text-muted">{payload.address}</p>

@@ -40,6 +40,7 @@ import { Emoji } from "@/components/ui-emoji";
 import { UI_EMOJI } from "@/lib/ui-emoji";
 import { labelsFor } from "@/lib/business-labels";
 import { formatMxn } from "@/lib/money";
+import { formatMexicoCityDate, ymdInMexicoCity } from "@/lib/dates";
 
 type LibraryFlyer = {
   id: string;
@@ -295,7 +296,7 @@ export function FlyerStudio({
         : blob.type.includes("jpeg")
           ? "jpg"
           : "png";
-      const date = f.created_at.slice(0, 10);
+      const date = ymdInMexicoCity(f.created_at) || f.created_at.slice(0, 10);
       const base = (f.headline || f.title || "flyer")
         .toLowerCase()
         .replace(/[^a-z0-9áéíóúñü]+/gi, "-")
@@ -682,7 +683,7 @@ export function FlyerStudio({
                 </p>
                 <p className="text-xs text-muted">
                   {f.weekday_label} ·{" "}
-                  {new Date(f.created_at).toLocaleDateString("es-MX")}
+                  {formatMexicoCityDate(f.created_at)}
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-0.5">

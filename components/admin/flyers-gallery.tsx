@@ -13,6 +13,11 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Emoji } from "@/components/ui-emoji";
 import { UI_EMOJI } from "@/lib/ui-emoji";
+import {
+  endOfMexicoCityDay,
+  formatMexicoCityDate,
+  ymdInMexicoCity,
+} from "@/lib/dates";
 
 type FlyerRow = {
   id: string;
@@ -240,7 +245,7 @@ export function FlyersGallery({
                 />
                 <p className="text-[11px] text-muted">
                   {f.source === "upload" ? "Subido" : "Studio"} ·{" "}
-                  {new Date(f.created_at).toLocaleDateString("es-MX")}
+                  {formatMexicoCityDate(f.created_at)}
                 </p>
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="flex items-center gap-2 text-xs">
@@ -255,11 +260,11 @@ export function FlyersGallery({
                   <Input
                     type="date"
                     className="h-9 w-auto text-xs"
-                    value={f.expires_at ? f.expires_at.slice(0, 10) : ""}
+                    value={f.expires_at ? ymdInMexicoCity(f.expires_at) : ""}
                     onChange={(e) =>
                       void patch(f.id, {
                         expires_at: e.target.value
-                          ? `${e.target.value}T23:59:59.999-06:00`
+                          ? endOfMexicoCityDay(e.target.value)
                           : null,
                       })
                     }

@@ -6,6 +6,7 @@ import {
   INVOICE_STATUS_LABELS,
   resolveInvoiceStatus,
 } from "@/lib/finance-invoice";
+import { formatMexicoCityDate } from "@/lib/dates";
 
 function csvCell(v: unknown) {
   const s = String(v ?? "");
@@ -74,7 +75,7 @@ export async function GET(request: Request) {
       const needs = status === "global" ? "No" : "Sí";
       const rfc = status === "global" ? "XAXX010101000" : "";
       return [
-        new Date(p.paid_at).toLocaleDateString("es-MX"),
+        formatMexicoCityDate(p.paid_at),
         csvCell(r?.name),
         csvCell(r?.slug),
         csvCell(r?.owner_name),
