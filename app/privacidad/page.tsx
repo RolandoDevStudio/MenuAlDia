@@ -5,10 +5,32 @@ import {
   LEGAL_SUPPORT_EMAIL,
 } from "@/lib/constants/legal";
 
-export default function PrivacidadPage() {
+function menuSlugFromQuery(raw?: string): string | null {
+  if (!raw) return null;
+  const slug = raw.trim();
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(slug)) return null;
+  return slug;
+}
+
+export default async function PrivacidadPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string }>;
+}) {
+  const sp = await searchParams;
+  const fromSlug = menuSlugFromQuery(sp.from);
+
   return (
     <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
       <BrandLogo variant="lockup" size="sm" href="/" />
+      {fromSlug ? (
+        <Link
+          href={`/${fromSlug}`}
+          className="mt-6 inline-flex min-h-11 items-center justify-center rounded-lg bg-brand px-4 text-sm font-semibold text-white hover:bg-brand-dark"
+        >
+          Volver al menú
+        </Link>
+      ) : null}
       <article className="mt-8 space-y-8 text-sm leading-relaxed text-foreground">
         <header className="space-y-2">
           <h1 className="font-[family-name:var(--font-display)] text-4xl text-brand-dark">
@@ -340,12 +362,21 @@ export default function PrivacidadPage() {
         </p>
       </article>
 
-      <Link
-        href="/"
-        className="mt-8 inline-block text-sm font-semibold text-brand"
-      >
-        Volver al inicio
-      </Link>
+      {fromSlug ? (
+        <Link
+          href={`/${fromSlug}`}
+          className="mt-8 inline-flex min-h-11 items-center justify-center rounded-lg bg-brand px-4 text-sm font-semibold text-white hover:bg-brand-dark"
+        >
+          Volver al menú
+        </Link>
+      ) : (
+        <Link
+          href="/"
+          className="mt-8 inline-block text-sm font-semibold text-brand"
+        >
+          Volver al inicio
+        </Link>
+      )}
     </main>
   );
 }

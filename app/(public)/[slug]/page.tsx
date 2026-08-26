@@ -232,6 +232,7 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
               photoFrame={theme.photoFrame}
               dailyMenuLabel={labels.dailyMenu}
               sidesLabel={labels.sides}
+              sideLabel={labels.side}
               dishesLabel={labels.dishes}
               dishLabel={labels.dish}
               businessType={data.restaurant.business_type}
@@ -262,7 +263,7 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
           <PoweredByMenuAlDia />
         ) : null}
         <Link
-          href="/privacidad"
+          href={`/privacidad?from=${encodeURIComponent(slug)}`}
           className="text-[11px] text-muted hover:text-brand"
         >
           Aviso de privacidad

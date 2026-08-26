@@ -10,6 +10,7 @@ type Props = {
   value: string[];
   onChange: (ids: string[]) => void;
   sidesLabel?: string;
+  sideLabel?: string;
 };
 
 export function SideChecklist({
@@ -18,8 +19,10 @@ export function SideChecklist({
   value,
   onChange,
   sidesLabel = "Guarniciones",
+  sideLabel = "Guarnición",
 }: Props) {
   const atMax = value.length >= maxSides;
+  const countWord = (maxSides === 1 ? sideLabel : sidesLabel).toLowerCase();
 
   function toggle(id: string, on: boolean) {
     if (on) {
@@ -35,17 +38,20 @@ export function SideChecklist({
       <p className="text-sm font-semibold">
         {sidesLabel}{" "}
         <span className="font-normal text-muted">
-          (elige hasta {maxSides}
+          (elige hasta {maxSides} {countWord}
           {value.length > 0 ? ` · ${value.length}/${maxSides}` : ""})
         </span>
       </p>
       {atMax ? (
         <p className="mt-1 text-xs text-brand-dark" role="status">
-          Máximo {maxSides} {sidesLabel.toLowerCase()}. Desmarca una para cambiar.
+          Máximo {maxSides} {countWord}.{" "}
+          {maxSides === 1
+            ? "Desmarca para cambiar."
+            : "Desmarca una para cambiar."}
         </p>
       ) : (
         <p className="mt-1 text-xs text-muted">
-          Opcional — puedes elegir hasta {maxSides}.
+          Opcional — puedes elegir hasta {maxSides} {countWord}.
         </p>
       )}
       <ul className="mt-2 space-y-2">
@@ -65,7 +71,9 @@ export function SideChecklist({
                   disabled={disabled}
                   onCheckedChange={(v) => toggle(side.id, v === true)}
                 />
-                <span className={cn("text-sm font-medium", disabled && "text-muted")}>
+                <span
+                  className={cn("text-sm font-medium", disabled && "text-muted")}
+                >
                   {side.name}
                 </span>
               </label>

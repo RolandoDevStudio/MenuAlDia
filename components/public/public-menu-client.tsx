@@ -220,11 +220,14 @@ export function PublicMenuClient({
 
   useEffect(() => {
     if (!activeCat) return;
-    pillBtnRefs.current.get(activeCat)?.scrollIntoView({
-      inline: "center",
-      block: "nearest",
-      behavior: "smooth",
-    });
+    const pill = pillBtnRefs.current.get(activeCat);
+    const bar = pillsRef.current;
+    if (!pill || !bar) return;
+    const barRect = bar.getBoundingClientRect();
+    const pr = pill.getBoundingClientRect();
+    const delta =
+      pr.left + pr.width / 2 - (barRect.left + barRect.width / 2);
+    bar.scrollBy({ left: delta, behavior: "smooth" });
   }, [activeCat]);
 
   function clearQuery() {
