@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   getPublicMenuBySlug,
@@ -28,6 +29,7 @@ import {
   publicClosedMessage,
 } from "@/lib/store-hours";
 import { isCanonicalDemoSlug } from "@/lib/canonical-demos";
+import { ogImageUrl } from "@/lib/site-url";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -57,11 +59,9 @@ export async function generateMetadata({
         .join(", ");
       const title = `🔥 ${combo.title} — ${restaurant.name}`;
       const description = `Incluye: ${includes}. ¡Solo ${formatMxn(price)} MXN!`;
-      const image =
-        combo.photo_url ||
-        theme.bannerUrl ||
-        restaurant.logo_url ||
-        undefined;
+      const image = ogImageUrl(
+        combo.photo_url || theme.bannerUrl || restaurant.logo_url,
+      );
       return {
         title,
         description,
@@ -69,14 +69,14 @@ export async function generateMetadata({
           title,
           description,
           siteName,
-          images: image ? [{ url: image }] : undefined,
+          images: [{ url: image }],
           type: "website",
         },
         twitter: {
           card: "summary_large_image",
           title,
           description,
-          images: image ? [image] : undefined,
+          images: [image],
         },
       };
     }
@@ -92,11 +92,9 @@ export async function generateMetadata({
       ]
         .filter(Boolean)
         .join(" · ");
-      const image =
-        dish.photo_url ||
-        theme.bannerUrl ||
-        restaurant.logo_url ||
-        undefined;
+      const image = ogImageUrl(
+        dish.photo_url || theme.bannerUrl || restaurant.logo_url,
+      );
       return {
         title,
         description,
@@ -104,14 +102,14 @@ export async function generateMetadata({
           title,
           description,
           siteName,
-          images: image ? [{ url: image }] : undefined,
+          images: [{ url: image }],
           type: "website",
         },
         twitter: {
           card: "summary_large_image",
           title,
           description,
-          images: image ? [image] : undefined,
+          images: [image],
         },
       };
     }
@@ -119,8 +117,7 @@ export async function generateMetadata({
 
   const title = `${restaurant.name} — ${siteName}`;
   const description = restaurant.slogan || "Menú digital y pedidos por WhatsApp";
-  const image =
-    theme.bannerUrl || restaurant.logo_url || undefined;
+  const image = ogImageUrl(theme.bannerUrl || restaurant.logo_url);
 
   return {
     title,
@@ -129,8 +126,14 @@ export async function generateMetadata({
       title,
       description,
       siteName,
-      images: image ? [{ url: image }] : undefined,
+      images: [{ url: image }],
       type: "website",
+    },
+    twitter: {
+      card: "summary",
+      title,
+      description,
+      images: [image],
     },
   };
 }
@@ -253,10 +256,16 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
         </>
       )}
       {menuEmpty && faqs.length > 0 ? <MenuFaqs faqs={faqs} /> : null}
-      <div className="mx-auto max-w-lg px-4 pb-4 pt-2 text-center">
+      <div className="mx-auto flex max-w-lg flex-wrap items-center justify-center gap-x-4 gap-y-1 px-4 pb-4 pt-2 text-center">
         {data.restaurant.show_powered_by !== false ? (
           <PoweredByMenuAlDia />
         ) : null}
+        <Link
+          href="/privacidad"
+          className="text-[11px] text-muted hover:text-brand"
+        >
+          Aviso de privacidad
+        </Link>
       </div>
       {!menuEmpty ? (
         <>

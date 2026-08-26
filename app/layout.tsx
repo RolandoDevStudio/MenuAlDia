@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { DM_Sans, Bebas_Neue, Plus_Jakarta_Sans } from "next/font/google";
+import { BRAND_OG_IMAGE, getAppOrigin } from "@/lib/site-url";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -21,6 +22,7 @@ const plusJakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(getAppOrigin()),
   title: "Menú al Día",
   description:
     "Actualiza tu menú del día en 2 minutos, genera flyers para WhatsApp y recibe pedidos sin comisiones.",
@@ -50,6 +52,12 @@ export const metadata: Metadata = {
         type: "image/png",
       },
     ],
+  },
+  openGraph: {
+    siteName: "Menú al Día",
+    locale: "es_MX",
+    type: "website",
+    images: [{ url: BRAND_OG_IMAGE, width: 512, height: 512 }],
   },
 };
 

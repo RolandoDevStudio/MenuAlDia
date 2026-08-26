@@ -523,7 +523,7 @@ export default function HomePage() {
               href="/privacidad"
               className="transition-colors hover:text-brand"
             >
-              Privacidad
+              Aviso de Privacidad
             </Link>
             <Link
               href="/terminos"

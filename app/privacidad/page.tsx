@@ -17,6 +17,23 @@ export default function PrivacidadPage() {
           <p className="text-lg font-semibold text-muted">Menú al Día</p>
         </header>
 
+        <aside className="rounded-2xl border border-black/10 bg-surface px-4 py-3">
+          <p className="text-sm font-semibold text-brand-dark">
+            Qué hay de nuevo en v1.1
+          </p>
+          <p className="mt-1 text-sm text-muted">
+            Aclaramos el uso de cookies y almacenamiento local en el Sitio Web y
+            en los menús públicos (carrito, sesión y medición anónima).{" "}
+            <a
+              href="#cookies"
+              className="font-semibold text-brand underline-offset-2 hover:underline"
+            >
+              Ver sección 6
+            </a>
+            .
+          </p>
+        </aside>
+
         <section className="space-y-3">
           <h2 className="text-lg font-semibold text-brand-dark">
             1. Identidad y domicilio del responsable
@@ -245,9 +262,12 @@ export default function PrivacidadPage() {
           </p>
         </section>
 
-        <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-brand-dark">
-            6. Uso de cookies, beacons y tecnologías de rastreo
+        <section className="space-y-3" id="cookies">
+          <h2 className="scroll-mt-4 text-lg font-semibold text-brand-dark">
+            6. Uso de cookies, beacons y tecnologías de rastreo{" "}
+            <span className="ml-1 inline-block rounded-md bg-amber-100 px-1.5 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wide text-amber-950">
+              Actualizado
+            </span>
           </h2>
           <p>
             Le informamos que en nuestro Sitio Web y en el panel de
@@ -264,6 +284,14 @@ export default function PrivacidadPage() {
             cuenta que la desactivación de cookies esenciales puede limitar o
             impedir el funcionamiento del panel de administración de la
             plataforma.
+          </p>
+          <p>
+            Menú al Día utiliza tecnologías de almacenamiento local (cookies y
+            localStorage) con el único fin de permitir el funcionamiento del
+            carrito de compras, la gestión de sesiones activas y la medición
+            anónima del rendimiento de la plataforma. En la landing puede
+            usarse sessionStorage para no contar de más una misma visita en la
+            pestaña.
           </p>
         </section>
 
