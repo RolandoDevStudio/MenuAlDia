@@ -7,8 +7,13 @@ import type { Customer } from "@/lib/types";
 import { Emoji } from "@/components/ui-emoji";
 import { UI_EMOJI } from "@/lib/ui-emoji";
 
-export default async function CustomersPage() {
+export default async function CustomersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ id?: string }>;
+}) {
   const session = await requireTenantSession();
+  const sp = await searchParams;
   const plan = session.restaurant.plan_type || "catalog";
   if (!can(plan, "crm")) {
     return (
@@ -64,6 +69,7 @@ export default async function CustomersPage() {
         restaurantId={session.restaurant.id}
         restaurantName={session.restaurant.name}
         initialCustomers={customers}
+        initialSelectedId={sp.id ?? null}
         loyaltyGoal={Number(session.restaurant.loyalty_goal ?? 10)}
         loyaltyRewardLabel={
           session.restaurant.loyalty_reward_label || "Recompensa gratis"

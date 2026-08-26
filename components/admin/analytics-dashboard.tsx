@@ -181,8 +181,9 @@ export function AnalyticsDashboard() {
               value={String(data.kpis.waClicks)}
             />
             <Kpi
-              label="Pedidos / envíos"
+              label="Pedidos"
               value={String(data.kpis.orders)}
+              hint={`${data.kpis.ordersPickup} rec · ${data.kpis.ordersDelivery} env · ${data.kpis.ordersDineIn} comedor`}
             />
             <div className="rounded-2xl border border-black/5 bg-surface p-4">
               <p className="text-xs text-muted">Conversión estimada</p>
@@ -366,11 +367,22 @@ export function AnalyticsDashboard() {
   );
 }
 
-function Kpi({ label, value }: { label: string; value: string }) {
+function Kpi({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+}) {
   return (
     <div className="rounded-2xl border border-black/5 bg-surface p-4">
       <p className="text-xs text-muted">{label}</p>
       <p className="mt-1 truncate text-xl font-semibold">{value}</p>
+      {hint ? (
+        <p className="mt-1 text-[11px] leading-snug text-muted">{hint}</p>
+      ) : null}
     </div>
   );
 }

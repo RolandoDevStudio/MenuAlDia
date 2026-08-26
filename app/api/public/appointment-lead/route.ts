@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { can } from "@/lib/plans";
-import { normalizeWhatsAppPhone } from "@/lib/whatsapp";
+import { normalizeMxPhone } from "@/lib/phone";
 
 /**
  * Public lead from Cita Express: upsert customer when tenant is Pro.
@@ -16,8 +16,7 @@ export async function POST(request: Request) {
 
   const restaurantId = body.restaurant_id?.trim();
   const name = body.name?.trim() ?? "";
-  const phoneRaw = body.phone?.trim() ?? "";
-  const phoneDigits = normalizeWhatsAppPhone(phoneRaw);
+  const phoneDigits = normalizeMxPhone(body.phone?.trim() ?? "");
 
   if (!restaurantId) {
     return NextResponse.json({ error: "restaurant_id required" }, { status: 400 });
@@ -25,7 +24,7 @@ export async function POST(request: Request) {
   if (name.length < 2) {
     return NextResponse.json({ error: "nombre inválido" }, { status: 400 });
   }
-  if (phoneDigits.length < 10) {
+  if (!phoneDigits) {
     return NextResponse.json({ error: "teléfono inválido" }, { status: 400 });
   }
 
@@ -44,51 +43,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, skipped: true });
     }
 
-    const { data: existing } = await admin
-      .from("customers")
-      .select("id, name")
-      .eq("restaurant_id", restaurantId)
-      .eq("phone", phoneDigits)
-      .maybeSingle();
-
-    if (existing) {
-      if (!existing.name || existing.name === "Cliente") {
-        await admin
-          .from("customers")
-          .update({ name })
-          .eq("id", existing.id);
-      }
-      try {
-        const { emitTenantNotification } = await import(
-          "@/lib/notifications/emit"
-        );
-        await emitTenantNotification({
-          restaurantId,
-          type: "appointment_lead",
-          title: "Nueva solicitud de cita",
-          body: `${name} · ${phoneDigits}`,
-          href: "/admin/customers",
-          payload: { customer_id: existing.id, name, phone: phoneDigits },
-        });
-      } catch {
-        /* non-fatal */
-      }
-      return NextResponse.json({ ok: true, customer_id: existing.id });
+    const { data: customerId, error: upErr } = await admin.rpc(
+      "upsert_customer_by_phone",
+      {
+        p_restaurant_id: restaurantId,
+        p_name: name,
+        p_phone: phoneDigits,
+        p_bump_order: false,
+      },
+    );
+    if (upErr) {
+      return NextResponse.json({ error: upErr.message }, { status: 500 });
     }
 
-    const { data: created, error: cErr } = await admin
-      .from("customers")
-      .insert({
-        restaurant_id: restaurantId,
-        name,
-        phone: phoneDigits,
-      })
-      .select("id")
-      .single();
-
-    if (cErr) {
-      return NextResponse.json({ error: cErr.message }, { status: 500 });
-    }
     try {
       const { emitTenantNotification } = await import(
         "@/lib/notifications/emit"
@@ -99,12 +66,12 @@ export async function POST(request: Request) {
         title: "Nueva solicitud de cita",
         body: `${name} · ${phoneDigits}`,
         href: "/admin/customers",
-        payload: { customer_id: created.id, name, phone: phoneDigits },
+        payload: { customer_id: customerId, name, phone: phoneDigits },
       });
     } catch {
       /* non-fatal */
     }
-    return NextResponse.json({ ok: true, customer_id: created.id });
+    return NextResponse.json({ ok: true, customer_id: customerId });
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "failed" },

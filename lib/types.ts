@@ -7,6 +7,15 @@ export type MemberRole = "owner" | "staff" | "super_admin";
 
 export type PaymentMethod = "cash" | "transfer";
 
+export type FulfillmentMode = "pickup" | "delivery" | "dine_in";
+
+export type OrderStatus =
+  | "submitted"
+  | "preparing"
+  | "ready"
+  | "closed"
+  | "cancelled";
+
 export type BusinessType = "restaurante" | "servicios" | "productos";
 
 export type { PlanType, ThemeConfig };
@@ -36,6 +45,12 @@ export interface Restaurant {
   facebook_url?: string | null;
   tiktok_url?: string | null;
   offers_delivery?: boolean;
+  offers_pickup?: boolean;
+  offers_dine_in?: boolean;
+  show_transfer_details?: boolean;
+  bank_account_holder?: string;
+  bank_name?: string;
+  bank_clabe?: string;
   /** Day-open: accepting orders (independent of subscription is_active) */
   accepting_orders?: boolean;
   /** Structured weekly hours (0=Sun…6=Sat) */
@@ -259,31 +274,46 @@ export interface Order {
   customer_id: string | null;
   payload: OrderLogPayload;
   total: number;
-  status: string;
+  status: OrderStatus | string;
   created_at: string;
 }
 
+/** Persisted in order_logs / orders JSONB. Never includes delivery address. */
 export interface OrderLogPayload {
   customer_name: string;
-  /** @deprecated Prefer fulfillment; address no longer persisted for privacy */
-  address?: string;
-  maps_url?: string | null;
-  references?: string;
-  fulfillment?: "pickup" | "delivery";
+  phone: string;
+  fulfillment: FulfillmentMode;
   payment_method: PaymentMethod;
   cash_amount?: number | null;
-  phone?: string | null;
   items: CartItem[];
   subtotal: number;
   shipping: number;
   total: number;
-  wa_message?: string;
+  table_label?: string | null;
   coupon_code?: string | null;
   discount?: number;
+  /** @deprecated Prefer fulfillment; address no longer persisted for privacy */
+  address?: string;
+  maps_url?: string | null;
+  references?: string;
+  wa_message?: string;
   /** Legacy camelCase from older clients */
   customerName?: string;
   mapsUrl?: string;
   paymentMethod?: PaymentMethod;
+}
+
+/** Cart → WhatsApp. Address lives only in the message, not in OrderLogPayload. */
+export interface OrderCheckoutInput {
+  fulfillment: FulfillmentMode;
+  customerName: string;
+  phone: string;
+  address?: string;
+  mapsUrl?: string;
+  references?: string;
+  tableLabel?: string | null;
+  paymentMethod: PaymentMethod;
+  cashAmount?: number | null;
 }
 
 export interface CartAddon {
@@ -313,14 +343,15 @@ export interface CartItem {
 }
 
 export interface CheckoutFormValues {
-  fulfillment: "pickup" | "delivery";
+  fulfillment: FulfillmentMode;
   customerName: string;
+  phone: string;
   address: string;
   mapsUrl?: string;
   references: string;
+  tableLabel?: string | null;
   paymentMethod: PaymentMethod;
   cashAmount?: number | null;
-  phone?: string | null;
 }
 
 export interface PublicRestaurantMenu {

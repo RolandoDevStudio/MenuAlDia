@@ -2,10 +2,11 @@ import type { Customer } from "@/lib/types";
 import { buildWaMeUrl } from "@/lib/whatsapp";
 import { addCalendarDaysYmd, mexicoCityTodayYmd } from "@/lib/dates";
 
-export type CampaignFilter = "all" | "inactive" | "birthday" | "risk";
+export type CampaignFilter = "all" | "inactive" | "birthday" | "risk" | "regulars";
 
 export const CAMPAIGN_FILTER_LABELS: Record<CampaignFilter, string> = {
   all: "Todos",
+  regulars: "Frecuentes",
   inactive: "Inactivos +30d",
   birthday: "Cumple (7d)",
   risk: "En riesgo",
@@ -13,14 +14,18 @@ export const CAMPAIGN_FILTER_LABELS: Record<CampaignFilter, string> = {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function daysSinceVisit(c: Customer, now = Date.now()): number | null {
-  if (!c.last_visit_at) {
-    // Never visited: treat as inactive relative to created_at if present
-    const created = c.created_at ? new Date(c.created_at).getTime() : null;
-    if (created == null) return null;
-    return Math.floor((now - created) / DAY_MS);
-  }
-  return Math.floor((now - new Date(c.last_visit_at).getTime()) / DAY_MS);
+function lastActivityAt(c: Customer): number | null {
+  const visit = c.last_visit_at ? new Date(c.last_visit_at).getTime() : 0;
+  const order = c.last_order_at ? new Date(c.last_order_at).getTime() : 0;
+  const created = c.created_at ? new Date(c.created_at).getTime() : 0;
+  const latest = Math.max(visit, order, created);
+  return latest > 0 ? latest : null;
+}
+
+function daysSinceActivity(c: Customer, now = Date.now()): number | null {
+  const at = lastActivityAt(c);
+  if (at == null) return null;
+  return Math.floor((now - at) / DAY_MS);
 }
 
 /** Birthday falls within the next `withinDays` days (incl. today), ignoring year. */
@@ -40,14 +45,19 @@ export function isBirthdayWithinDays(
 }
 
 export function isInactive30d(c: Customer, now = Date.now()): boolean {
-  const days = daysSinceVisit(c, now);
-  if (days == null) return true; // no visit data → treat as inactive
+  const days = daysSinceActivity(c, now);
+  if (days == null) return true;
   return days >= 30;
 }
 
-/** Regulars (3+ visits) who went silent 30+ days — churn risk. */
+/** Regulars (3+ visits or orders) who went silent 30+ days — churn risk. */
 export function isAtRisk(c: Customer, now = Date.now()): boolean {
-  return (c.visit_count ?? 0) >= 3 && isInactive30d(c, now);
+  const activity = (c.visit_count ?? 0) + (c.orders_count ?? 0);
+  return activity >= 3 && isInactive30d(c, now);
+}
+
+export function isRegular(c: Customer): boolean {
+  return (c.visit_count ?? 0) >= 3 || (c.orders_count ?? 0) >= 3;
 }
 
 export function filterCampaignCustomers(
@@ -58,6 +68,8 @@ export function filterCampaignCustomers(
   switch (filter) {
     case "inactive":
       return customers.filter((c) => isInactive30d(c, now));
+    case "regulars":
+      return customers.filter((c) => isRegular(c));
     case "birthday":
       return customers.filter((c) =>
         isBirthdayWithinDays(c.birthday, 7, new Date(now)),
@@ -77,6 +89,7 @@ export function campaignCounts(customers: Customer[]) {
     birthday: customers.filter((c) => isBirthdayWithinDays(c.birthday, 7, d))
       .length,
     risk: customers.filter((c) => isAtRisk(c, now)).length,
+    regulars: customers.filter((c) => isRegular(c)).length,
   };
 }
 

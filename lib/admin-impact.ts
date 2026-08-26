@@ -55,7 +55,7 @@ export async function getAdminImpactStats(
           .from("customers")
           .select("id", { count: "exact", head: true })
           .eq("restaurant_id", restaurantId)
-          .gt("visit_count", 0),
+          .or("visit_count.gt.0,orders_count.gt.0"),
         supabase
           .from("customers")
           .select("id", { count: "exact", head: true })

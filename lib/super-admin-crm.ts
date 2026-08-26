@@ -76,6 +76,7 @@ export type CrmPayload = {
     ordersMonth: number;
     ordersPickup: number;
     ordersDelivery: number;
+    ordersDineIn: number;
   };
   mix: {
     byPlan: { plan: PlanType; count: number }[];

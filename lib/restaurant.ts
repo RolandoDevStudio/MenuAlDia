@@ -16,6 +16,7 @@ import type {
 } from "@/lib/types";
 import { parseThemeConfig } from "@/lib/theme";
 import { normalizeBusinessType } from "@/lib/business-labels";
+import { sanitizePublicRestaurantTransfer } from "@/lib/transfer-details";
 
 function normalizeRestaurant(raw: Restaurant): Restaurant {
   const r = { ...raw };
@@ -29,6 +30,12 @@ function normalizeRestaurant(raw: Restaurant): Restaurant {
   r.facebook_url = r.facebook_url ?? null;
   r.tiktok_url = r.tiktok_url ?? null;
   r.offers_delivery = r.offers_delivery ?? true;
+  r.offers_pickup = r.offers_pickup ?? true;
+  r.offers_dine_in = r.offers_dine_in ?? false;
+  r.show_transfer_details = r.show_transfer_details ?? false;
+  r.bank_account_holder = r.bank_account_holder ?? "";
+  r.bank_name = r.bank_name ?? "";
+  r.bank_clabe = r.bank_clabe ?? "";
   r.accepting_orders = r.accepting_orders ?? true;
   r.schedule_auto = r.schedule_auto ?? false;
   r.closed_message = r.closed_message ?? "";
@@ -150,13 +157,29 @@ async function fetchPublicMenuBySlug(
 ): Promise<PublicRestaurantMenu | null> {
   const supabase = createPublicClient();
 
-  const { data: restaurant, error: restaurantError } = await supabase
+  const publicSelect =
+    "id, slug, name, slogan, logo_url, phone_whatsapp, address, maps_url, city, state, schedule_text, shipping_cost, free_shipping, created_at, plan_type, is_active, subscription_end_date, theme_config, business_type, owner_name, instagram_url, facebook_url, tiktok_url, offers_delivery, offers_pickup, offers_dine_in, accepting_orders, schedule_hours, schedule_auto, closed_message, orders_override, show_powered_by";
+  const transferSelect =
+    "show_transfer_details, bank_account_holder, bank_name, bank_clabe";
+
+  let { data: restaurant, error: restaurantError } = await supabase
     .from("restaurants")
-    .select(
-      "id, slug, name, slogan, logo_url, phone_whatsapp, address, maps_url, city, state, schedule_text, shipping_cost, free_shipping, created_at, plan_type, is_active, subscription_end_date, theme_config, business_type, owner_name, instagram_url, facebook_url, tiktok_url, offers_delivery, accepting_orders, schedule_hours, schedule_auto, closed_message, orders_override, show_powered_by",
-    )
+    .select(`${publicSelect}, ${transferSelect}`)
     .eq("slug", slug)
     .maybeSingle();
+
+  if (
+    restaurantError &&
+    /show_transfer_details|bank_account_holder|bank_name|bank_clabe/.test(
+      restaurantError.message,
+    )
+  ) {
+    ({ data: restaurant, error: restaurantError } = await supabase
+      .from("restaurants")
+      .select(publicSelect)
+      .eq("slug", slug)
+      .maybeSingle());
+  }
 
   if (restaurantError) {
     console.error("[getPublicMenuBySlug] restaurant", restaurantError.message);
@@ -164,7 +187,9 @@ async function fetchPublicMenuBySlug(
   }
   if (!restaurant) return null;
 
-  const r = normalizeRestaurant(restaurant as Restaurant);
+  const r = sanitizePublicRestaurantTransfer(
+    normalizeRestaurant(restaurant as Restaurant),
+  );
 
   const [
     { data: categories },

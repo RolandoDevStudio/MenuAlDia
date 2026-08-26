@@ -1,13 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Trash2 } from "lucide-react";
-import type { Restaurant } from "@/lib/types";
+import Link from "next/link";
+import { Copy, Trash2 } from "lucide-react";
+import type { FulfillmentMode, Restaurant } from "@/lib/types";
 import { formatMxn } from "@/lib/money";
 import { checkoutSchema } from "@/lib/validations";
 import { buildOrderMessage, buildWaMeUrl } from "@/lib/whatsapp";
 import { isDemoOrEmbedded } from "@/lib/canonical-demos";
 import { normalizeBusinessType } from "@/lib/business-labels";
+import {
+  defaultFulfillment,
+  fulfillmentChargesShipping,
+  FULFILLMENT_LABELS,
+  restaurantFulfillmentModes,
+} from "@/lib/fulfillment";
 import {
   bookableCartItems,
   cartHasBookable,
@@ -16,6 +23,10 @@ import {
 } from "@/lib/item-fulfillment";
 import { useCartStore } from "@/stores/cart-store";
 import { CitaExpressDialog } from "@/components/public/cita-express-dialog";
+import {
+  formatClabeDisplay,
+  publicTransferDetails,
+} from "@/lib/transfer-details";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +46,51 @@ type Props = {
   restaurant: Restaurant;
   shipping: number;
 };
+
+function TransferCopyRow({
+  label,
+  display,
+  copyValue,
+  mono,
+}: {
+  label: string;
+  display: string;
+  copyValue: string;
+  mono?: boolean;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(copyValue);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-2 py-1">
+      <div className="min-w-0">
+        <p className="text-[11px] font-medium text-muted">{label}</p>
+        <p className={mono ? "break-all font-mono text-sm" : "text-sm"}>
+          {display}
+        </p>
+      </div>
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        className="min-h-11 shrink-0"
+        onClick={() => void copy()}
+      >
+        <Copy className="mr-1 h-3.5 w-3.5" aria-hidden />
+        {copied ? "Copiado" : "Copiar"}
+      </Button>
+    </div>
+  );
+}
 
 function addonKeyOf(item: {
   addons?: { id: string }[];
@@ -62,10 +118,20 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
   const clear = useCartStore((s) => s.clear);
 
   const [step, setStep] = useState<"review" | "checkout">("review");
-  const [fulfillment, setFulfillment] = useState<"pickup" | "delivery">(
-    "delivery",
+  const modes = useMemo(
+    () => restaurantFulfillmentModes(restaurant),
+    [
+      restaurant.offers_pickup,
+      restaurant.offers_delivery,
+      restaurant.offers_dine_in,
+    ],
+  );
+  const [fulfillment, setFulfillment] = useState<FulfillmentMode>(() =>
+    defaultFulfillment(restaurant),
   );
   const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [tableLabel, setTableLabel] = useState("");
   const [address, setAddress] = useState("");
   const [mapsUrl, setMapsUrl] = useState("");
   const [references, setReferences] = useState("");
@@ -81,12 +147,12 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
   const [couponDiscount, setCouponDiscount] = useState(0);
   const [couponHint, setCouponHint] = useState<string | null>(null);
 
-  const offersDelivery = restaurant.offers_delivery !== false;
   const isServicios =
     normalizeBusinessType(restaurant.business_type) === "servicios";
   const hasBookable = isServicios && cartHasBookable(items);
   const hasPurchasable = cartHasPurchasable(items);
   const bookableOnly = hasBookable && !hasPurchasable;
+  const transferDetails = publicTransferDetails(restaurant);
 
   const citaServices = useMemo(
     () =>
@@ -126,25 +192,39 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
   );
 
   useEffect(() => {
-    if (open) {
-      setStep("review");
-      setError(null);
-      setFulfillment(offersDelivery ? "delivery" : "pickup");
-      setCouponInput("");
-      setCouponCode(null);
-      setCouponDiscount(0);
-      setCouponHint(null);
+    if (!open) return;
+    setStep("review");
+    setError(null);
+    setCouponInput("");
+    setCouponCode(null);
+    setCouponDiscount(0);
+    setCouponHint(null);
+    const key = `menualdia-checkout-${restaurant.slug}`;
+    let saved: { name?: string; phone?: string; fulfillment?: string } = {};
+    try {
+      saved = JSON.parse(localStorage.getItem(key) ?? "{}") as typeof saved;
+    } catch {
+      saved = {};
     }
-  }, [open, offersDelivery]);
+    if (saved.name) setCustomerName(saved.name);
+    if (saved.phone) setCustomerPhone(saved.phone);
+    const next =
+      saved.fulfillment && modes.includes(saved.fulfillment as FulfillmentMode)
+        ? (saved.fulfillment as FulfillmentMode)
+        : defaultFulfillment(restaurant);
+    setFulfillment(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hydrate once per open
+  }, [open, restaurant.slug]);
 
   useEffect(() => {
     if (open && items.length === 0) onOpenChange(false);
   }, [items.length, open, onOpenChange]);
 
   const subtotal = step === "checkout" ? purchaseSubtotal : allSubtotal;
-  const effectiveShipping = fulfillment === "pickup" ? 0 : shipping;
-  const discount =
-    step === "checkout" && couponCode ? couponDiscount : 0;
+  const effectiveShipping = fulfillmentChargesShipping(fulfillment)
+    ? shipping
+    : 0;
+  const discount = couponCode ? couponDiscount : 0;
   const total = Math.max(0, subtotal - discount) + effectiveShipping;
 
   async function applyCoupon() {
@@ -158,6 +238,7 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
         restaurant_id: restaurant.id,
         code,
         subtotal: purchaseSubtotal,
+        phone: customerPhone,
       }),
     });
     const json = (await res.json()) as {
@@ -198,9 +279,11 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
     const parsed = checkoutSchema.safeParse({
       fulfillment,
       customerName,
+      phone: customerPhone,
       address: fulfillment === "delivery" ? address : "",
       mapsUrl: fulfillment === "delivery" ? mapsUrl : "",
       references: fulfillment === "delivery" ? references : "",
+      tableLabel: fulfillment === "dine_in" ? tableLabel : "",
       paymentMethod,
       cashAmount: paymentMethod === "cash" ? Number(cashAmount) : null,
     });
@@ -222,16 +305,33 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
 
     setSending(true);
     const discountedSub = Math.max(0, purchaseSubtotal - discount);
+    const checkout = {
+      ...parsed.data,
+      tableLabel: parsed.data.tableLabel || "",
+    };
     const message = buildOrderMessage({
       restaurant,
       items: orderItems,
-      checkout: parsed.data,
+      checkout,
       shipping: effectiveShipping,
       total: discountedSub + effectiveShipping,
       discount,
       couponCode,
       subtotalBeforeDiscount: purchaseSubtotal,
     });
+
+    try {
+      localStorage.setItem(
+        `menualdia-checkout-${restaurant.slug}`,
+        JSON.stringify({
+          name: parsed.data.customerName,
+          phone: parsed.data.phone,
+          fulfillment: parsed.data.fulfillment,
+        }),
+      );
+    } catch {
+      /* ignore */
+    }
 
     void fetch("/api/orders/log", {
       method: "POST",
@@ -241,8 +341,10 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
         payload: {
           fulfillment: parsed.data.fulfillment,
           customer_name: parsed.data.customerName,
+          phone: parsed.data.phone,
           payment_method: parsed.data.paymentMethod,
           cash_amount: parsed.data.cashAmount,
+          table_label: parsed.data.tableLabel || null,
           items: orderItems,
           subtotal: purchaseSubtotal,
           shipping: effectiveShipping,
@@ -370,28 +472,78 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
               })}
             </ul>
 
+            {modes.length > 1 ? (
+              <div
+                className={`grid gap-2 ${modes.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}
+              >
+                {modes.map((mode) => (
+                  <Button
+                    key={mode}
+                    type="button"
+                    variant={fulfillment === mode ? "default" : "secondary"}
+                    className="min-h-11"
+                    onClick={() => setFulfillment(mode)}
+                  >
+                    {FULFILLMENT_LABELS[mode]}
+                  </Button>
+                ))}
+              </div>
+            ) : (
+              <p className="rounded-lg bg-brand/5 px-3 py-2 text-sm text-muted">
+                {fulfillment === "pickup"
+                  ? "Este negocio solo ofrece recogida en el local."
+                  : fulfillment === "dine_in"
+                    ? "Este negocio solo ofrece pedidos en comedor."
+                    : "Este negocio solo ofrece envío a domicilio."}
+              </p>
+            )}
+
+            <div className="space-y-1.5">
+              <Label htmlFor="cart_coupon">¿Tienes un código de descuento?</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="cart_coupon"
+                  value={couponInput}
+                  onChange={(e) => setCouponInput(e.target.value)}
+                  placeholder="CUMPLE10"
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => void applyCoupon()}
+                >
+                  Aplicar
+                </Button>
+              </div>
+              {couponHint ? (
+                <p className="text-xs text-amber-800">{couponHint}</p>
+              ) : null}
+            </div>
+
             <div className="space-y-1 border-t border-black/5 pt-3 text-sm">
               <div className="flex justify-between text-muted">
                 <span>Subtotal</span>
                 <span>{formatMxn(subtotal)}</span>
               </div>
+              {discount > 0 ? (
+                <div className="flex justify-between text-muted">
+                  <span>Cupón {couponCode}</span>
+                  <span>−{formatMxn(discount)}</span>
+                </div>
+              ) : null}
               <div className="flex justify-between text-muted">
                 <span>Envío</span>
                 <span>
-                  {fulfillment === "pickup"
+                  {!fulfillmentChargesShipping(fulfillment)
                     ? "—"
-                    : shipping === 0
+                    : effectiveShipping === 0
                       ? "Gratis"
-                      : formatMxn(shipping)}
+                      : formatMxn(effectiveShipping)}
                 </span>
               </div>
               <div className="flex justify-between text-base font-semibold">
                 <span>Total</span>
-                <span>
-                  {formatMxn(
-                    subtotal + (fulfillment === "pickup" ? 0 : shipping),
-                  )}
-                </span>
+                <span>{formatMxn(total)}</span>
               </div>
             </div>
 
@@ -441,7 +593,7 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
               <div className="flex justify-between text-muted">
                 <span>Envío</span>
                 <span>
-                  {fulfillment === "pickup"
+                  {!fulfillmentChargesShipping(fulfillment)
                     ? "—"
                     : effectiveShipping === 0
                       ? "Gratis"
@@ -454,53 +606,6 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="cart_coupon">¿Tienes un código de descuento?</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="cart_coupon"
-                  value={couponInput}
-                  onChange={(e) => setCouponInput(e.target.value)}
-                  placeholder="CUMPLE10"
-                />
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => void applyCoupon()}
-                >
-                  Aplicar
-                </Button>
-              </div>
-              {couponHint ? (
-                <p className="text-xs text-amber-800">{couponHint}</p>
-              ) : null}
-            </div>
-
-            {offersDelivery ? (
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  type="button"
-                  variant={fulfillment === "pickup" ? "default" : "secondary"}
-                  className="min-h-11"
-                  onClick={() => setFulfillment("pickup")}
-                >
-                  Recoger
-                </Button>
-                <Button
-                  type="button"
-                  variant={fulfillment === "delivery" ? "default" : "secondary"}
-                  className="min-h-11"
-                  onClick={() => setFulfillment("delivery")}
-                >
-                  Envío
-                </Button>
-              </div>
-            ) : (
-              <p className="rounded-lg bg-brand/5 px-3 py-2 text-sm text-muted">
-                Este negocio solo ofrece recogida en el local.
-              </p>
-            )}
-
             <div className="space-y-3">
               <div className="space-y-1.5">
                 <Label htmlFor="customerName">Nombre</Label>
@@ -508,6 +613,18 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
                   id="customerName"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
+                  autoComplete="name"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="customerPhone">WhatsApp</Label>
+                <Input
+                  id="customerPhone"
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  inputMode="tel"
+                  autoComplete="tel"
+                  placeholder="10 dígitos"
                 />
               </div>
               {fulfillment === "delivery" ? (
@@ -544,6 +661,17 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
                   </div>
                 </>
               ) : null}
+              {fulfillment === "dine_in" ? (
+                <div className="space-y-1.5">
+                  <Label htmlFor="tableLabel">Mesa (opcional)</Label>
+                  <Input
+                    id="tableLabel"
+                    value={tableLabel}
+                    onChange={(e) => setTableLabel(e.target.value)}
+                    placeholder="Ej. 5"
+                  />
+                </div>
+              ) : null}
               <div className="space-y-2">
                 <Label>Método de pago</Label>
                 <div
@@ -573,6 +701,34 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
                   </Button>
                 </div>
               </div>
+              {paymentMethod === "transfer" && transferDetails ? (
+                <div className="space-y-1 rounded-xl border border-black/5 bg-background/60 px-3 py-3">
+                  <p className="text-sm font-semibold">Datos para transferir</p>
+                  {transferDetails.holder ? (
+                    <TransferCopyRow
+                      label="Titular"
+                      display={transferDetails.holder}
+                      copyValue={transferDetails.holder}
+                    />
+                  ) : null}
+                  {transferDetails.bank ? (
+                    <TransferCopyRow
+                      label="Banco"
+                      display={transferDetails.bank}
+                      copyValue={transferDetails.bank}
+                    />
+                  ) : null}
+                  <TransferCopyRow
+                    label="CLABE"
+                    display={formatClabeDisplay(transferDetails.clabe)}
+                    copyValue={transferDetails.clabe}
+                    mono
+                  />
+                  <p className="pt-1 text-xs text-muted">
+                    Envía tu comprobante por WhatsApp al confirmar el pedido.
+                  </p>
+                </div>
+              ) : null}
               {paymentMethod === "cash" ? (
                 <div className="space-y-1.5">
                   <Label htmlFor="cashAmount">¿Con cuánto pagas?</Label>
@@ -590,6 +746,18 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
                 </div>
               ) : null}
               {error ? <p className="text-sm text-red-600">{error}</p> : null}
+              <p className="text-[11px] leading-snug text-muted">
+                Al enviar tu pedido, aceptas que {restaurant.name} use tu nombre
+                y WhatsApp para dar seguimiento a este pedido y, si aplica,
+                promociones ocasionales.{" "}
+                <Link
+                  href={`/privacidad?from=${encodeURIComponent(restaurant.slug)}`}
+                  className="font-medium text-brand underline-offset-2 hover:underline"
+                >
+                  Aviso de privacidad
+                </Link>
+                .
+              </p>
               <div className="flex gap-2">
                 <Button
                   type="button"

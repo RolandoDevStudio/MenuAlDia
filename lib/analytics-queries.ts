@@ -46,6 +46,9 @@ export type AnalyticsBundle = {
     views: number;
     waClicks: number;
     orders: number;
+    ordersPickup: number;
+    ordersDelivery: number;
+    ordersDineIn: number;
     conversionPct: number;
     salesTotal: number;
     avgTicket: number;
@@ -308,6 +311,17 @@ export async function getAnalyticsBundle(
   const viewsTotal = series.reduce((s, p) => s + p.views, 0);
   const waTotal = series.reduce((s, p) => s + p.waClicks, 0);
   const ordersTotal = series.reduce((s, p) => s + p.orders, 0);
+  let ordersPickup = 0;
+  let ordersDelivery = 0;
+  let ordersDineIn = 0;
+  for (const r of logsRes.data ?? []) {
+    const f = String(
+      (r.payload as { fulfillment?: string } | null)?.fulfillment ?? "",
+    );
+    if (f === "pickup") ordersPickup += 1;
+    else if (f === "dine_in") ordersDineIn += 1;
+    else ordersDelivery += 1;
+  }
   const direct = Math.max(0, viewsTotal - landingSum);
 
   const channels: AnalyticsChannel[] = [
@@ -356,6 +370,9 @@ export async function getAnalyticsBundle(
       views: viewsTotal,
       waClicks: waTotal,
       orders: ordersTotal,
+      ordersPickup,
+      ordersDelivery,
+      ordersDineIn,
       conversionPct,
       salesTotal,
       avgTicket,

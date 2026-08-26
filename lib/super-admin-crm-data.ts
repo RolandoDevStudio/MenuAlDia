@@ -137,6 +137,7 @@ export async function loadSuperAdminCrm(): Promise<CrmPayload> {
   let ordersMonth = 0;
   let ordersPickup = 0;
   let ordersDelivery = 0;
+  let ordersDineIn = 0;
   for (const o of ordersRes.data ?? []) {
     const id = o.restaurant_id as string;
     const ts = new Date(String(o.created_at)).getTime();
@@ -148,6 +149,7 @@ export async function loadSuperAdminCrm(): Promise<CrmPayload> {
         (o.payload as { fulfillment?: string } | null)?.fulfillment ?? "",
       );
       if (fulfillment === "pickup") ordersPickup += 1;
+      else if (fulfillment === "dine_in") ordersDineIn += 1;
       else ordersDelivery += 1;
     }
   }
@@ -353,6 +355,7 @@ export async function loadSuperAdminCrm(): Promise<CrmPayload> {
       ordersMonth,
       ordersPickup,
       ordersDelivery,
+      ordersDineIn,
     },
     mix: {
       byPlan,

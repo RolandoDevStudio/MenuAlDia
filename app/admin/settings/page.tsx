@@ -43,6 +43,12 @@ export default function SettingsPage() {
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [freeShipping, setFreeShipping] = useState(false);
   const [offersDelivery, setOffersDelivery] = useState(true);
+  const [offersPickup, setOffersPickup] = useState(true);
+  const [offersDineIn, setOffersDineIn] = useState(false);
+  const [showTransferDetails, setShowTransferDetails] = useState(false);
+  const [bankHolder, setBankHolder] = useState("");
+  const [bankName, setBankName] = useState("");
+  const [bankClabe, setBankClabe] = useState("");
   const [theme, setTheme] = useState<ThemeConfig | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [city, setCity] = useState("");
@@ -80,6 +86,12 @@ export default function SettingsPage() {
     setRestaurant(r);
     setFreeShipping(r.free_shipping);
     setOffersDelivery(r.offers_delivery !== false);
+    setOffersPickup(r.offers_pickup !== false);
+    setOffersDineIn(r.offers_dine_in === true);
+    setShowTransferDetails(r.show_transfer_details === true);
+    setBankHolder(r.bank_account_holder ?? "");
+    setBankName(r.bank_name ?? "");
+    setBankClabe(r.bank_clabe ?? "");
     setTheme(parseThemeConfig(r.theme_config));
     setLogoUrl(r.logo_url);
     setCity(r.city ?? "");
@@ -143,6 +155,12 @@ export default function SettingsPage() {
       shipping_cost: fd.get("shipping_cost"),
       free_shipping: freeShipping,
       offers_delivery: offersDelivery,
+      offers_pickup: offersPickup,
+      offers_dine_in: offersDineIn,
+      show_transfer_details: showTransferDetails,
+      bank_account_holder: bankHolder,
+      bank_name: bankName,
+      bank_clabe: bankClabe,
       logo_url: logoUrl || "",
       instagram_url: fd.get("instagram_url") || "",
       facebook_url: fd.get("facebook_url") || "",
@@ -364,13 +382,45 @@ export default function SettingsPage() {
                   ))}
                 </div>
 
-                <div className="flex min-h-14 items-center justify-between rounded-xl border border-black/5 bg-background/60 px-3 py-3">
-                  <Label htmlFor="offers_delivery">Acepto pedidos a domicilio</Label>
-                  <Switch
-                    id="offers_delivery"
-                    checked={offersDelivery}
-                    onCheckedChange={setOffersDelivery}
-                  />
+                <div className="space-y-2 rounded-xl border border-black/5 bg-background/60 p-3">
+                  <p className="text-sm font-semibold">Modos de pedido</p>
+                  <p className="text-xs text-muted">
+                    Activa uno, dos o los tres. El menú solo muestra los que
+                    dejes encendidos.
+                  </p>
+                  <div className="flex min-h-14 items-center justify-between">
+                    <Label htmlFor="offers_pickup">Recoger en el local</Label>
+                    <Switch
+                      id="offers_pickup"
+                      checked={offersPickup}
+                      onCheckedChange={(v) => {
+                        if (!v && !offersDelivery && !offersDineIn) return;
+                        setOffersPickup(v);
+                      }}
+                    />
+                  </div>
+                  <div className="flex min-h-14 items-center justify-between">
+                    <Label htmlFor="offers_delivery">Envío a domicilio</Label>
+                    <Switch
+                      id="offers_delivery"
+                      checked={offersDelivery}
+                      onCheckedChange={(v) => {
+                        if (!v && !offersPickup && !offersDineIn) return;
+                        setOffersDelivery(v);
+                      }}
+                    />
+                  </div>
+                  <div className="flex min-h-14 items-center justify-between">
+                    <Label htmlFor="offers_dine_in">Comedor</Label>
+                    <Switch
+                      id="offers_dine_in"
+                      checked={offersDineIn}
+                      onCheckedChange={(v) => {
+                        if (!v && !offersPickup && !offersDelivery) return;
+                        setOffersDineIn(v);
+                      }}
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-1.5">
@@ -392,6 +442,66 @@ export default function SettingsPage() {
                     onCheckedChange={setFreeShipping}
                     disabled={!offersDelivery}
                   />
+                </div>
+
+                <div className="space-y-2 rounded-xl border border-black/5 bg-background/60 p-3">
+                  <p className="text-sm font-semibold">
+                    Datos para transferir
+                  </p>
+                  <p className="text-xs text-muted">
+                    Si los activas, el cliente los ve al elegir transferencia y
+                    van en el WhatsApp. No son los de tu suscripción a Menú al
+                    Día.
+                  </p>
+                  <div className="flex min-h-14 items-center justify-between">
+                    <Label htmlFor="show_transfer_details">
+                      Mostrar datos para transferir
+                    </Label>
+                    <Switch
+                      id="show_transfer_details"
+                      checked={showTransferDetails}
+                      onCheckedChange={setShowTransferDetails}
+                    />
+                  </div>
+                  {showTransferDetails ? (
+                    <div className="space-y-3">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="bank_account_holder">Titular</Label>
+                        <Input
+                          id="bank_account_holder"
+                          value={bankHolder}
+                          onChange={(e) => setBankHolder(e.target.value)}
+                          placeholder="Nombre del titular"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="bank_name">Banco</Label>
+                        <Input
+                          id="bank_name"
+                          value={bankName}
+                          onChange={(e) => setBankName(e.target.value)}
+                          placeholder="Ej. BBVA"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="bank_clabe">CLABE (18 dígitos)</Label>
+                        <Input
+                          id="bank_clabe"
+                          value={bankClabe}
+                          onChange={(e) => setBankClabe(e.target.value)}
+                          inputMode="numeric"
+                          autoComplete="off"
+                          placeholder="18 dígitos"
+                        />
+                      </div>
+                      {bankClabe.replace(/\D/g, "").length !== 18 ? (
+                        <p className="text-xs text-amber-800">
+                          Falta una CLABE de 18 dígitos para mostrarlos en el
+                          menú y en WhatsApp.
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="space-y-2 rounded-xl border border-black/5 bg-background/60 p-4">

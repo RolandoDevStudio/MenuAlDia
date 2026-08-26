@@ -42,16 +42,18 @@ export async function GET(request: Request) {
       .eq("restaurant_id", rid)
       .order("created_at", { ascending: false });
     const rows = data ?? [];
-    const header = "id,name,phone,address,orders_count,last_order_at\n";
+    const header =
+      "id,name,phone,orders_count,visit_count,last_order_at,last_visit_at\n";
     const body = rows
       .map((r) =>
         [
           r.id,
           csv(r.name),
           csv(r.phone),
-          csv(r.address),
           r.orders_count,
+          r.visit_count ?? 0,
           r.last_order_at ?? "",
+          r.last_visit_at ?? "",
         ].join(","),
       )
       .join("\n");
@@ -164,17 +166,22 @@ export async function GET(request: Request) {
     .eq("restaurant_id", rid)
     .order("created_at", { ascending: false });
   const rows = data ?? [];
-  const header = "id,customer,total,status,created_at,items\n";
+  const header =
+    "id,customer,phone,total,status,fulfillment,table_label,created_at,items\n";
   const body = rows
     .map((r) => {
-      const items = (r.payload?.items ?? [])
+      const payload = r.payload ?? {};
+      const items = (payload.items ?? [])
         .map((i: { quantity: number; name: string }) => `${i.quantity}x ${i.name}`)
         .join("; ");
       return [
         r.id,
-        csv(r.payload?.customer_name),
+        csv(payload.customer_name),
+        csv(payload.phone),
         r.total,
         r.status,
+        csv(payload.fulfillment),
+        csv(payload.table_label),
         r.created_at,
         csv(items),
       ].join(",");

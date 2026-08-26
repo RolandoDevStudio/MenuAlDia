@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { can, type PlanType } from "@/lib/plans";
 import { daysUntil } from "@/lib/subscription-lifecycle";
-import { mexicoCityTodayYmd } from "@/lib/dates";
+import { mexicoCityTodayYmd, startOfMexicoCityDay } from "@/lib/dates";
 
 export type AdminOpsStats = {
   planType: PlanType | string;
@@ -11,6 +11,7 @@ export type AdminOpsStats = {
   viewsToday: number;
   viewsTotal: number;
   activeCoupons: number;
+  ordersToday: number | null;
 };
 
 export async function getAdminOpsStats(
@@ -26,6 +27,7 @@ export async function getAdminOpsStats(
     { data: todayRow },
     { data: viewRows },
     { count: couponCount },
+    ordersTodayRes,
   ] = await Promise.all([
     supabase
       .from("daily_menu_selections")
@@ -48,6 +50,13 @@ export async function getAdminOpsStats(
       .eq("restaurant_id", restaurantId)
       .eq("is_active", true)
       .or(`ends_at.is.null,ends_at.gt.${new Date().toISOString()}`),
+    can(planType, "crm")
+      ? supabase
+          .from("orders")
+          .select("id", { count: "exact", head: true })
+          .eq("restaurant_id", restaurantId)
+          .gte("created_at", startOfMexicoCityDay(today))
+      : Promise.resolve({ count: null as number | null }),
   ]);
 
   let dailyMainCount = 0;
@@ -72,5 +81,6 @@ export async function getAdminOpsStats(
     viewsToday: Number(todayRow?.views ?? 0),
     viewsTotal,
     activeCoupons: couponCount ?? 0,
+    ordersToday: can(planType, "crm") ? (ordersTodayRes.count ?? 0) : null,
   };
 }

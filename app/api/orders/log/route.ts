@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createPublicClient } from "@/lib/supabase/public";
 import { can } from "@/lib/plans";
+import { normalizeMxPhone } from "@/lib/phone";
+import { parseFulfillment } from "@/lib/fulfillment";
 import type { OrderLogPayload, Restaurant } from "@/lib/types";
 
 /**
@@ -32,11 +34,22 @@ export async function POST(request: Request) {
     const raw = body.payload;
 
     const customerName = String(
-      raw.customer_name ?? raw.customerName ?? "Cliente",
-    );
-    const fulfillmentRaw = String(raw.fulfillment ?? "delivery");
-    const fulfillment: "pickup" | "delivery" =
-      fulfillmentRaw === "pickup" ? "pickup" : "delivery";
+      raw.customer_name ?? raw.customerName ?? "",
+    ).trim();
+    if (customerName.length < 2) {
+      return NextResponse.json({ error: "nombre inválido" }, { status: 400 });
+    }
+
+    const phone = normalizeMxPhone(String(raw.phone ?? ""));
+    if (!phone) {
+      return NextResponse.json({ error: "teléfono inválido" }, { status: 400 });
+    }
+
+    const fulfillment = parseFulfillment(raw.fulfillment);
+    if (!fulfillment) {
+      return NextResponse.json({ error: "modalidad inválida" }, { status: 400 });
+    }
+
     const paymentMethod = (raw.payment_method ??
       raw.paymentMethod ??
       "cash") as OrderLogPayload["payment_method"];
@@ -44,8 +57,7 @@ export async function POST(request: Request) {
       (raw.cash_amount as number | null | undefined) ??
       (raw.cashAmount as number | null | undefined) ??
       null;
-    const phone =
-      (raw.phone as string | null | undefined)?.trim() || null;
+    const tableLabel = String(raw.table_label ?? raw.tableLabel ?? "").trim();
 
     const couponCode = String(raw.coupon_code ?? "")
       .trim()
@@ -54,17 +66,17 @@ export async function POST(request: Request) {
 
     const normalized: OrderLogPayload = {
       customer_name: customerName,
+      phone,
       fulfillment,
       payment_method: paymentMethod,
       cash_amount: cashAmount,
-      phone,
+      table_label: fulfillment === "dine_in" && tableLabel ? tableLabel : null,
       items: (raw.items as OrderLogPayload["items"]) ?? [],
       subtotal: Number(raw.subtotal ?? 0),
       shipping: Number(raw.shipping ?? 0),
       total: Number(raw.total ?? 0),
       coupon_code: couponCode || null,
       discount: discountAmt > 0 ? discountAmt : 0,
-      // Strip address / maps / references / full WA body for privacy
     };
 
     await supabase.from("order_logs").insert({
@@ -89,15 +101,14 @@ export async function POST(request: Request) {
             .from("tenant_coupons")
             .update({ use_count: Number(coupon.use_count ?? 0) + 1 })
             .eq("id", coupon.id);
-          const phoneDigits = (phone ?? "").replace(/\D/g, "");
           if (
             !coupon.max_uses_per_customer ||
-            phoneDigits.length >= 10
+            phone.length === 10
           ) {
             await admin.from("tenant_coupon_redemptions").insert({
               coupon_id: coupon.id,
               restaurant_id: body.restaurant_id,
-              customer_phone: phoneDigits,
+              customer_phone: phone,
               discount_applied: discountAmt,
             });
           }
@@ -108,54 +119,45 @@ export async function POST(request: Request) {
     }
 
     if (can(plan, "crm")) {
-      const name = customerName.trim() || "Cliente";
+      try {
+        const { createServiceClient } = await import("@/lib/supabase/admin");
+        const admin = createServiceClient();
+        const { data: customerId } = await admin.rpc(
+          "upsert_customer_by_phone",
+          {
+            p_restaurant_id: body.restaurant_id,
+            p_name: customerName,
+            p_phone: phone,
+            p_bump_order: true,
+          },
+        );
 
-      let customerId: string | null = null;
+        await admin.from("orders").insert({
+          restaurant_id: body.restaurant_id,
+          customer_id: customerId ?? null,
+          payload: normalized,
+          total: normalized.total,
+          status: "submitted",
+        });
 
-      if (phone) {
-        const { data: existing } = await supabase
-          .from("customers")
-          .select("id, orders_count")
-          .eq("restaurant_id", body.restaurant_id)
-          .eq("phone", phone)
-          .limit(1)
-          .maybeSingle();
-        if (existing) {
-          customerId = existing.id;
-          await supabase
-            .from("customers")
-            .update({
-              name,
-              orders_count: (existing.orders_count ?? 0) + 1,
-              last_order_at: new Date().toISOString(),
-            })
-            .eq("id", existing.id);
+        try {
+          const { emitTenantNotification } = await import(
+            "@/lib/notifications/emit"
+          );
+          await emitTenantNotification({
+            restaurantId: body.restaurant_id,
+            type: "new_order",
+            title: "Nuevo pedido",
+            body: `${customerName} · ${normalized.total}`,
+            href: "/admin/orders",
+            payload: { phone, fulfillment },
+          });
+        } catch {
+          /* non-fatal */
         }
+      } catch (err) {
+        console.error("[orders/log] crm", err);
       }
-
-      if (!customerId) {
-        const { data: created } = await supabase
-          .from("customers")
-          .insert({
-            restaurant_id: body.restaurant_id,
-            name,
-            phone,
-            address: "",
-            orders_count: 1,
-            last_order_at: new Date().toISOString(),
-          })
-          .select("id")
-          .single();
-        customerId = created?.id ?? null;
-      }
-
-      await supabase.from("orders").insert({
-        restaurant_id: body.restaurant_id,
-        customer_id: customerId,
-        payload: normalized,
-        total: normalized.total,
-        status: "submitted",
-      });
     }
 
     return NextResponse.json({ ok: true });

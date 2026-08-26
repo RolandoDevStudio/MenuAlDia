@@ -49,7 +49,7 @@ export function ImpactCard({ stats, plan }: Props) {
           }
         />
         <Metric
-          label="Clientes en lealtad"
+          label="Clientes con actividad"
           value={
             hasCrm && stats.loyaltyCustomers != null
               ? String(stats.loyaltyCustomers)

@@ -37,6 +37,14 @@ export function AdminQuickActions({
             Crear cupón
           </Link>
         </Button>
+        {can(plan, "crm") ? (
+          <Button asChild size="sm" variant="outline">
+            <Link href="/admin/orders">
+              <Emoji char={UI_EMOJI.orders} />
+              Pedidos
+            </Link>
+          </Button>
+        ) : null}
         {can(plan, "flyer") ? (
           <>
             <Button asChild size="sm" variant="outline">

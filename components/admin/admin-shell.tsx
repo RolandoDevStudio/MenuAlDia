@@ -14,6 +14,7 @@ import {
   Store,
   Users,
   UtensilsCrossed,
+  ShoppingBag,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -133,28 +134,35 @@ export function AdminShell({
     match: (p) => p.startsWith("/admin/catalog"),
   });
 
-  primary.push({
-    href: "/admin/difusion",
-    label: "Difusión",
-    icon: Megaphone,
-    match: (p) =>
-      p.startsWith("/admin/difusion") || p.startsWith("/admin/flyer"),
-  });
-
   if (hasCrm) {
+    primary.push({
+      href: "/admin/orders",
+      label: "Pedidos",
+      icon: ShoppingBag,
+      match: (p) => p.startsWith("/admin/orders"),
+    });
     primary.push({
       href: "/admin/customers",
       label: "Clientes",
       icon: Users,
       match: (p) => p.startsWith("/admin/customers"),
     });
-  } else if (hasCombos) {
+  } else {
     primary.push({
-      href: "/admin/combos",
-      label: label(businessType, "combos"),
-      icon: Package,
-      match: (p) => p.startsWith("/admin/combos"),
+      href: "/admin/difusion",
+      label: "Difusión",
+      icon: Megaphone,
+      match: (p) =>
+        p.startsWith("/admin/difusion") || p.startsWith("/admin/flyer"),
     });
+    if (hasCombos) {
+      primary.push({
+        href: "/admin/combos",
+        label: label(businessType, "combos"),
+        icon: Package,
+        match: (p) => p.startsWith("/admin/combos"),
+      });
+    }
   }
 
   // Cap at 4 primary + Más
@@ -165,6 +173,9 @@ export function AdminShell({
     [
       "/admin/combos",
       "/admin/orders",
+      "/admin/customers",
+      "/admin/difusion",
+      "/admin/flyer",
       "/admin/history",
       "/admin/promociones",
       "/admin/analytics",

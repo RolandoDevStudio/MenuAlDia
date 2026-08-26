@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Cake, AlertTriangle, UserX } from "lucide-react";
+import { Cake, AlertTriangle, UserX, Star } from "lucide-react";
 import type { Customer } from "@/lib/types";
 import {
   CAMPAIGN_FILTER_LABELS,
@@ -33,6 +33,7 @@ const FILTER_ICONS: Record<
   inactive: UserX,
   birthday: Cake,
   risk: AlertTriangle,
+  regulars: Star,
 };
 
 export function CampaignPanel({
@@ -73,9 +74,10 @@ export function CampaignPanel({
         </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {(
           [
+            ["regulars", counts.regulars],
             ["inactive", counts.inactive],
             ["birthday", counts.birthday],
             ["risk", counts.risk],

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { Dish, Restaurant } from "@/lib/types";
 import { formatMxn } from "@/lib/money";
+import { offersPublicDelivery } from "@/lib/fulfillment";
 import {
   FLYER_ASPECT_SIZE,
   formatWhatsappDisplay,
@@ -53,6 +54,7 @@ export function FlyerCanvas({
   const showWa = options.showWhatsapp && Boolean(phone);
   const showShip =
     options.showFreeShipping &&
+    offersPublicDelivery(restaurant) &&
     (restaurant.free_shipping || Number(restaurant.shipping_cost) === 0);
   const chalk = theme.id === "urbano_pizarra";
 

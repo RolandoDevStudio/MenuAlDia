@@ -7,6 +7,7 @@ import {
   buildAppointmentMessage,
   buildWaMeUrl,
 } from "@/lib/whatsapp";
+import { normalizeMxPhone } from "@/lib/phone";
 import { isDemoOrEmbedded } from "@/lib/canonical-demos";
 import { can, type PlanType } from "@/lib/plans";
 import { Button } from "@/components/ui/button";
@@ -127,8 +128,8 @@ export function CitaExpressDialog({
       setError("Escribe tu nombre");
       return;
     }
-    if (phone.replace(/\D/g, "").length < 10) {
-      setError("Escribe un teléfono válido (10+ dígitos)");
+    if (phone.replace(/\D/g, "").length < 10 || !normalizeMxPhone(phone)) {
+      setError("Escribe un WhatsApp de 10 dígitos");
       return;
     }
     if (!date || !time) {

@@ -78,9 +78,26 @@ export function AdminOpsKpis({
       </div>
 
       <div className="rounded-xl border border-black/5 bg-surface px-3 py-2.5">
-        <p className="text-[11px] text-muted">Plan</p>
-        <p className="mt-0.5 text-base font-semibold leading-tight">{planLabel}</p>
-        <p className="mt-0.5 text-[10px] text-muted">{planHint}</p>
+        {stats.ordersToday != null ? (
+          <>
+            <p className="text-[11px] text-muted">Pedidos hoy</p>
+            <p className="mt-0.5 text-xl font-semibold tabular-nums">
+              {formatInt(stats.ordersToday)}
+            </p>
+            <Link
+              href="/admin/orders"
+              className="mt-0.5 text-[10px] font-medium text-brand"
+            >
+              Ver cola
+            </Link>
+          </>
+        ) : (
+          <>
+            <p className="text-[11px] text-muted">Plan</p>
+            <p className="mt-0.5 text-base font-semibold leading-tight">{planLabel}</p>
+            <p className="mt-0.5 text-[10px] text-muted">{planHint}</p>
+          </>
+        )}
       </div>
     </div>
   );

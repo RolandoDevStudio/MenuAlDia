@@ -6,7 +6,7 @@ import {
   normalizeCouponCode,
   type CouponDiscountType,
 } from "@/lib/coupons";
-import { normalizeWhatsAppPhone } from "@/lib/whatsapp";
+import { normalizeMxPhone } from "@/lib/phone";
 
 export async function POST(request: Request) {
   const body = (await request.json()) as {
@@ -72,8 +72,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const phone = normalizeWhatsAppPhone(body.phone ?? "");
-  if (coupon.max_uses_per_customer != null && phone.length >= 10) {
+  const phone = normalizeMxPhone(body.phone ?? "") ?? "";
+  if (coupon.max_uses_per_customer != null && phone.length === 10) {
     const { count } = await admin
       .from("tenant_coupon_redemptions")
       .select("id", { count: "exact", head: true })

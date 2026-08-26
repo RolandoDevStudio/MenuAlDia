@@ -2,6 +2,7 @@ export type NotificationAudience = "tenant" | "super_admin";
 
 export type NotificationType =
   | "appointment_lead"
+  | "new_order"
   | "loyalty_goal"
   | "reminder_daily_menu"
   | "reminder_subscription"

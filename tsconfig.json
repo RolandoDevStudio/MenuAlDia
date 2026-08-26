@@ -30,5 +30,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "lib/dates.test.ts"]
+    "exclude": ["node_modules", "lib/dates.test.ts", "lib/phone.test.ts", "lib/transfer-details.test.ts"]
 }

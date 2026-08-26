@@ -259,7 +259,7 @@ export function CrmConsole() {
           />
           <Kpi
             label="Pedidos mes"
-            value={`${k.ordersMonth} · ${k.ordersPickup} rec / ${k.ordersDelivery} env`}
+            value={`${k.ordersMonth} · ${k.ordersPickup} rec / ${k.ordersDelivery} env / ${k.ordersDineIn} com`}
             helpId="ordersMonth"
           />
           <Kpi
@@ -284,7 +284,7 @@ export function CrmConsole() {
         />
         <Kpi
           label="Pedidos mes"
-          value={`${k.ordersMonth} · ${k.ordersPickup} rec / ${k.ordersDelivery} env`}
+          value={`${k.ordersMonth} · ${k.ordersPickup} rec / ${k.ordersDelivery} env / ${k.ordersDineIn} com`}
           helpId="ordersMonth"
         />
         <Kpi

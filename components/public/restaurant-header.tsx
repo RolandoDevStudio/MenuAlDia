@@ -2,9 +2,13 @@
 
 import { useState } from "react";
 import type { Restaurant } from "@/lib/types";
-import { formatMxn } from "@/lib/money";
 import { formatPlaceLine } from "@/lib/mx-locations";
 import { normalizeBusinessType } from "@/lib/business-labels";
+import {
+  offersPublicDelivery,
+  offersPublicVenue,
+  publicFulfillmentHint,
+} from "@/lib/fulfillment";
 import {
   MapPin,
   Clock,
@@ -55,12 +59,9 @@ export function RestaurantHeader({
   hasFaqs?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const offersDelivery = restaurant.offers_delivery !== false;
-  const shippingLabel = !offersDelivery
-    ? "Solo recogida en local"
-    : restaurant.free_shipping || Number(restaurant.shipping_cost) === 0
-      ? "Envío gratis"
-      : `Envío ${formatMxn(Number(restaurant.shipping_cost))}`;
+  const shippingLabel = publicFulfillmentHint(restaurant);
+  const showVenue = offersPublicVenue(restaurant);
+  const showDelivery = offersPublicDelivery(restaurant);
   const place =
     placeLine ||
     formatPlaceLine(restaurant.city, restaurant.state);
@@ -88,7 +89,7 @@ export function RestaurantHeader({
         ? "Catálogo al día"
         : "Sabor casero";
   const showShippingChip =
-    offersDelivery &&
+    showDelivery &&
     (restaurant.free_shipping || Number(restaurant.shipping_cost) === 0);
 
   const chipClass =
@@ -153,7 +154,7 @@ export function RestaurantHeader({
           ) : null}
 
           <div className="mt-3 flex flex-wrap gap-2">
-            {restaurant.maps_url ? (
+            {showVenue && restaurant.maps_url ? (
               <a
                 href={restaurant.maps_url}
                 target="_blank"
@@ -191,7 +192,7 @@ export function RestaurantHeader({
                   {restaurant.schedule_text}
                 </p>
               ) : null}
-              {restaurant.address ? (
+              {showVenue && restaurant.address ? (
                 <p className="flex items-start gap-1.5">
                   <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                   {restaurant.maps_url ? (
@@ -208,10 +209,12 @@ export function RestaurantHeader({
                   )}
                 </p>
               ) : null}
-              <p className="flex items-center gap-1.5">
-                <Truck className="h-3.5 w-3.5 shrink-0" />
-                {shippingLabel}
-              </p>
+              {showDelivery ? (
+                <p className="flex items-center gap-1.5">
+                  <Truck className="h-3.5 w-3.5 shrink-0" />
+                  {shippingLabel}
+                </p>
+              ) : null}
               {socials.length > 0 ? (
                 <div className="flex flex-wrap gap-3 pt-1">
                   {socials.map(({ href, label }) => (

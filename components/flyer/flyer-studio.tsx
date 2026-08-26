@@ -36,6 +36,7 @@ import { Switch } from "@/components/ui/switch";
 import { createClient } from "@/lib/supabase/client";
 import { compressImage } from "@/lib/compress-image";
 import { cn } from "@/lib/utils";
+import { offersPublicDelivery } from "@/lib/fulfillment";
 import { Emoji } from "@/components/ui-emoji";
 import { UI_EMOJI } from "@/lib/ui-emoji";
 import { labelsFor } from "@/lib/business-labels";
@@ -96,7 +97,8 @@ export function FlyerStudio({
       headline: initialHeadline ?? "ESPECIALES DE HOY",
       subtitle: restaurant.slogan ?? "",
       showFreeShipping:
-        restaurant.free_shipping || Number(restaurant.shipping_cost) === 0,
+        offersPublicDelivery(restaurant) &&
+        (restaurant.free_shipping || Number(restaurant.shipping_cost) === 0),
       showWhatsapp: Boolean(formatWhatsappDisplay(restaurant.phone_whatsapp)),
     }),
   );
@@ -555,6 +557,7 @@ export function FlyerStudio({
         <ToggleRow
           label="Envío gratis"
           checked={options.showFreeShipping}
+          disabled={!offersPublicDelivery(restaurant)}
           onChange={(v) => patch({ showFreeShipping: v })}
         />
         <ToggleRow

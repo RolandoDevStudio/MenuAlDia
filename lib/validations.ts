@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isMxStateCode, normalizeLegacyState } from "@/lib/mx-locations";
+import { normalizeMxPhone } from "@/lib/phone";
 
 const optionalHttpUrl = z
   .string()
@@ -13,11 +14,17 @@ const optionalHttpUrl = z
 
 export const checkoutSchema = z
   .object({
-    fulfillment: z.enum(["pickup", "delivery"]).default("delivery"),
+    fulfillment: z.enum(["pickup", "delivery", "dine_in"]).default("delivery"),
     customerName: z.string().min(2, "Escribe tu nombre"),
+    phone: z
+      .string()
+      .min(1, "Escribe tu WhatsApp")
+      .transform((v) => normalizeMxPhone(v) ?? "")
+      .refine((v) => v.length === 10, "WhatsApp a 10 dígitos"),
     address: z.string().optional().default(""),
     mapsUrl: optionalHttpUrl,
     references: z.string().optional().default(""),
+    tableLabel: z.string().optional().default(""),
     paymentMethod: z.enum(["cash", "transfer"]),
     cashAmount: z.coerce.number().optional().nullable(),
   })
@@ -81,6 +88,16 @@ export const restaurantSettingsSchema = z.object({
   shipping_cost: z.coerce.number().min(0, "El envío no puede ser negativo"),
   free_shipping: z.boolean(),
   offers_delivery: z.boolean().default(true),
+  offers_pickup: z.boolean().default(true),
+  offers_dine_in: z.boolean().default(false),
+  show_transfer_details: z.boolean().default(false),
+  bank_account_holder: z.string().optional().default(""),
+  bank_name: z.string().optional().default(""),
+  bank_clabe: z
+    .string()
+    .optional()
+    .default("")
+    .transform((v) => v.replace(/\D/g, "")),
   logo_url: z
     .string()
     .url("URL de logo inválida")
@@ -90,7 +107,13 @@ export const restaurantSettingsSchema = z.object({
   instagram_url: optionalHttpUrl,
   facebook_url: optionalHttpUrl,
   tiktok_url: optionalHttpUrl,
-});
+}).refine(
+  (d) => d.offers_pickup || d.offers_delivery || d.offers_dine_in,
+  {
+    message: "Activa al menos un modo: recoger, envío o comedor",
+    path: ["offers_pickup"],
+  },
+);
 
 export type CheckoutInput = z.infer<typeof checkoutSchema>;
 export type DishFormInput = z.infer<typeof dishFormSchema>;

@@ -1,6 +1,7 @@
-import type { CartItem, CheckoutFormValues, Restaurant } from "@/lib/types";
+import type { CartItem, CheckoutFormValues, FulfillmentMode, Restaurant } from "@/lib/types";
 import { formatMxn } from "@/lib/money";
 import { formatQty, resolveUnitType } from "@/lib/units";
+import { transferWhatsAppLines } from "@/lib/transfer-details";
 
 export function normalizeWhatsAppPhone(phone: string): string {
   return phone.replace(/\D/g, "");
@@ -22,7 +23,14 @@ function addonLines(item: CartItem): string[] {
 }
 
 export function buildOrderMessage(params: {
-  restaurant: Pick<Restaurant, "name">;
+  restaurant: Pick<
+    Restaurant,
+    | "name"
+    | "show_transfer_details"
+    | "bank_account_holder"
+    | "bank_name"
+    | "bank_clabe"
+  >;
   items: CartItem[];
   checkout: CheckoutFormValues;
   shipping: number;
@@ -88,8 +96,14 @@ export function buildOrderMessage(params: {
   }
 
   lines.push("");
-  if (checkout.fulfillment === "pickup") {
+  const mode = checkout.fulfillment as FulfillmentMode;
+  if (mode === "pickup") {
     lines.push("🏪 Modalidad: Recoger en el local");
+  } else if (mode === "dine_in") {
+    lines.push("🍽️ Modalidad: Comedor");
+    if (checkout.tableLabel?.trim()) {
+      lines.push(`🪑 Mesa: ${checkout.tableLabel.trim()}`);
+    }
   } else if (shipping > 0) {
     lines.push(`🚚 Envío: ${formatMxn(shipping)}`);
   } else {
@@ -107,8 +121,16 @@ export function buildOrderMessage(params: {
   lines.push(`💰 *Total estimado: ${formatMxn(total)}*`);
   lines.push("");
   lines.push(`👤 ${checkout.customerName}`);
+  if (checkout.phone) {
+    lines.push(`📱 ${checkout.phone}`);
+  }
   if (checkout.fulfillment === "pickup") {
     lines.push("🏪 Recoger en el local");
+  } else if (checkout.fulfillment === "dine_in") {
+    lines.push("🍽️ Comedor");
+    if (checkout.tableLabel?.trim()) {
+      lines.push(`🪑 Mesa: ${checkout.tableLabel.trim()}`);
+    }
   } else {
     lines.push(`📍 ${checkout.address}`);
     if (checkout.mapsUrl?.trim()) {
@@ -124,9 +146,7 @@ export function buildOrderMessage(params: {
     );
   } else {
     lines.push("🏦 Transferencia");
-    lines.push(
-      "Por favor, ¿me puedes compartir los datos para transferir (banco / CLABE / cuenta)?",
-    );
+    lines.push(...transferWhatsAppLines(restaurant));
   }
   return lines.join("\n");
 }

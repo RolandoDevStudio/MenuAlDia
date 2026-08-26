@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Cake, Search, Trash2 } from "lucide-react";
-import type { BusinessType, Customer, CustomerPhoto } from "@/lib/types";
+import type { BusinessType, Customer, CustomerPhoto, CustomerVisit, Order, OrderLogPayload } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import { compressImage } from "@/lib/compress-image";
 import {
@@ -24,6 +24,10 @@ import { UI_EMOJI } from "@/lib/ui-emoji";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { normalizeBusinessType } from "@/lib/business-labels";
+import { normalizeMxPhone } from "@/lib/phone";
+import { FULFILLMENT_LABELS, parseFulfillment } from "@/lib/fulfillment";
+import { formatMxn } from "@/lib/money";
+import { formatMexicoCityDateTime } from "@/lib/dates";
 
 const TAG_OPTIONS = ["VIP", "Para llevar", "Frecuente", "Familiar"] as const;
 const MAX_PHOTOS = 5;
@@ -32,6 +36,7 @@ type Props = {
   restaurantId: string;
   restaurantName: string;
   initialCustomers: Customer[];
+  initialSelectedId?: string | null;
   loyaltyGoal: number;
   loyaltyRewardLabel: string;
   businessType?: BusinessType | string | null;
@@ -48,6 +53,7 @@ export function CustomersCrm({
   restaurantId,
   restaurantName,
   initialCustomers,
+  initialSelectedId = null,
   loyaltyGoal: initialGoal,
   loyaltyRewardLabel: initialReward,
   businessType,
@@ -57,7 +63,12 @@ export function CustomersCrm({
   const [q, setQ] = useState("");
   const [visitPulseId, setVisitPulseId] = useState<string | null>(null);
   const [campaignFilter, setCampaignFilter] = useState<CampaignFilter>("all");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(
+    initialSelectedId,
+  );
+  const [activity, setActivity] = useState<
+    { kind: "order" | "visit"; at: string; label: string }[]
+  >([]);
   const [goal, setGoal] = useState(initialGoal || 10);
   const [rewardLabel, setRewardLabel] = useState(
     initialReward || "Recompensa gratis",
@@ -97,10 +108,49 @@ export function CustomersCrm({
   useEffect(() => {
     if (!selectedId) {
       setPhotos([]);
+      setActivity([]);
       return;
     }
     void loadPhotos(selectedId);
+    void loadActivity(selectedId);
   }, [selectedId]);
+
+  async function loadActivity(customerId: string) {
+    const supabase = createClient();
+    const [{ data: orderRows }, { data: visitRows }] = await Promise.all([
+      supabase
+        .from("orders")
+        .select("id, created_at, total, payload, status")
+        .eq("customer_id", customerId)
+        .order("created_at", { ascending: false })
+        .limit(10),
+      supabase
+        .from("customer_visits")
+        .select("*")
+        .eq("customer_id", customerId)
+        .order("created_at", { ascending: false })
+        .limit(10),
+    ]);
+    const orders = (orderRows ?? []) as Order[];
+    const visits = (visitRows ?? []) as CustomerVisit[];
+    const rows = [
+      ...orders.map((o) => {
+        const p = o.payload ?? ({} as OrderLogPayload);
+        const mode = parseFulfillment(p.fulfillment);
+        return {
+          kind: "order" as const,
+          at: o.created_at,
+          label: `Pedido ${mode ? FULFILLMENT_LABELS[mode] : ""} · ${formatMxn(Number(o.total))}`,
+        };
+      }),
+      ...visits.map((v) => ({
+        kind: "visit" as const,
+        at: v.created_at,
+        label: v.note?.trim() ? `Visita · ${v.note}` : "Visita sellada",
+      })),
+    ].sort((a, b) => (a.at < b.at ? 1 : -1));
+    setActivity(rows.slice(0, 12));
+  }
 
   async function loadPhotos(customerId: string) {
     const supabase = createClient();
@@ -135,6 +185,11 @@ export function CustomersCrm({
   async function createCustomer() {
     const phone = window.prompt("Teléfono (WhatsApp) del cliente");
     if (!phone?.trim()) return;
+    const phoneDigits = normalizeMxPhone(phone);
+    if (!phoneDigits) {
+      toast.error("Usa un WhatsApp de 10 dígitos");
+      return;
+    }
     const name = window.prompt("Nombre", "Cliente") || "Cliente";
     setBusy(true);
     const supabase = createClient();
@@ -143,7 +198,7 @@ export function CustomersCrm({
       .insert({
         restaurant_id: restaurantId,
         name: name.trim(),
-        phone: phone.trim(),
+        phone: phoneDigits,
       })
       .select("*")
       .single();
@@ -196,6 +251,7 @@ export function CustomersCrm({
       }
       const updated = json.customer;
       setCustomers((list) => list.map((x) => (x.id === c.id ? updated : x)));
+      if (selectedId === c.id) void loadActivity(c.id);
       const goalN = json.goal ?? Math.max(1, Number(goal) || 10);
       const toward = json.toward ?? 0;
       if (json.goalReached) setRewardOpen(updated);
@@ -496,11 +552,17 @@ export function CustomersCrm({
                   <Input
                     defaultValue={selected.phone ?? ""}
                     key={`phone-${selected.id}`}
-                    onBlur={(e) =>
+                    onBlur={(e) => {
+                      const next = e.target.value.trim();
+                      const digits = next ? normalizeMxPhone(next) : null;
+                      if (next && !digits) {
+                        toast.error("WhatsApp inválido (10 dígitos)");
+                        return;
+                      }
                       void patchCustomer(selected.id, {
-                        phone: e.target.value.trim() || null,
-                      })
-                    }
+                        phone: digits,
+                      });
+                    }}
                   />
                 </div>
               </div>
@@ -583,6 +645,29 @@ export function CustomersCrm({
                     );
                   })}
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Actividad</Label>
+                {activity.length === 0 ? (
+                  <p className="text-xs text-muted">
+                    Aún no hay pedidos ni visitas selladas.
+                  </p>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {activity.map((row, i) => (
+                      <li
+                        key={`${row.kind}-${row.at}-${i}`}
+                        className="rounded-lg bg-background/60 px-3 py-2 text-xs"
+                      >
+                        <p className="font-medium">{row.label}</p>
+                        <p className="text-muted">
+                          {formatMexicoCityDateTime(row.at)}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
 
               <div className="space-y-2">

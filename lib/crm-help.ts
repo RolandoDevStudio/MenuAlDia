@@ -74,7 +74,7 @@ export const CRM_HELP: Record<string, CrmHelpEntry> = {
   },
   ordersMonth: {
     title: "Pedidos mes",
-    what: "Pedidos registrados este mes, partidos en recoger vs envío. No hay comedor.",
+    what: "Pedidos registrados este mes, partidos en recoger, envío y comedor.",
     how: "order_logs del mes calendario.",
     ifBad: "Si hay visitas y casi no hay pedidos, mira el CTR de WhatsApp.",
   },

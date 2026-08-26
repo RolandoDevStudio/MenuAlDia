@@ -46,6 +46,12 @@ export function AdminMoreMenu({
 
   const items: MoreItem[] = [
     {
+      href: "/admin/difusion",
+      label: "Difusión",
+      icon: Megaphone,
+      group: "ops",
+    },
+    {
       href: "/admin/combos",
       label: label(businessType, "combos"),
       icon: Package,
@@ -171,8 +177,8 @@ export function AdminMoreMenu({
               </p>
               <p className="mt-1 text-xs text-muted">
                 {can(planType, "flyer")
-                  ? "Mensaje, Kit, Flyer y Galería están en la pestaña Difusión."
-                  : "Mensaje y Kit están en la pestaña Difusión."}
+                  ? "Mensaje, Kit, Flyer y Galería están en Difusión."
+                  : "Mensaje y Kit están en Difusión."}
               </p>
               <div className="mt-2 flex flex-wrap gap-2">
                 <Link

@@ -121,6 +121,16 @@ export default async function PrivacidadPage({
             </li>
           </ul>
           <p>
+            Cuando usted pide a través del menú público de un negocio, también
+            recabamos <strong>nombre</strong> y <strong>número de WhatsApp</strong>{" "}
+            para que el establecimiento dé seguimiento a su pedido y, si usted
+            lo acepta al enviar, promociones ocasionales. La dirección de
+            entrega viaja únicamente en el mensaje de WhatsApp al negocio;{" "}
+            <strong>no la almacenamos</strong> en nuestros servidores. El
+            restaurante es responsable del tratamiento de esos datos de
+            contacto en su operación diaria.
+          </p>
+          <p>
             Menú al Día <strong>NO</strong> recaba ni solicita bajo ninguna
             circunstancia datos personales sensibles (tales como origen étnico,
             estado de salud, información genética, creencias religiosas,
@@ -310,10 +320,11 @@ export default async function PrivacidadPage({
           <p>
             Menú al Día utiliza tecnologías de almacenamiento local (cookies y
             localStorage) con el único fin de permitir el funcionamiento del
-            carrito de compras, la gestión de sesiones activas y la medición
-            anónima del rendimiento de la plataforma. En la landing puede
-            usarse sessionStorage para no contar de más una misma visita en la
-            pestaña.
+            carrito de compras, recordar nombre y WhatsApp en el mismo
+            dispositivo para agilizar el siguiente pedido, la gestión de
+            sesiones activas y la medición anónima del rendimiento de la
+            plataforma. En la landing puede usarse sessionStorage para no
+            contar de más una misma visita en la pestaña.
           </p>
         </section>
 
