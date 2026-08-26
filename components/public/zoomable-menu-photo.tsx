@@ -13,11 +13,13 @@ export function ZoomableMenuPhoto({
   alt,
   className,
   sizes = "(max-width: 640px) 100vw, 512px",
+  priority = false,
 }: {
   src: string;
   alt: string;
   className?: string;
   sizes?: string;
+  priority?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -61,10 +63,19 @@ export function ZoomableMenuPhoto({
       <button
         type="button"
         className={cn("relative block h-full w-full overflow-hidden", className)}
-        onClick={() => setOpen(true)}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen(true);
+        }}
         aria-label="Ver foto grande"
       >
-        <StorageImage src={src} alt={alt} fill sizes={sizes} />
+        <StorageImage
+          src={src}
+          alt={alt}
+          fill
+          sizes={sizes}
+          priority={priority}
+        />
         <span className="pointer-events-none absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm">
           <Maximize2 className="h-4 w-4" aria-hidden />
         </span>

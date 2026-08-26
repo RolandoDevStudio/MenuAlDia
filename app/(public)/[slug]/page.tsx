@@ -234,6 +234,7 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
               sidesLabel={labels.sides}
               dishesLabel={labels.dishes}
               dishLabel={labels.dish}
+              businessType={data.restaurant.business_type}
             />
           ) : null}
           <Suspense fallback={null}>
