@@ -178,7 +178,7 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
         };
 
   return (
-    <main className="relative min-h-full overflow-x-clip bg-background">
+    <main className="relative min-h-full bg-background">
       <div
         className="pointer-events-none absolute inset-0 -z-10 opacity-90"
         aria-hidden
@@ -196,12 +196,14 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
         <FlyerPromoBanner restaurantId={data.restaurant.id} />
       </Suspense>
       {theme.bannerUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={theme.bannerUrl}
-          alt=""
-          className="h-28 w-full object-cover sm:h-36"
-        />
+        <div className="overflow-x-clip">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={theme.bannerUrl}
+            alt=""
+            className="h-28 w-full object-cover sm:h-36"
+          />
+        </div>
       ) : null}
       <RestaurantHeader
         restaurant={data.restaurant}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Plus, CalendarClock } from "lucide-react";
 import type {
@@ -33,6 +33,14 @@ import { CitaExpressDialog } from "@/components/public/cita-express-dialog";
 import { StorageImage } from "@/components/ui/storage-image";
 import { cn } from "@/lib/utils";
 import type { PlanType } from "@/lib/plans";
+
+const POPULAR_NAV_ID = "popular";
+
+type NavSection = {
+  id: string;
+  title: string;
+  items: Dish[];
+};
 
 type Props = {
   slug: string;
@@ -78,6 +86,12 @@ export function PublicMenuClient({
   const [flashDishId, setFlashDishId] = useState<string | null>(null);
   const [citaDishId, setCitaDishId] = useState<string | null>(null);
   const [citaComboSlug, setCitaComboSlug] = useState<string | null>(null);
+  const [pillsStuck, setPillsStuck] = useState(false);
+  const [pillsH, setPillsH] = useState(60);
+
+  const pillsRef = useRef<HTMLDivElement>(null);
+  const pillBtnRefs = useRef(new Map<string, HTMLButtonElement>());
+  const spyLockedUntil = useRef(0);
 
   const isServicios =
     normalizeBusinessType(restaurant.business_type) === "servicios";
@@ -119,40 +133,99 @@ export function PublicMenuClient({
     [combos, comboSlug],
   );
 
-  const fixed = categories.filter((c) => c.is_fixed_catalog);
-  const catalogDishes = dishes.filter((d) => !d.is_side);
-  const sections = useMemo(
-    () =>
-      fixed
-        .map((category) => ({
-          category,
-          items: catalogDishes.filter((d) => d.category_id === category.id),
-        }))
-        .filter((s) => s.items.length > 0),
-    [fixed, catalogDishes],
+  const catalogDishes = useMemo(
+    () => dishes.filter((d) => !d.is_side),
+    [dishes],
+  );
+  const popularItems = useMemo(
+    () => catalogDishes.filter((d) => d.is_popular),
+    [catalogDishes],
   );
 
-  useEffect(() => {
-    if (sections.length === 0) return;
-    const nodes = sections
-      .map((s) => document.getElementById(`cat-${s.category.id}`))
-      .filter(Boolean) as HTMLElement[];
-    if (nodes.length === 0) return;
+  const navSections = useMemo((): NavSection[] => {
+    const cats = categories
+      .filter((c) => c.is_fixed_catalog)
+      .map((category) => ({
+        id: category.id,
+        title: category.name,
+        items: catalogDishes.filter((d) => d.category_id === category.id),
+      }))
+      .filter((s) => s.items.length > 0);
+    if (popularItems.length === 0) return cats;
+    return [
+      { id: POPULAR_NAV_ID, title: popularLabel, items: popularItems },
+      ...cats,
+    ];
+  }, [categories, catalogDishes, popularItems, popularLabel]);
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (visible?.target?.id?.startsWith("cat-")) {
-          setActiveCat(visible.target.id.slice(4));
-        }
-      },
-      { rootMargin: "-20% 0px -55% 0px", threshold: [0.1, 0.35, 0.6] },
-    );
-    for (const n of nodes) observer.observe(n);
-    return () => observer.disconnect();
-  }, [sections]);
+  const showPills = navSections.length > 1;
+
+  useEffect(() => {
+    if (!showPills) return;
+    const el = pillsRef.current;
+    if (!el) return;
+    const sync = () => setPillsH(el.offsetHeight);
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [showPills, navSections.length]);
+
+  useEffect(() => {
+    if (navSections.length === 0) return;
+    setActiveCat((prev) => {
+      if (prev && navSections.some((s) => s.id === prev)) return prev;
+      return navSections[0].id;
+    });
+  }, [navSections]);
+
+  useEffect(() => {
+    if (!showPills) return;
+
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const bar = pillsRef.current;
+      const offset = (bar?.offsetHeight ?? 56) + 8;
+      if (bar) {
+        setPillsStuck(bar.getBoundingClientRect().top <= 0);
+      }
+      if (Date.now() < spyLockedUntil.current) return;
+
+      let current = navSections[0]?.id ?? null;
+      for (const s of navSections) {
+        const el = document.getElementById(`cat-${s.id}`);
+        if (!el) continue;
+        if (el.getBoundingClientRect().top <= offset) current = s.id;
+      }
+      if (current) {
+        setActiveCat((prev) => (prev === current ? prev : current));
+      }
+    };
+
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(update);
+    };
+
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [navSections, showPills]);
+
+  useEffect(() => {
+    if (!activeCat) return;
+    pillBtnRefs.current.get(activeCat)?.scrollIntoView({
+      inline: "center",
+      block: "nearest",
+      behavior: "smooth",
+    });
+  }, [activeCat]);
 
   function clearQuery() {
     const params = new URLSearchParams(searchParams.toString());
@@ -174,6 +247,7 @@ export function PublicMenuClient({
 
   function jumpToCategory(id: string) {
     setActiveCat(id);
+    spyLockedUntil.current = Date.now() + 700;
     const el = document.getElementById(`cat-${id}`);
     el?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -218,6 +292,82 @@ export function PublicMenuClient({
 
   const origin =
     typeof window !== "undefined" ? window.location.origin : "";
+
+  function renderDish(dish: Dish) {
+    return (
+      <li key={dish.id}>
+        <div className="relative flex min-h-11 w-full gap-3 rounded-2xl border border-black/5 bg-surface p-3 text-left transition active:scale-[0.99]">
+          <button
+            type="button"
+            onClick={() => openProduct(dish.id)}
+            className="flex min-w-0 flex-1 gap-3 text-left"
+          >
+            <div className="relative shrink-0">
+              {dish.photo_url ? (
+                <StorageImage
+                  src={dish.photo_url}
+                  alt=""
+                  width={80}
+                  height={80}
+                  sizes="80px"
+                  className={cn("h-20 w-20", photoFrameClass(photoFrame))}
+                />
+              ) : (
+                <div
+                  className={cn(
+                    "flex h-20 w-20 items-center justify-center bg-brand/15 font-[family-name:var(--font-display)] text-2xl text-brand-dark/50",
+                    photoFrameClass(photoFrame).replace("object-cover", ""),
+                  )}
+                >
+                  {dish.name.slice(0, 1)}
+                </div>
+              )}
+              {dish.is_popular ? (
+                <span className="absolute left-1 top-1 rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow">
+                  {popularLabel}
+                </span>
+              ) : null}
+            </div>
+            <div className="min-w-0 flex-1 pr-10">
+              <p className="font-semibold">{dish.name}</p>
+              {dish.description ? (
+                <p className="mt-0.5 line-clamp-2 text-xs text-muted">
+                  {dish.description}
+                </p>
+              ) : null}
+              <p className="mt-2 text-sm font-semibold text-brand">
+                {formatMxn(Number(dish.price))}
+                {pricePerUnitLabel(resolveUnitType(dish.unit_type))}
+              </p>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={(e) => quickAdd(dish, e)}
+            className={cn(
+              "absolute bottom-3 right-3 flex h-11 w-11 items-center justify-center rounded-full bg-brand text-white shadow-md transition hover:bg-brand-dark active:scale-95",
+              flashDishId === dish.id && "menu-quick-flash",
+            )}
+            aria-label={
+              isServicios &&
+              dishAllowsBooking(dish) &&
+              !dishAllowsPurchase(dish)
+                ? `Solicitar cita para ${dish.name}`
+                : `Añadir ${dish.name}`
+            }
+          >
+            {isServicios &&
+            dishAllowsBooking(dish) &&
+            !dishAllowsPurchase(dish) ? (
+              <CalendarClock className="h-5 w-5" />
+            ) : (
+              <Plus className="h-5 w-5" />
+            )}
+          </button>
+        </div>
+      </li>
+    );
+  }
 
   return (
     <>
@@ -264,30 +414,55 @@ export function PublicMenuClient({
         </section>
       ) : null}
 
-      <section className="mx-auto max-w-lg px-4 pb-8 pt-2">
-        {sections.length > 1 ? (
-          <div className="sticky top-0 z-30 -mx-4 mb-4 border-b border-black/5 bg-background/95 px-4 py-2 backdrop-blur">
-            <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {sections.map(({ category }) => (
-                <button
-                  key={category.id}
-                  type="button"
-                  onClick={() => jumpToCategory(category.id)}
-                  className={cn(
-                    "min-h-11 shrink-0 rounded-full px-4 text-sm font-semibold transition-[background-color,color,transform] duration-200",
-                    activeCat === category.id
-                      ? "scale-[1.03] bg-brand text-white"
-                      : "bg-surface text-muted",
-                  )}
-                >
-                  {category.name}
-                </button>
-              ))}
+      <section
+        className="mx-auto max-w-lg px-4 pb-8 pt-2"
+        style={{ ["--menu-pills-h" as string]: `${pillsH}px` }}
+      >
+        {showPills ? (
+          <div
+            ref={pillsRef}
+            className={cn(
+              "sticky top-0 z-30 -mx-4 mb-4 border-b border-black/5 bg-background/95 px-4 py-2 backdrop-blur",
+              pillsStuck && "shadow-sm",
+            )}
+          >
+            <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1 scrollbar-none">
+              {navSections.map((s) => {
+                const isPopular = s.id === POPULAR_NAV_ID;
+                const active = activeCat === s.id;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    ref={(el) => {
+                      if (el) pillBtnRefs.current.set(s.id, el);
+                      else pillBtnRefs.current.delete(s.id);
+                    }}
+                    onClick={() => jumpToCategory(s.id)}
+                    title={isPopular ? popularLabel : undefined}
+                    aria-label={isPopular ? popularLabel : undefined}
+                    aria-current={active ? "true" : undefined}
+                    className={cn(
+                      "min-h-11 shrink-0 rounded-full text-sm font-semibold transition-[background-color,color,transform] duration-200",
+                      isPopular ? "px-3 text-base" : "px-4",
+                      active
+                        ? "scale-[1.03] bg-brand text-white"
+                        : "bg-surface text-muted",
+                    )}
+                  >
+                    {isPopular ? (
+                      <span aria-hidden>⭐</span>
+                    ) : (
+                      s.title
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
         ) : null}
 
-        {sections.length === 0 ? (
+        {navSections.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-black/10 bg-surface/70 px-4 py-6 text-center">
             <p className="font-semibold text-brand-dark">
               Aún no hay ítems en el catálogo
@@ -295,98 +470,16 @@ export function PublicMenuClient({
           </div>
         ) : (
           <div className="space-y-8">
-            {sections.map(({ category, items }) => (
+            {navSections.map((s) => (
               <div
-                key={category.id}
-                id={`cat-${category.id}`}
-                className="scroll-mt-16"
+                key={s.id}
+                id={`cat-${s.id}`}
+                style={{ scrollMarginTop: "var(--menu-pills-h, 3.5rem)" }}
               >
                 <h2 className="font-[family-name:var(--font-display)] text-3xl text-brand-dark">
-                  {category.name}
+                  {s.title}
                 </h2>
-                <ul className="mt-3 space-y-3">
-                  {items.map((dish) => (
-                    <li key={dish.id}>
-                      <div className="relative flex min-h-11 w-full gap-3 rounded-2xl border border-black/5 bg-surface p-3 text-left transition active:scale-[0.99]">
-                        <button
-                          type="button"
-                          onClick={() => openProduct(dish.id)}
-                          className="flex min-w-0 flex-1 gap-3 text-left"
-                        >
-                          <div className="relative shrink-0">
-                            {dish.photo_url ? (
-                              <StorageImage
-                                src={dish.photo_url}
-                                alt=""
-                                width={80}
-                                height={80}
-                                sizes="80px"
-                                className={cn(
-                                  "h-20 w-20",
-                                  photoFrameClass(photoFrame),
-                                )}
-                              />
-                            ) : (
-                              <div
-                                className={cn(
-                                  "flex h-20 w-20 items-center justify-center bg-brand/15 font-[family-name:var(--font-display)] text-2xl text-brand-dark/50",
-                                  photoFrameClass(photoFrame).replace(
-                                    "object-cover",
-                                    "",
-                                  ),
-                                )}
-                              >
-                                {dish.name.slice(0, 1)}
-                              </div>
-                            )}
-                            {dish.is_popular ? (
-                              <span className="absolute left-1 top-1 rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow">
-                                {popularLabel}
-                              </span>
-                            ) : null}
-                          </div>
-                          <div className="min-w-0 flex-1 pr-10">
-                            <p className="font-semibold">{dish.name}</p>
-                            {dish.description ? (
-                              <p className="mt-0.5 line-clamp-2 text-xs text-muted">
-                                {dish.description}
-                              </p>
-                            ) : null}
-                            <p className="mt-2 text-sm font-semibold text-brand">
-                              {formatMxn(Number(dish.price))}
-                              {pricePerUnitLabel(
-                                resolveUnitType(dish.unit_type),
-                              )}
-                            </p>
-                          </div>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => quickAdd(dish, e)}
-                          className={cn(
-                            "absolute bottom-3 right-3 flex h-11 w-11 items-center justify-center rounded-full bg-brand text-white shadow-md transition hover:bg-brand-dark active:scale-95",
-                            flashDishId === dish.id && "menu-quick-flash",
-                          )}
-                          aria-label={
-                            isServicios &&
-                            dishAllowsBooking(dish) &&
-                            !dishAllowsPurchase(dish)
-                              ? `Solicitar cita para ${dish.name}`
-                              : `Añadir ${dish.name}`
-                          }
-                        >
-                          {isServicios &&
-                          dishAllowsBooking(dish) &&
-                          !dishAllowsPurchase(dish) ? (
-                            <CalendarClock className="h-5 w-5" />
-                          ) : (
-                            <Plus className="h-5 w-5" />
-                          )}
-                        </button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                <ul className="mt-3 space-y-3">{s.items.map(renderDish)}</ul>
               </div>
             ))}
           </div>
