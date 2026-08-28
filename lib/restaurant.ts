@@ -36,6 +36,8 @@ function normalizeRestaurant(raw: Restaurant): Restaurant {
   r.bank_account_holder = r.bank_account_holder ?? "";
   r.bank_name = r.bank_name ?? "";
   r.bank_clabe = r.bank_clabe ?? "";
+  r.orders_via_wa = r.orders_via_wa ?? true;
+  r.orders_via_crm = r.orders_via_crm ?? false;
   r.accepting_orders = r.accepting_orders ?? true;
   r.schedule_auto = r.schedule_auto ?? false;
   r.closed_message = r.closed_message ?? "";
@@ -159,26 +161,36 @@ async function fetchPublicMenuBySlug(
 
   const publicSelect =
     "id, slug, name, slogan, logo_url, phone_whatsapp, address, maps_url, city, state, schedule_text, shipping_cost, free_shipping, created_at, plan_type, is_active, subscription_end_date, theme_config, business_type, owner_name, instagram_url, facebook_url, tiktok_url, offers_delivery, offers_pickup, offers_dine_in, accepting_orders, schedule_hours, schedule_auto, closed_message, orders_override, show_powered_by";
-  const transferSelect =
-    "show_transfer_details, bank_account_holder, bank_name, bank_clabe";
+  // Columns added by later migrations. Each group is dropped independently so a
+  // tenant on an older schema still gets the groups it does have.
+  const optionalGroups = [
+    {
+      columns: "show_transfer_details, bank_account_holder, bank_name, bank_clabe",
+      pattern: /show_transfer_details|bank_account_holder|bank_name|bank_clabe/,
+    },
+    {
+      columns: "orders_via_wa, orders_via_crm",
+      pattern: /orders_via_wa|orders_via_crm/,
+    },
+  ];
 
-  let { data: restaurant, error: restaurantError } = await supabase
-    .from("restaurants")
-    .select(`${publicSelect}, ${transferSelect}`)
-    .eq("slug", slug)
-    .maybeSingle();
+  let available = optionalGroups;
+  let restaurant: unknown = null;
+  let restaurantError: { message: string } | null = null;
 
-  if (
-    restaurantError &&
-    /show_transfer_details|bank_account_holder|bank_name|bank_clabe/.test(
-      restaurantError.message,
-    )
-  ) {
+  for (;;) {
+    const select = [publicSelect, ...available.map((g) => g.columns)].join(", ");
     ({ data: restaurant, error: restaurantError } = await supabase
       .from("restaurants")
-      .select(publicSelect)
+      .select(select)
       .eq("slug", slug)
       .maybeSingle());
+
+    if (!restaurantError) break;
+    const message = restaurantError.message;
+    const next = available.filter((g) => !g.pattern.test(message));
+    if (next.length === available.length) break;
+    available = next;
   }
 
   if (restaurantError) {

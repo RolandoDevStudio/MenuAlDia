@@ -36,7 +36,7 @@ import {
   formatScheduleText,
   type ScheduleHours,
 } from "@/lib/store-hours";
-import type { PlanType } from "@/lib/plans";
+import { can, type PlanType } from "@/lib/plans";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -45,6 +45,8 @@ export default function SettingsPage() {
   const [offersDelivery, setOffersDelivery] = useState(true);
   const [offersPickup, setOffersPickup] = useState(true);
   const [offersDineIn, setOffersDineIn] = useState(false);
+  const [ordersViaWa, setOrdersViaWa] = useState(true);
+  const [ordersViaCrm, setOrdersViaCrm] = useState(false);
   const [showTransferDetails, setShowTransferDetails] = useState(false);
   const [bankHolder, setBankHolder] = useState("");
   const [bankName, setBankName] = useState("");
@@ -88,6 +90,8 @@ export default function SettingsPage() {
     setOffersDelivery(r.offers_delivery !== false);
     setOffersPickup(r.offers_pickup !== false);
     setOffersDineIn(r.offers_dine_in === true);
+    setOrdersViaWa(r.orders_via_wa !== false);
+    setOrdersViaCrm(r.orders_via_crm === true && can(r.plan_type, "crm"));
     setShowTransferDetails(r.show_transfer_details === true);
     setBankHolder(r.bank_account_holder ?? "");
     setBankName(r.bank_name ?? "");
@@ -157,6 +161,8 @@ export default function SettingsPage() {
       offers_delivery: offersDelivery,
       offers_pickup: offersPickup,
       offers_dine_in: offersDineIn,
+      orders_via_wa: ordersViaWa,
+      orders_via_crm: ordersViaCrm,
       show_transfer_details: showTransferDetails,
       bank_account_holder: bankHolder,
       bank_name: bankName,
@@ -421,6 +427,50 @@ export default function SettingsPage() {
                       }}
                     />
                   </div>
+                </div>
+
+                <div className="space-y-2 rounded-xl border border-black/5 bg-background/60 p-3">
+                  <p className="text-sm font-semibold">
+                    ¿Dónde recibes los pedidos?
+                  </p>
+                  <p className="text-xs text-muted">
+                    {can(restaurant.plan_type, "crm")
+                      ? "Deja al menos uno encendido. Puedes usar los dos a la vez."
+                      : "Tu plan recibe los pedidos por WhatsApp. El tablero de Pedidos está en el plan Pro."}
+                  </p>
+                  <div className="flex min-h-14 items-center justify-between">
+                    <Label htmlFor="orders_via_wa">En mi WhatsApp</Label>
+                    <Switch
+                      id="orders_via_wa"
+                      checked={ordersViaWa}
+                      disabled={!can(restaurant.plan_type, "crm")}
+                      onCheckedChange={(v) => {
+                        if (!v && !ordersViaCrm) return;
+                        setOrdersViaWa(v);
+                      }}
+                    />
+                  </div>
+                  <div className="flex min-h-14 items-center justify-between">
+                    <Label htmlFor="orders_via_crm">
+                      En el tablero de Pedidos
+                    </Label>
+                    <Switch
+                      id="orders_via_crm"
+                      checked={ordersViaCrm}
+                      disabled={!can(restaurant.plan_type, "crm")}
+                      onCheckedChange={(v) => {
+                        if (!v && !ordersViaWa) return;
+                        setOrdersViaCrm(v);
+                      }}
+                    />
+                  </div>
+                  {ordersViaCrm && !ordersViaWa ? (
+                    <p className="text-xs text-muted">
+                      El cliente ya no abrirá WhatsApp: verá su pedido
+                      confirmado con folio en pantalla. Revisa el tablero de
+                      Pedidos para atenderlos.
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="space-y-1.5">

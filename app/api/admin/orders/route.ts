@@ -4,6 +4,33 @@ import { requireTenantSession } from "@/lib/admin-session";
 import { can } from "@/lib/plans";
 import { parseOrderStatus } from "@/lib/fulfillment";
 
+/** Orders created after `?after=<iso>`, used by the board to poll for new ones. */
+export async function GET(request: Request) {
+  const session = await requireTenantSession();
+  if (!can(session.restaurant.plan_type, "crm")) {
+    return NextResponse.json({ error: "plan required: pro" }, { status: 403 });
+  }
+
+  const after = new URL(request.url).searchParams.get("after");
+  if (!after || Number.isNaN(Date.parse(after))) {
+    return NextResponse.json({ error: "invalid after" }, { status: 400 });
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("restaurant_id", session.restaurant.id)
+    .gt("created_at", after)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  return NextResponse.json({ orders: data ?? [] });
+}
+
 export async function PATCH(request: Request) {
   const session = await requireTenantSession();
   if (!can(session.restaurant.plan_type, "crm")) {

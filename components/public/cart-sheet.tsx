@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Copy, Trash2 } from "lucide-react";
+import { Copy, Loader2, Printer, Trash2 } from "lucide-react";
 import type { FulfillmentMode, Restaurant } from "@/lib/types";
 import { formatMxn } from "@/lib/money";
 import { checkoutSchema } from "@/lib/validations";
@@ -24,6 +24,10 @@ import {
 import { useCartStore } from "@/stores/cart-store";
 import { CitaExpressDialog } from "@/components/public/cita-express-dialog";
 import {
+  OrderTicket,
+  type OrderTicketData,
+} from "@/components/public/order-ticket";
+import {
   formatClabeDisplay,
   publicTransferDetails,
 } from "@/lib/transfer-details";
@@ -38,7 +42,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import type { PlanType } from "@/lib/plans";
+import { can, type PlanType } from "@/lib/plans";
 
 type Props = {
   open: boolean;
@@ -117,7 +121,15 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
   const removeItem = useCartStore((s) => s.removeItem);
   const clear = useCartStore((s) => s.clear);
 
-  const [step, setStep] = useState<"review" | "checkout">("review");
+  const [step, setStep] = useState<"review" | "checkout" | "success">("review");
+  const [ticket, setTicket] = useState<OrderTicketData | null>(null);
+  const sendingRef = useRef(false);
+
+  // Channel: WhatsApp, admin board, or both. Legacy tenants stay on WhatsApp.
+  const viaCrm =
+    restaurant.orders_via_crm === true && can(restaurant.plan_type, "crm");
+  const viaWa = restaurant.orders_via_wa !== false || !viaCrm;
+  const panelOnly = viaCrm && !viaWa;
   const modes = useMemo(
     () => restaurantFulfillmentModes(restaurant),
     [
@@ -194,6 +206,8 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
   useEffect(() => {
     if (!open) return;
     setStep("review");
+    setTicket(null);
+    sendingRef.current = false;
     setError(null);
     setCouponInput("");
     setCouponCode(null);
@@ -217,8 +231,8 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
   }, [open, restaurant.slug]);
 
   useEffect(() => {
-    if (open && items.length === 0) onOpenChange(false);
-  }, [items.length, open, onOpenChange]);
+    if (open && items.length === 0 && step !== "success") onOpenChange(false);
+  }, [items.length, open, onOpenChange, step]);
 
   const subtotal = step === "checkout" ? purchaseSubtotal : allSubtotal;
   const effectiveShipping = fulfillmentChargesShipping(fulfillment)
@@ -275,6 +289,8 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
   }
 
   async function submit() {
+    // The ref is the real guard: a second tap can land before `sending` renders.
+    if (sendingRef.current) return;
     setError(null);
     const parsed = checkoutSchema.safeParse({
       fulfillment,
@@ -303,6 +319,7 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
       return;
     }
 
+    sendingRef.current = true;
     setSending(true);
     const discountedSub = Math.max(0, purchaseSubtotal - discount);
     const checkout = {
@@ -333,7 +350,8 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
       /* ignore */
     }
 
-    void fetch("/api/orders/log", {
+    const orderTotal = discountedSub + effectiveShipping;
+    const logRequest = fetch("/api/orders/log", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -345,16 +363,61 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
           payment_method: parsed.data.paymentMethod,
           cash_amount: parsed.data.cashAmount,
           table_label: parsed.data.tableLabel || null,
+          address: parsed.data.address || "",
+          maps_url: parsed.data.mapsUrl || "",
+          references: parsed.data.references || "",
           items: orderItems,
           subtotal: purchaseSubtotal,
           shipping: effectiveShipping,
-          total: discountedSub + effectiveShipping,
+          total: orderTotal,
           coupon_code: couponCode,
           discount,
         },
       }),
     });
 
+    if (panelOnly) {
+      let folio: number | null = null;
+      try {
+        const res = await logRequest;
+        const json = (await res.json()) as { folio?: number | null };
+        if (!res.ok) throw new Error("log failed");
+        folio = json.folio ?? null;
+      } catch {
+        sendingRef.current = false;
+        setSending(false);
+        setError("No pudimos enviar tu pedido. Revisa tu conexión.");
+        return;
+      }
+
+      setTicket({
+        folio,
+        createdAt: new Date().toISOString(),
+        businessName: restaurant.name,
+        fulfillment: parsed.data.fulfillment,
+        tableLabel: parsed.data.tableLabel || null,
+        customerName: parsed.data.customerName,
+        items: orderItems,
+        subtotal: purchaseSubtotal,
+        shipping: effectiveShipping,
+        discount,
+        couponCode,
+        total: orderTotal,
+        paymentMethod: parsed.data.paymentMethod,
+        cashAmount: parsed.data.cashAmount,
+        status: "submitted",
+        transfer: transferDetails,
+      });
+      clear();
+      setStep("success");
+      setSending(false);
+      sendingRef.current = false;
+      return;
+    }
+
+    // WhatsApp must be opened synchronously in the click handler or iOS blocks
+    // the navigation, so the log request stays in flight here.
+    void logRequest;
     const url = buildWaMeUrl(restaurant.phone_whatsapp, message);
     void fetch("/api/public/wa-click", {
       method: "POST",
@@ -367,6 +430,7 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
     window.setTimeout(() => {
       clear();
       setSending(false);
+      sendingRef.current = false;
       onOpenChange(false);
     }, 400);
   }
@@ -569,13 +633,47 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
               </Button>
             ) : null}
           </>
+        ) : step === "success" && ticket ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>¡Pedido enviado!</DialogTitle>
+              <DialogDescription>
+                {ticket.folio != null
+                  ? `Guarda tu folio #${ticket.folio}. `
+                  : ""}
+                {restaurant.name} ya lo recibió y te contactará por WhatsApp.
+              </DialogDescription>
+            </DialogHeader>
+
+            <OrderTicket data={ticket} variant="sheet" />
+
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                className="min-h-11 flex-1"
+                onClick={() => window.print()}
+              >
+                <Printer className="mr-1.5 h-4 w-4" aria-hidden />
+                Guardar comprobante
+              </Button>
+              <Button
+                type="button"
+                className="min-h-11 flex-1"
+                onClick={() => onOpenChange(false)}
+              >
+                Listo
+              </Button>
+            </div>
+          </>
         ) : (
           <>
             <DialogHeader>
               <DialogTitle>Cómo quieres tu pedido</DialogTitle>
               <DialogDescription>
-                Te redirigiremos a WhatsApp. La dirección de envío solo va en el
-                mensaje; no la guardamos.
+                {panelOnly
+                  ? "Enviaremos tu pedido directo al negocio y te mostraremos tu comprobante con folio."
+                  : "Te redirigiremos a WhatsApp. La dirección de envío solo va en el mensaje; no la guardamos."}
               </DialogDescription>
             </DialogHeader>
 
@@ -773,7 +871,19 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
                   onClick={submit}
                   disabled={sending}
                 >
-                  {sending ? "Abriendo…" : "Enviar por WhatsApp"}
+                  {sending ? (
+                    <>
+                      <Loader2
+                        className="mr-1.5 h-4 w-4 animate-spin"
+                        aria-hidden
+                      />
+                      {panelOnly ? "Enviando…" : "Abriendo…"}
+                    </>
+                  ) : panelOnly ? (
+                    "Enviar pedido"
+                  ) : (
+                    "Enviar por WhatsApp"
+                  )}
                 </Button>
               </div>
             </div>

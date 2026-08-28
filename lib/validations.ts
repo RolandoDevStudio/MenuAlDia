@@ -90,6 +90,8 @@ export const restaurantSettingsSchema = z.object({
   offers_delivery: z.boolean().default(true),
   offers_pickup: z.boolean().default(true),
   offers_dine_in: z.boolean().default(false),
+  orders_via_wa: z.boolean().default(true),
+  orders_via_crm: z.boolean().default(false),
   show_transfer_details: z.boolean().default(false),
   bank_account_holder: z.string().optional().default(""),
   bank_name: z.string().optional().default(""),
@@ -112,6 +114,12 @@ export const restaurantSettingsSchema = z.object({
   {
     message: "Activa al menos un modo: recoger, envío o comedor",
     path: ["offers_pickup"],
+  },
+).refine(
+  (d) => d.orders_via_wa || d.orders_via_crm,
+  {
+    message: "Elige al menos un canal para recibir pedidos",
+    path: ["orders_via_wa"],
   },
 );
 

@@ -51,6 +51,10 @@ export interface Restaurant {
   bank_account_holder?: string;
   bank_name?: string;
   bank_clabe?: string;
+  /** Receive orders in the WhatsApp chat */
+  orders_via_wa?: boolean;
+  /** Receive orders in the admin Pedidos board (requires crm plan) */
+  orders_via_crm?: boolean;
   /** Day-open: accepting orders (independent of subscription is_active) */
   accepting_orders?: boolean;
   /** Structured weekly hours (0=Sun…6=Sat) */
@@ -276,9 +280,11 @@ export interface Order {
   total: number;
   status: OrderStatus | string;
   created_at: string;
+  /** Correlative per restaurant, assigned by trigger */
+  folio?: number | null;
 }
 
-/** Persisted in order_logs / orders JSONB. Never includes delivery address. */
+/** Persisted in order_logs / orders JSONB. Address only on the panel channel. */
 export interface OrderLogPayload {
   customer_name: string;
   phone: string;

@@ -20,17 +20,28 @@ export async function POST(request: Request) {
     }
 
     const supabase = createPublicClient();
-    const { data: restaurant } = await supabase
+    let { data: restaurant } = await supabase
       .from("restaurants")
-      .select("id, plan_type")
+      .select("id, plan_type, orders_via_crm")
       .eq("id", body.restaurant_id)
       .maybeSingle();
+
+    if (!restaurant) {
+      // Tolerate a schema without migration 034 applied yet.
+      ({ data: restaurant } = await supabase
+        .from("restaurants")
+        .select("id, plan_type")
+        .eq("id", body.restaurant_id)
+        .maybeSingle());
+    }
 
     if (!restaurant) {
       return NextResponse.json({ error: "restaurant not found" }, { status: 404 });
     }
 
     const plan = (restaurant as Restaurant).plan_type || "catalog";
+    const viaCrm =
+      can(plan, "crm") && (restaurant as Restaurant).orders_via_crm === true;
     const raw = body.payload;
 
     const customerName = String(
@@ -79,6 +90,17 @@ export async function POST(request: Request) {
       discount: discountAmt > 0 ? discountAmt : 0,
     };
 
+    // Delivery address is only stored when the business reads orders in the
+    // panel; on the WhatsApp channel it stays in the chat message only.
+    if (viaCrm && fulfillment === "delivery") {
+      const address = String(raw.address ?? "").trim();
+      const mapsUrl = String(raw.maps_url ?? raw.mapsUrl ?? "").trim();
+      const references = String(raw.references ?? "").trim();
+      if (address) normalized.address = address;
+      if (mapsUrl) normalized.maps_url = mapsUrl;
+      if (references) normalized.references = references;
+    }
+
     await supabase.from("order_logs").insert({
       restaurant_id: body.restaurant_id,
       payload: normalized,
@@ -118,10 +140,38 @@ export async function POST(request: Request) {
       }
     }
 
+    let orderId: string | null = null;
+    let folio: number | null = null;
+
     if (can(plan, "crm")) {
       try {
         const { createServiceClient } = await import("@/lib/supabase/admin");
         const admin = createServiceClient();
+
+        // A double tap (or a retried request) must not create a second order.
+        const since = new Date(Date.now() - 60_000).toISOString();
+        const { data: recent } = await admin
+          .from("orders")
+          .select("id, folio, payload, total")
+          .eq("restaurant_id", body.restaurant_id)
+          .gte("created_at", since)
+          .order("created_at", { ascending: false })
+          .limit(5);
+
+        const duplicate = (recent ?? []).find(
+          (o) =>
+            Number(o.total) === normalized.total &&
+            (o.payload as OrderLogPayload | null)?.phone === phone,
+        );
+        if (duplicate) {
+          return NextResponse.json({
+            ok: true,
+            orderId: duplicate.id,
+            folio: duplicate.folio ?? null,
+            duplicate: true,
+          });
+        }
+
         const { data: customerId } = await admin.rpc(
           "upsert_customer_by_phone",
           {
@@ -132,13 +182,20 @@ export async function POST(request: Request) {
           },
         );
 
-        await admin.from("orders").insert({
-          restaurant_id: body.restaurant_id,
-          customer_id: customerId ?? null,
-          payload: normalized,
-          total: normalized.total,
-          status: "submitted",
-        });
+        const { data: inserted } = await admin
+          .from("orders")
+          .insert({
+            restaurant_id: body.restaurant_id,
+            customer_id: customerId ?? null,
+            payload: normalized,
+            total: normalized.total,
+            status: "submitted",
+          })
+          .select("id, folio")
+          .maybeSingle();
+
+        orderId = inserted?.id ?? null;
+        folio = inserted?.folio ?? null;
 
         try {
           const { emitTenantNotification } = await import(
@@ -147,7 +204,7 @@ export async function POST(request: Request) {
           await emitTenantNotification({
             restaurantId: body.restaurant_id,
             type: "new_order",
-            title: "Nuevo pedido",
+            title: folio ? `Nuevo pedido #${folio}` : "Nuevo pedido",
             body: `${customerName} · ${normalized.total}`,
             href: "/admin/orders",
             payload: { phone, fulfillment },
@@ -160,7 +217,7 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, orderId, folio });
   } catch (e) {
     console.error(e);
     return NextResponse.json({ error: "server error" }, { status: 500 });

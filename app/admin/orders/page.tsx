@@ -27,6 +27,7 @@ export default async function OrdersPage() {
     .limit(80);
 
   const orders = (data ?? []) as Order[];
+  const channelCrm = session.restaurant.orders_via_crm === true;
 
   return (
     <div className="space-y-4">
@@ -37,8 +38,9 @@ export default async function OrdersPage() {
             Pedidos
           </h1>
           <p className="text-sm text-muted">
-            Intenciones enviadas a WhatsApp. Confirma en el chat y marca el
-            estado aquí.
+            {channelCrm
+              ? "Los pedidos llegan aquí. Marca el estado conforme avanzan."
+              : "Intenciones enviadas a WhatsApp. Confirma en el chat y marca el estado aquí."}
           </p>
         </div>
         <a
@@ -49,7 +51,7 @@ export default async function OrdersPage() {
           CSV
         </a>
       </div>
-      <OrdersBoard initialOrders={orders} />
+      <OrdersBoard initialOrders={orders} channelCrm={channelCrm} />
     </div>
   );
 }

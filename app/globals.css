@@ -262,3 +262,37 @@ body {
     transform: none;
   }
 }
+
+/* Order ticket / kitchen comanda printing */
+.print-ticket-80mm {
+  width: 80mm;
+  max-width: 100%;
+}
+
+@media print {
+  /* Hide everything, then walk the ticket's ancestors back into view so the
+     sheet prints alone regardless of where it is mounted. */
+  body * {
+    visibility: hidden;
+  }
+
+  [data-print-ticket],
+  [data-print-ticket] * {
+    visibility: visible;
+  }
+
+  [data-print-ticket] {
+    position: absolute;
+    inset-inline: 0;
+    top: 0;
+    margin: 0 auto;
+    border: 0;
+    background: #fff !important;
+    box-shadow: none !important;
+    color: #000 !important;
+  }
+
+  @page {
+    margin: 8mm;
+  }
+}
