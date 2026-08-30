@@ -90,6 +90,7 @@ export function PublicMenuClient({
   const [pillsH, setPillsH] = useState(60);
 
   const pillsRef = useRef<HTMLDivElement>(null);
+  const pillsTrackRef = useRef<HTMLDivElement>(null);
   const pillBtnRefs = useRef(new Map<string, HTMLButtonElement>());
   const spyLockedUntil = useRef(0);
 
@@ -221,13 +222,17 @@ export function PublicMenuClient({
   useEffect(() => {
     if (!activeCat) return;
     const pill = pillBtnRefs.current.get(activeCat);
-    const bar = pillsRef.current;
-    if (!pill || !bar) return;
-    const barRect = bar.getBoundingClientRect();
-    const pr = pill.getBoundingClientRect();
-    const delta =
-      pr.left + pr.width / 2 - (barRect.left + barRect.width / 2);
-    bar.scrollBy({ left: delta, behavior: "smooth" });
+    const track = pillsTrackRef.current;
+    if (!pill || !track) return;
+    const pillCenter =
+      pill.offsetLeft - track.offsetLeft + pill.offsetWidth / 2;
+    const max = track.scrollWidth - track.clientWidth;
+    const next = Math.max(
+      0,
+      Math.min(max, pillCenter - track.clientWidth / 2),
+    );
+    if (Math.abs(next - track.scrollLeft) < 1) return;
+    track.scrollTo({ left: next, behavior: "smooth" });
   }, [activeCat]);
 
   function clearQuery() {
@@ -424,43 +429,52 @@ export function PublicMenuClient({
         {showPills ? (
           <div
             ref={pillsRef}
-            className={cn(
-              "sticky top-0 z-30 -mx-4 mb-4 border-b border-black/5 bg-background/95 px-4 py-2 backdrop-blur",
-              pillsStuck && "shadow-sm",
-            )}
+            className="sticky top-0 z-30 -mx-4 mb-4 bg-linear-to-b from-background via-background/95 to-transparent px-4 pb-4 pt-2"
           >
-            <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1 scrollbar-none">
-              {navSections.map((s) => {
-                const isPopular = s.id === POPULAR_NAV_ID;
-                const active = activeCat === s.id;
-                return (
-                  <button
-                    key={s.id}
-                    type="button"
-                    ref={(el) => {
-                      if (el) pillBtnRefs.current.set(s.id, el);
-                      else pillBtnRefs.current.delete(s.id);
-                    }}
-                    onClick={() => jumpToCategory(s.id)}
-                    title={isPopular ? popularLabel : undefined}
-                    aria-label={isPopular ? popularLabel : undefined}
-                    aria-current={active ? "true" : undefined}
-                    className={cn(
-                      "min-h-11 shrink-0 rounded-full text-sm font-semibold transition-[background-color,color,transform] duration-200",
-                      isPopular ? "px-3 text-base" : "px-4",
-                      active
-                        ? "scale-[1.03] bg-brand text-white"
-                        : "bg-surface text-muted",
-                    )}
-                  >
-                    {isPopular ? (
-                      <span aria-hidden>⭐</span>
-                    ) : (
-                      s.title
-                    )}
-                  </button>
-                );
-              })}
+            <div
+              className={cn(
+                "rounded-full border border-black/5 bg-background/80 p-1.5 backdrop-blur-md transition-shadow duration-300",
+                pillsStuck
+                  ? "shadow-[0_6px_20px_-8px_rgba(0,0,0,0.35)]"
+                  : "shadow-[0_2px_8px_-6px_rgba(0,0,0,0.3)]",
+              )}
+            >
+              <div
+                ref={pillsTrackRef}
+                className="flex flex-nowrap items-center gap-1.5 overflow-x-auto scrollbar-none"
+              >
+                {navSections.map((s) => {
+                  const isPopular = s.id === POPULAR_NAV_ID;
+                  const active = activeCat === s.id;
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      ref={(el) => {
+                        if (el) pillBtnRefs.current.set(s.id, el);
+                        else pillBtnRefs.current.delete(s.id);
+                      }}
+                      onClick={() => jumpToCategory(s.id)}
+                      title={isPopular ? popularLabel : undefined}
+                      aria-label={isPopular ? popularLabel : undefined}
+                      aria-current={active ? "true" : undefined}
+                      className={cn(
+                        "inline-flex min-h-10 shrink-0 items-center justify-center whitespace-nowrap rounded-full text-sm font-semibold transition-colors duration-200",
+                        isPopular ? "px-3 text-base" : "px-4",
+                        active
+                          ? "bg-brand text-white shadow-sm"
+                          : "text-muted hover:bg-surface hover:text-brand-dark",
+                      )}
+                    >
+                      {isPopular ? (
+                        <span aria-hidden>⭐</span>
+                      ) : (
+                        s.title
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         ) : null}
