@@ -17,6 +17,7 @@ const LINKS: {
   { href: "/super-admin/finanzas", label: "Finanzas" },
   { href: "/super-admin/solicitudes", label: "Solicitudes" },
   { href: "/super-admin/promociones", label: "Promociones" },
+  { href: "/super-admin/ia", label: "IA" },
   {
     href: "/super-admin/templates",
     label: "Semillas",

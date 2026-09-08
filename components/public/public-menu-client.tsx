@@ -33,6 +33,11 @@ import { CitaExpressDialog } from "@/components/public/cita-express-dialog";
 import { StorageImage } from "@/components/ui/storage-image";
 import { cn } from "@/lib/utils";
 import type { PlanType } from "@/lib/plans";
+import {
+  PublicMenuSearch,
+  dishMatchesFilters,
+  type MenuSearchFilters,
+} from "@/components/public/public-menu-search";
 
 const POPULAR_NAV_ID = "popular";
 
@@ -88,6 +93,13 @@ export function PublicMenuClient({
   const [citaComboSlug, setCitaComboSlug] = useState<string | null>(null);
   const [pillsStuck, setPillsStuck] = useState(false);
   const [pillsH, setPillsH] = useState(60);
+  const [searchFilters, setSearchFilters] = useState<MenuSearchFilters>({
+    query: "",
+    presupuestoMin: null,
+    presupuestoMax: null,
+    comensales: null,
+    tags: [],
+  });
 
   const pillsRef = useRef<HTMLDivElement>(null);
   const pillsTrackRef = useRef<HTMLDivElement>(null);
@@ -135,8 +147,44 @@ export function PublicMenuClient({
   );
 
   const catalogDishes = useMemo(
-    () => dishes.filter((d) => !d.is_side),
-    [dishes],
+    () =>
+      dishes.filter(
+        (d) => !d.is_side && dishMatchesFilters(d, searchFilters),
+      ),
+    [dishes, searchFilters],
+  );
+  const filteredCombos = useMemo(
+    () =>
+      combos.filter((c) => {
+        const price = comboDisplayPrice(c);
+        if (
+          searchFilters.presupuestoMin != null &&
+          price < searchFilters.presupuestoMin
+        ) {
+          return false;
+        }
+        if (
+          searchFilters.presupuestoMax != null &&
+          price > searchFilters.presupuestoMax
+        ) {
+          return false;
+        }
+        const hay = `${c.title} ${c.description ?? ""} ${c.items
+          .map((i) => i.dish.name)
+          .join(" ")}`.toLowerCase();
+        if (searchFilters.query) {
+          const tokens = searchFilters.query
+            .toLowerCase()
+            .split(/\s+/)
+            .filter(Boolean);
+          if (!tokens.every((t) => hay.includes(t))) return false;
+        }
+        for (const tag of searchFilters.tags) {
+          if (!hay.includes(tag.toLowerCase())) return false;
+        }
+        return true;
+      }),
+    [combos, searchFilters],
   );
   const popularItems = useMemo(
     () => catalogDishes.filter((d) => d.is_popular),
@@ -379,13 +427,17 @@ export function PublicMenuClient({
 
   return (
     <>
-      {combos.length > 0 ? (
+      <div className="mx-auto max-w-lg px-4 pt-3">
+        <PublicMenuSearch slug={slug} onChange={setSearchFilters} />
+      </div>
+
+      {filteredCombos.length > 0 ? (
         <section className="mx-auto max-w-lg px-4 pb-2 pt-4">
           <h2 className="font-[family-name:var(--font-display)] text-3xl text-brand-dark">
             {combosLabel}
           </h2>
           <ul className="mt-3 space-y-3">
-            {combos.map((c) => (
+            {filteredCombos.map((c) => (
               <li key={c.id}>
                 <button
                   type="button"

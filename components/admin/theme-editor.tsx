@@ -17,6 +17,7 @@ import { label, normalizeBusinessType } from "@/lib/business-labels";
 import type { BusinessType } from "@/lib/types";
 import { DishPhotoUpload } from "@/components/admin/dish-photo-upload";
 import { BackgroundCropPicker } from "@/components/admin/background-crop-picker";
+import { AiImageGenerator } from "@/components/admin/ai-image-generator";
 import { StorageImage } from "@/components/ui/storage-image";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -141,6 +142,13 @@ export function ThemeEditor({
             kind="banner"
             guide="banner"
           />
+          <AiImageGenerator
+            restaurantId={restaurantId}
+            imageKind="banner"
+            defaultPreset="banner"
+            applyLabel="Aplicar como banner"
+            onApplied={(url) => apply({ ...theme, bannerUrl: url })}
+          />
           <DishPhotoUpload
             restaurantId={restaurantId}
             value={theme.backgroundImageUrl ?? null}
@@ -148,6 +156,26 @@ export function ThemeEditor({
             label="Imagen de fondo"
             kind="banner"
             guide="background"
+          />
+          <AiImageGenerator
+            restaurantId={restaurantId}
+            imageKind="background"
+            defaultPreset="background"
+            applyLabel="Aplicar como fondo"
+            onApplied={(url) =>
+              apply({
+                ...theme,
+                backgroundImageUrl: url,
+                useBackgroundImage: true,
+              })
+            }
+          />
+          <AiImageGenerator
+            restaurantId={restaurantId}
+            imageKind="flyer"
+            defaultPreset="flyer"
+            applyLabel="Usar en WhatsApp (Open Graph)"
+            onApplied={(url) => apply({ ...theme, ogImageUrl: url })}
           />
           <div className="space-y-1">
             <div className="flex min-h-11 items-center justify-between">

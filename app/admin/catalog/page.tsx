@@ -12,6 +12,7 @@ import { Emoji } from "@/components/ui-emoji";
 import { UI_EMOJI } from "@/lib/ui-emoji";
 import { CategoriesManager } from "@/components/admin/categories-manager";
 import { CatalogDishList } from "@/components/admin/catalog-dish-list";
+import { CatalogImportSection } from "@/components/admin/catalog-import-section";
 import type { Category, Dish } from "@/lib/types";
 
 export default async function CatalogPage() {
@@ -64,6 +65,13 @@ export default async function CatalogPage() {
           </Link>
         </Button>
       </div>
+
+      <CatalogImportSection
+        restaurantId={session.restaurant.id}
+        slug={session.restaurant.slug}
+        categories={cats}
+        dishes={list.map((d) => ({ id: d.id, name: d.name }))}
+      />
 
       <details className="rounded-xl border border-black/5 bg-surface">
         <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold marker:content-none [&::-webkit-details-marker]:hidden">

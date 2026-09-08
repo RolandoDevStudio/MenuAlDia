@@ -21,6 +21,7 @@ import { PLAN_LABELS } from "@/lib/plans";
 import { normalizeBusinessType } from "@/lib/business-labels";
 import { PlanRequestPanel } from "@/components/admin/plan-request-panel";
 import { SubscriptionPanel } from "@/components/admin/subscription-panel";
+import { AiUsagePanel } from "@/components/admin/ai-usage-panel";
 import { AdminFaqsPanel } from "@/components/admin/admin-faqs-panel";
 import { DailyMenuVisibilitySwitch } from "@/components/admin/daily-menu-visibility-switch";
 import { toast } from "sonner";
@@ -613,6 +614,15 @@ export default function SettingsPage() {
             </summary>
             <div className="border-t border-black/5 px-4 pb-4 pt-3">
               <AdminFaqsPanel businessType={restaurant.business_type} />
+            </div>
+          </details>
+
+          <details className="rounded-xl border border-black/5 bg-surface" id="ia">
+            <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold marker:content-none [&::-webkit-details-marker]:hidden">
+              Uso de IA
+            </summary>
+            <div className="border-t border-black/5 px-4 pb-4 pt-3">
+              <AiUsagePanel />
             </div>
           </details>
 

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireTenantSession } from "@/lib/admin-session";
 import { FlyerStudio } from "@/components/flyer/flyer-studio";
+import { FlyerAiPanel } from "@/components/admin/flyer-ai-panel";
 import { PlanGate } from "@/components/admin/plan-gate";
 import { DifusionSubnav } from "@/components/admin/difusion-subnav";
 import { can } from "@/lib/plans";
@@ -68,15 +69,22 @@ export default async function FlyerPage({ searchParams }: Props) {
         : comboDishes.reduce((s, d) => s + Number(d.price), 0);
 
     return (
-      <FlyerStudio
-        restaurant={session.restaurant}
-        dishes={comboDishes}
-        sides={[]}
-        packagePrice={price}
-        initialHeadline={combo.title.toUpperCase()}
-        sidesTitle="Incluye"
-        sourceLabel={`Promo del combo “${combo.title}”. Descarga y difunde en WhatsApp.`}
-      />
+      <div>
+        <DifusionSubnav />
+        <FlyerAiPanel
+          restaurantId={session.restaurant.id}
+          restaurantSlug={session.restaurant.slug}
+        />
+        <FlyerStudio
+          restaurant={session.restaurant}
+          dishes={comboDishes}
+          sides={[]}
+          packagePrice={price}
+          initialHeadline={combo.title.toUpperCase()}
+          sidesTitle="Incluye"
+          sourceLabel={`Promo del combo “${combo.title}”. Descarga y difunde en WhatsApp.`}
+        />
+      </div>
     );
   }
 
@@ -141,6 +149,10 @@ export default async function FlyerPage({ searchParams }: Props) {
   return (
     <div>
       <DifusionSubnav />
+      <FlyerAiPanel
+        restaurantId={session.restaurant.id}
+        restaurantSlug={session.restaurant.slug}
+      />
       <FlyerStudio
         restaurant={session.restaurant}
         dishes={dailyDishes}

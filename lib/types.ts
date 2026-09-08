@@ -79,6 +79,10 @@ export interface Restaurant {
   loyalty_reward_label?: string;
   /** Punch-card visits in Clientes / Pedidos; off by default */
   loyalty_enabled?: boolean;
+  /** Extra AI image credits (superadmin / pack) */
+  ai_image_bonus?: number;
+  /** Pause tenant AI features */
+  ai_paused?: boolean;
   /** Lifecycle after cancel/expiry */
   grace_ends_at?: string | null;
   purge_scheduled_at?: string | null;

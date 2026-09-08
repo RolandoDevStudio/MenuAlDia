@@ -1,17 +1,20 @@
 /**
- * Best-effort Storage cleanup for dish-photos public URLs.
+ * Best-effort Storage cleanup for dish-photos and restaurant-assets public URLs.
  * Failures never throw — DB updates must continue if purge fails.
  */
 
-const BUCKET = "dish-photos";
-const PUBLIC_MARKER = `/storage/v1/object/public/${BUCKET}/`;
+const BUCKETS = ["dish-photos", "restaurant-assets"] as const;
 
-export function storagePathFromPublicUrl(url: string): string | null {
+function storagePathFromPublicUrl(
+  url: string,
+  bucket: string,
+): string | null {
+  const marker = `/storage/v1/object/public/${bucket}/`;
   try {
     const u = new URL(url);
-    const idx = u.pathname.indexOf(PUBLIC_MARKER);
+    const idx = u.pathname.indexOf(marker);
     if (idx === -1) return null;
-    const path = decodeURIComponent(u.pathname.slice(idx + PUBLIC_MARKER.length));
+    const path = decodeURIComponent(u.pathname.slice(idx + marker.length));
     return path || null;
   } catch {
     return null;
@@ -34,23 +37,25 @@ export async function deleteStoragePublicUrl(
   url: string | null | undefined,
 ): Promise<void> {
   if (!url) return;
-  const path = storagePathFromPublicUrl(url);
-  if (!path) return;
-  try {
-    const { error } = await client.storage.from(BUCKET).remove([path]);
-    if (error) {
-      console.warn("[storage-cleanup]", path, error.message);
+  for (const bucket of BUCKETS) {
+    const path = storagePathFromPublicUrl(url, bucket);
+    if (!path) continue;
+    try {
+      const { error } = await client.storage.from(bucket).remove([path]);
+      if (error) {
+        console.warn("[storage-cleanup]", bucket, path, error.message);
+      }
+    } catch (e) {
+      console.warn(
+        "[storage-cleanup]",
+        path,
+        e instanceof Error ? e.message : e,
+      );
     }
-  } catch (e) {
-    console.warn(
-      "[storage-cleanup]",
-      path,
-      e instanceof Error ? e.message : e,
-    );
   }
 }
 
-/** Best-effort remove all objects under a restaurant folder. */
+/** Best-effort remove all objects under a restaurant folder in known buckets. */
 export async function purgeRestaurantStorageFolder(
   client: {
     storage: {
@@ -59,7 +64,7 @@ export async function purgeRestaurantStorageFolder(
           path?: string,
           options?: { limit?: number; offset?: number },
         ) => Promise<{
-          data: { name: string }[] | null;
+          data: { name: string; id?: string | null }[] | null;
           error: { message: string } | null;
         }>;
         remove: (
@@ -70,27 +75,45 @@ export async function purgeRestaurantStorageFolder(
   },
   restaurantId: string,
 ): Promise<void> {
-  try {
-    const folder = restaurantId;
-    const { data, error } = await client.storage.from(BUCKET).list(folder, {
-      limit: 1000,
-    });
-    if (error) {
-      console.warn("[storage-cleanup] list", folder, error.message);
-      return;
+  for (const bucket of BUCKETS) {
+    try {
+      const roots = [restaurantId, `${restaurantId}/ai`, `${restaurantId}/flyers`];
+      const paths: string[] = [];
+      for (const folder of roots) {
+        const { data, error } = await client.storage.from(bucket).list(folder, {
+          limit: 1000,
+        });
+        if (error) {
+          console.warn("[storage-cleanup] list", bucket, folder, error.message);
+          continue;
+        }
+        for (const f of data ?? []) {
+          // Folders often have id null
+          if (!f.name) continue;
+          if (f.id == null && !f.name.includes(".")) {
+            const nested = `${folder}/${f.name}`;
+            const { data: kids } = await client.storage
+              .from(bucket)
+              .list(nested, { limit: 1000 });
+            for (const k of kids ?? []) {
+              if (k.name) paths.push(`${nested}/${k.name}`);
+            }
+          } else {
+            paths.push(`${folder}/${f.name}`);
+          }
+        }
+      }
+      if (paths.length === 0) continue;
+      const { error: remErr } = await client.storage.from(bucket).remove(paths);
+      if (remErr) {
+        console.warn("[storage-cleanup] remove", bucket, remErr.message);
+      }
+    } catch (e) {
+      console.warn(
+        "[storage-cleanup] purge folder",
+        bucket,
+        e instanceof Error ? e.message : e,
+      );
     }
-    const paths = (data ?? [])
-      .map((f) => `${folder}/${f.name}`)
-      .filter(Boolean);
-    if (paths.length === 0) return;
-    const { error: remErr } = await client.storage.from(BUCKET).remove(paths);
-    if (remErr) {
-      console.warn("[storage-cleanup] remove", remErr.message);
-    }
-  } catch (e) {
-    console.warn(
-      "[storage-cleanup] purge folder",
-      e instanceof Error ? e.message : e,
-    );
   }
 }
