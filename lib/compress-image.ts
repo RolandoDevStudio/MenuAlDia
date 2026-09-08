@@ -1,13 +1,14 @@
 /**
  * Client-side image compression → WebP before Supabase Storage upload.
- * Caps: product 800px, banner 1200px, flyer 1080px; target ≤ 140KB.
+ * Caps: product 800px, banner 1200px, og 1350px, flyer 1080px; target ≤ 140KB.
  */
 
-export type CompressKind = "product" | "banner" | "flyer";
+export type CompressKind = "product" | "banner" | "og" | "flyer";
 
 const MAX_EDGE: Record<CompressKind, number> = {
   product: 800,
   banner: 1200,
+  og: 1350,
   flyer: 1080,
 };
 

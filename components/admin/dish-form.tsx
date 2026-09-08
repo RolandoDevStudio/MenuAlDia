@@ -275,6 +275,7 @@ export function DishForm({
         onChange={setPhotoUrl}
         canAddPhoto={canAddPhoto}
         limitMessage={photoLimitMessage}
+        guide="product"
       />
       <div className="space-y-1.5">
         <Label htmlFor="name">Nombre</Label>

@@ -12,6 +12,20 @@ export function ogImageUrl(url?: string | null): string {
   return trimmed || BRAND_OG_IMAGE;
 }
 
+/** Public menu share image: dedicated OG, then banner, then logo. */
+export function menuShareImageUrl(
+  theme: {
+    ogImageUrl?: string | null;
+    bannerUrl?: string | null;
+  },
+  logoUrl?: string | null,
+  extra?: string | null,
+): string {
+  return ogImageUrl(
+    extra || theme.ogImageUrl || theme.bannerUrl || logoUrl,
+  );
+}
+
 export function publicMenuUrl(slug: string, origin?: string): string {
   const base = (origin ?? getAppOrigin()).replace(/\/$/, "");
   return `${base}/${slug}`;

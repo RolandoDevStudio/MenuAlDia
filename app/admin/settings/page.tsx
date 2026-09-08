@@ -304,6 +304,7 @@ export default function SettingsPage() {
                   onChange={setLogoUrl}
                   label="Logo del negocio"
                   kind="product"
+                  guide="logo"
                 />
 
                 {(

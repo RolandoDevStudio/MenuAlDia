@@ -4,8 +4,14 @@ import { useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { compressImage, type CompressKind } from "@/lib/compress-image";
 import { deleteStoragePublicUrl } from "@/lib/storage-cleanup";
+import {
+  downloadImageGuide,
+  IMAGE_GUIDES,
+  type ImageGuideId,
+} from "@/lib/image-guides";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 type Props = {
   restaurantId: string;
@@ -17,6 +23,8 @@ type Props = {
   /** When false, block adding a first photo (replace existing still allowed). */
   canAddPhoto?: boolean;
   limitMessage?: string | null;
+  /** Size hint + downloadable proportion guide */
+  guide?: ImageGuideId;
 };
 
 export function DishPhotoUpload({
@@ -28,12 +36,16 @@ export function DishPhotoUpload({
   folder = "dish-photos",
   canAddPhoto = true,
   limitMessage = null,
+  guide,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const hasPhoto = Boolean(value?.trim());
   const blockedNew = !hasPhoto && !canAddPhoto;
+  const meta = guide ? IMAGE_GUIDES[guide] : null;
+  const frameClass = meta?.frameClass ?? "h-36 w-full";
+  const objectClass = meta?.objectClass ?? "h-full w-full object-cover";
 
   async function onFile(file: File | null) {
     if (!file) return;
@@ -83,15 +95,19 @@ export function DishPhotoUpload({
   return (
     <div className="space-y-2">
       <Label>{label}</Label>
+      {meta ? <p className="text-xs text-muted">{meta.hint}</p> : null}
       {value ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={value}
-          alt=""
-          className="h-36 w-full rounded-xl object-cover"
-        />
+        <div className={cn("overflow-hidden rounded-xl bg-black/[0.04]", frameClass)}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={value} alt="" className={objectClass} />
+        </div>
       ) : (
-        <div className="flex h-36 items-center justify-center rounded-xl border border-dashed border-black/15 bg-black/[0.02] text-sm text-muted">
+        <div
+          className={cn(
+            "flex items-center justify-center rounded-xl border border-dashed border-black/15 bg-black/[0.02] text-sm text-muted",
+            frameClass,
+          )}
+        >
           Sin foto
         </div>
       )}
@@ -116,6 +132,17 @@ export function DishPhotoUpload({
             ? "Cambiar foto"
             : "Elegir foto"}
       </Button>
+      {guide ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="w-full"
+          onClick={() => downloadImageGuide(guide)}
+        >
+          Descargar guía {meta ? `${meta.width}×${meta.height}` : ""}
+        </Button>
+      ) : null}
       {value ? (
         <Button
           type="button"

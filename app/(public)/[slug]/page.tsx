@@ -6,7 +6,8 @@ import {
   getPublicMenuBySlug,
 } from "@/lib/restaurant";
 import { comboDisplayPrice } from "@/lib/combo";
-import { parseThemeConfig } from "@/lib/theme";
+import { parseThemeConfig, publicMenuBackgroundStyle } from "@/lib/theme";
+import { PublicMenuBackdrop } from "@/components/public/menu-backdrop";
 import { labelsFor } from "@/lib/business-labels";
 import { formatMxn } from "@/lib/money";
 import { formatPlaceLine } from "@/lib/mx-locations";
@@ -29,7 +30,8 @@ import {
   publicClosedMessage,
 } from "@/lib/store-hours";
 import { isCanonicalDemoSlug } from "@/lib/canonical-demos";
-import { ogImageUrl } from "@/lib/site-url";
+import { menuShareImageUrl } from "@/lib/site-url";
+import { OG_SHARE_SIZE } from "@/lib/image-guides";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -59,8 +61,10 @@ export async function generateMetadata({
         .join(", ");
       const title = `🔥 ${combo.title} — ${restaurant.name}`;
       const description = `Incluye: ${includes}. ¡Solo ${formatMxn(price)} MXN!`;
-      const image = ogImageUrl(
-        combo.photo_url || theme.bannerUrl || restaurant.logo_url,
+      const image = menuShareImageUrl(
+        theme,
+        restaurant.logo_url,
+        combo.photo_url,
       );
       return {
         title,
@@ -69,7 +73,7 @@ export async function generateMetadata({
           title,
           description,
           siteName,
-          images: [{ url: image }],
+          images: [{ url: image, ...OG_SHARE_SIZE }],
           type: "website",
         },
         twitter: {
@@ -92,8 +96,10 @@ export async function generateMetadata({
       ]
         .filter(Boolean)
         .join(" · ");
-      const image = ogImageUrl(
-        dish.photo_url || theme.bannerUrl || restaurant.logo_url,
+      const image = menuShareImageUrl(
+        theme,
+        restaurant.logo_url,
+        dish.photo_url,
       );
       return {
         title,
@@ -102,7 +108,7 @@ export async function generateMetadata({
           title,
           description,
           siteName,
-          images: [{ url: image }],
+          images: [{ url: image, ...OG_SHARE_SIZE }],
           type: "website",
         },
         twitter: {
@@ -117,7 +123,7 @@ export async function generateMetadata({
 
   const title = `${restaurant.name} — ${siteName}`;
   const description = restaurant.slogan || "Menú digital y pedidos por WhatsApp";
-  const image = ogImageUrl(theme.bannerUrl || restaurant.logo_url);
+  const image = menuShareImageUrl(theme, restaurant.logo_url);
 
   return {
     title,
@@ -126,11 +132,11 @@ export async function generateMetadata({
       title,
       description,
       siteName,
-      images: [{ url: image }],
+      images: [{ url: image, ...OG_SHARE_SIZE }],
       type: "website",
     },
     twitter: {
-      card: "summary",
+      card: "summary_large_image",
       title,
       description,
       images: [image],
@@ -169,24 +175,12 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
     .limit(8);
   const faqs = faqRows ?? [];
 
-  const bgStyle =
-    theme.useBackgroundImage && theme.backgroundImageUrl
-      ? {
-          backgroundImage: `linear-gradient(180deg, color-mix(in srgb, ${theme.colors.bg} 88%, transparent), ${theme.colors.bg}), url(${theme.backgroundImageUrl})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center top",
-        }
-      : {
-          background: `radial-gradient(ellipse 90% 50% at 10% 0%, color-mix(in srgb, ${theme.colors.primary} 28%, transparent) 0%, transparent 55%), radial-gradient(ellipse 70% 40% at 100% 10%, color-mix(in srgb, ${theme.colors.primary} 18%, transparent) 0%, transparent 50%), linear-gradient(180deg, var(--color-bg) 0%, color-mix(in srgb, var(--color-bg) 85%, ${theme.colors.primary}) 100%)`,
-        };
+  const bgStyle = publicMenuBackgroundStyle(theme);
 
   return (
-    <main className="relative min-h-full bg-background">
-      <div
-        className="pointer-events-none absolute inset-0 -z-10 opacity-90"
-        aria-hidden
-        style={bgStyle}
-      />
+    <main className="relative min-h-full" style={bgStyle}>
+      <PublicMenuBackdrop theme={theme} />
+      <div className="relative z-10">
       <TryAsCustomerBanner slug={slug} />
       <StoreClosedBanner
         acceptingOrders={effectiveAcceptingOrders(data.restaurant)}
@@ -275,6 +269,7 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
           <FloatingCart restaurant={data.restaurant} />
         </>
       ) : null}
+    </div>
     </main>
   );
 }

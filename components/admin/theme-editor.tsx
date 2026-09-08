@@ -2,18 +2,21 @@
 
 import { useState } from "react";
 import {
+  BACKGROUND_OVERLAY_LABELS,
   FRAME_LABELS,
   PRESET_LABELS,
   THEME_PRESETS,
   parseThemeConfig,
   photoFrameClass,
   themeToCssVars,
+  type BackgroundOverlay,
   type PhotoFrame,
   type ThemeConfig,
 } from "@/lib/theme";
 import { label, normalizeBusinessType } from "@/lib/business-labels";
 import type { BusinessType } from "@/lib/types";
 import { DishPhotoUpload } from "@/components/admin/dish-photo-upload";
+import { BackgroundCropPicker } from "@/components/admin/background-crop-picker";
 import { StorageImage } from "@/components/ui/storage-image";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -50,8 +53,14 @@ export function ThemeEditor({
       apply({
         ...preset,
         bannerUrl: theme.bannerUrl,
+        ogImageUrl: theme.ogImageUrl,
         backgroundImageUrl: theme.backgroundImageUrl,
         useBackgroundImage: theme.useBackgroundImage,
+        backgroundOverlay: theme.backgroundOverlay,
+        backgroundFocusX: theme.backgroundFocusX,
+        backgroundFocusY: theme.backgroundFocusY,
+        backgroundDesktopFocusX: theme.backgroundDesktopFocusX,
+        backgroundDesktopFocusY: theme.backgroundDesktopFocusY,
       });
     }
   }
@@ -112,12 +121,25 @@ export function ThemeEditor({
 
       {restaurantId ? (
         <div className="space-y-4 rounded-2xl border border-black/5 bg-surface p-4">
+          <p className="text-xs text-muted">
+            WhatsApp y el banner del menú usan fotos distintas. Descarga la guía
+            de proporción, ábrela en Canva y sube el resultado.
+          </p>
+          <DishPhotoUpload
+            restaurantId={restaurantId}
+            value={theme.ogImageUrl ?? null}
+            onChange={(url) => apply({ ...theme, ogImageUrl: url })}
+            label="Imagen al compartir (WhatsApp)"
+            kind="og"
+            guide="og"
+          />
           <DishPhotoUpload
             restaurantId={restaurantId}
             value={theme.bannerUrl ?? null}
             onChange={(url) => apply({ ...theme, bannerUrl: url })}
-            label="Banner superior"
+            label="Banner del menú"
             kind="banner"
+            guide="banner"
           />
           <DishPhotoUpload
             restaurantId={restaurantId}
@@ -125,17 +147,82 @@ export function ThemeEditor({
             onChange={(url) => apply({ ...theme, backgroundImageUrl: url })}
             label="Imagen de fondo"
             kind="banner"
+            guide="background"
           />
-          <div className="flex min-h-11 items-center justify-between">
-            <Label htmlFor="useBg">Usar imagen de fondo</Label>
-            <Switch
-              id="useBg"
-              checked={Boolean(theme.useBackgroundImage)}
-              onCheckedChange={(v) =>
-                apply({ ...theme, useBackgroundImage: v })
-              }
-            />
+          <div className="space-y-1">
+            <div className="flex min-h-11 items-center justify-between">
+              <Label htmlFor="useBg">Usar imagen de fondo</Label>
+              <Switch
+                id="useBg"
+                checked={Boolean(theme.useBackgroundImage)}
+                onCheckedChange={(v) =>
+                  apply({ ...theme, useBackgroundImage: v })
+                }
+              />
+            </div>
+            <p className="text-[11px] text-muted">
+              La foto cubre toda la ventana (puede hacer zoom y recortar).
+              Eliges qué parte se ve en la computadora y en el celular. Guarda
+              para verla en el menú público.
+            </p>
           </div>
+          {theme.useBackgroundImage && theme.backgroundImageUrl ? (
+            <div className="space-y-4">
+              <BackgroundCropPicker
+                variant="desktop"
+                imageUrl={theme.backgroundImageUrl}
+                focusX={theme.backgroundDesktopFocusX ?? 50}
+                focusY={theme.backgroundDesktopFocusY ?? 50}
+                onChange={({ x, y }) =>
+                  apply({
+                    ...theme,
+                    backgroundDesktopFocusX: x,
+                    backgroundDesktopFocusY: y,
+                  })
+                }
+              />
+              <BackgroundCropPicker
+                variant="mobile"
+                imageUrl={theme.backgroundImageUrl}
+                focusX={theme.backgroundFocusX ?? 50}
+                focusY={theme.backgroundFocusY ?? 50}
+                onChange={({ x, y }) =>
+                  apply({
+                    ...theme,
+                    backgroundFocusX: x,
+                    backgroundFocusY: y,
+                  })
+                }
+              />
+            </div>
+          ) : null}
+          {theme.useBackgroundImage ? (
+            <div className="space-y-1.5">
+              <Label>Velo sobre la foto</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {(
+                  Object.keys(BACKGROUND_OVERLAY_LABELS) as BackgroundOverlay[]
+                ).map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => apply({ ...theme, backgroundOverlay: key })}
+                    className={cn(
+                      "min-h-11 rounded-xl border px-2 text-sm font-medium",
+                      (theme.backgroundOverlay ?? "medium") === key
+                        ? "border-brand bg-brand/5 text-brand-dark"
+                        : "border-black/10 bg-background",
+                    )}
+                  >
+                    {BACKGROUND_OVERLAY_LABELS[key]}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-muted">
+                Suave deja ver más la foto. Fuerte calma fondos recargados.
+              </p>
+            </div>
+          ) : null}
         </div>
       ) : null}
 

@@ -15,14 +15,25 @@ export interface ThemeColors {
   text: string;
 }
 
+export type BackgroundOverlay = "soft" | "medium" | "strong";
+
 export interface ThemeConfig {
   preset: string;
   colors: ThemeColors;
   font: ThemeFont;
   photoFrame: PhotoFrame;
   bannerUrl?: string | null;
+  /** Preview when sharing the public menu link (WhatsApp / social) */
+  ogImageUrl?: string | null;
   backgroundImageUrl?: string | null;
   useBackgroundImage?: boolean;
+  backgroundOverlay?: BackgroundOverlay;
+  /** 0–100: which slice of the wallpaper shows on mobile (cover) */
+  backgroundFocusX?: number;
+  backgroundFocusY?: number;
+  /** 0–100: which slice of the wallpaper shows on desktop (cover) */
+  backgroundDesktopFocusX?: number;
+  backgroundDesktopFocusY?: number;
 }
 
 export const DEFAULT_THEME: ThemeConfig = {
@@ -36,8 +47,14 @@ export const DEFAULT_THEME: ThemeConfig = {
   font: "display_bebas",
   photoFrame: "rounded_modern",
   bannerUrl: null,
+  ogImageUrl: null,
   backgroundImageUrl: null,
   useBackgroundImage: false,
+  backgroundOverlay: "medium",
+  backgroundFocusX: 50,
+  backgroundFocusY: 50,
+  backgroundDesktopFocusX: 50,
+  backgroundDesktopFocusY: 50,
 };
 
 export const THEME_PRESETS: Record<string, ThemeConfig> = {
@@ -98,6 +115,32 @@ export const PRESET_LABELS: Record<string, string> = {
   rustico_cafe: "Rústico café",
 };
 
+export const BACKGROUND_OVERLAY_LABELS: Record<BackgroundOverlay, string> = {
+  soft: "Suave",
+  medium: "Medio",
+  strong: "Fuerte",
+};
+
+/** Theme-color veil over the photo (from% → to%). */
+export const BACKGROUND_OVERLAY: Record<
+  BackgroundOverlay,
+  { from: number; to: number }
+> = {
+  soft: { from: 18, to: 34 },
+  medium: { from: 35, to: 58 },
+  strong: { from: 55, to: 78 },
+};
+
+export function parseBackgroundOverlay(raw: unknown): BackgroundOverlay {
+  return raw === "soft" || raw === "strong" ? raw : "medium";
+}
+
+export function parseFocusPercent(raw: unknown, fallback = 50): number {
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(100, Math.max(0, n));
+}
+
 export const FRAME_LABELS: Record<PhotoFrame, string> = {
   rounded_modern: "Redondeado moderno",
   rustic_ring: "Marco rústico",
@@ -118,8 +161,14 @@ export function parseThemeConfig(raw: unknown): ThemeConfig {
     font: (o.font as ThemeFont) ?? DEFAULT_THEME.font,
     photoFrame: (o.photoFrame as PhotoFrame) ?? DEFAULT_THEME.photoFrame,
     bannerUrl: o.bannerUrl ?? null,
+    ogImageUrl: o.ogImageUrl ?? null,
     backgroundImageUrl: o.backgroundImageUrl ?? null,
     useBackgroundImage: Boolean(o.useBackgroundImage),
+    backgroundOverlay: parseBackgroundOverlay(o.backgroundOverlay),
+    backgroundFocusX: parseFocusPercent(o.backgroundFocusX),
+    backgroundFocusY: parseFocusPercent(o.backgroundFocusY),
+    backgroundDesktopFocusX: parseFocusPercent(o.backgroundDesktopFocusX),
+    backgroundDesktopFocusY: parseFocusPercent(o.backgroundDesktopFocusY),
   };
 }
 
@@ -136,6 +185,16 @@ export function themeToCssVars(theme: ThemeConfig): CSSProperties {
     ["--foreground" as string]: theme.colors.text,
     ["--ring" as string]: theme.colors.primary,
   } as CSSProperties;
+}
+
+/** Default wash when there is no photo. Photo uses a viewport-fixed layer. */
+export function publicMenuBackgroundStyle(theme: ThemeConfig): CSSProperties {
+  if (theme.useBackgroundImage && theme.backgroundImageUrl) {
+    return { backgroundColor: theme.colors.bg };
+  }
+  return {
+    background: `radial-gradient(ellipse 90% 50% at 10% 0%, color-mix(in srgb, ${theme.colors.primary} 28%, transparent) 0%, transparent 55%), radial-gradient(ellipse 70% 40% at 100% 10%, color-mix(in srgb, ${theme.colors.primary} 18%, transparent) 0%, transparent 50%), linear-gradient(180deg, var(--color-bg) 0%, color-mix(in srgb, var(--color-bg) 85%, ${theme.colors.primary}) 100%)`,
+  };
 }
 
 export function photoFrameClass(frame: PhotoFrame): string {

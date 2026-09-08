@@ -525,7 +525,8 @@ export function CombosManager({
           value={photoUrl}
           onChange={setPhotoUrl}
           label="Imagen promo"
-          kind="banner"
+          kind="og"
+          guide="og"
         />
 
         {isServicios ? (
