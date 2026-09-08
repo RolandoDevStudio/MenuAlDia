@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Copy, Loader2, Printer, Trash2 } from "lucide-react";
+import { Copy, Loader2, Printer, Share2, Trash2 } from "lucide-react";
 import type { FulfillmentMode, Restaurant } from "@/lib/types";
 import { formatMxn } from "@/lib/money";
 import { checkoutSchema } from "@/lib/validations";
@@ -123,6 +123,7 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
 
   const [step, setStep] = useState<"review" | "checkout" | "success">("review");
   const [ticket, setTicket] = useState<OrderTicketData | null>(null);
+  const [ticketToken, setTicketToken] = useState<string | null>(null);
   const sendingRef = useRef(false);
 
   // Channel: WhatsApp, admin board, or both. Legacy tenants stay on WhatsApp.
@@ -207,6 +208,7 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
     if (!open) return;
     setStep("review");
     setTicket(null);
+    setTicketToken(null);
     sendingRef.current = false;
     setError(null);
     setCouponInput("");
@@ -380,9 +382,13 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
       let folio: number | null = null;
       try {
         const res = await logRequest;
-        const json = (await res.json()) as { folio?: number | null };
+        const json = (await res.json()) as {
+          folio?: number | null;
+          publicToken?: string | null;
+        };
         if (!res.ok) throw new Error("log failed");
         folio = json.folio ?? null;
+        if (json.publicToken) setTicketToken(json.publicToken);
       } catch {
         sendingRef.current = false;
         setSending(false);
@@ -665,6 +671,46 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
                 Listo
               </Button>
             </div>
+            {ticketToken ? (
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-11"
+                  onClick={() => {
+                    const url = `${window.location.origin}/t/${ticketToken}`;
+                    void (async () => {
+                      try {
+                        if (navigator.share) {
+                          await navigator.share({
+                            title: ticket.folio
+                              ? `Pedido #${ticket.folio}`
+                              : "Pedido",
+                            url,
+                          });
+                          return;
+                        }
+                      } catch {
+                        /* fall through */
+                      }
+                      try {
+                        await navigator.clipboard.writeText(url);
+                      } catch {
+                        /* ignore */
+                      }
+                    })();
+                  }}
+                >
+                  <Share2 className="mr-1.5 h-4 w-4" aria-hidden />
+                  Compartir
+                </Button>
+                <Button variant="outline" className="min-h-11" asChild>
+                  <Link href={`/t/${ticketToken}`} target="_blank">
+                    Ver ticket
+                  </Link>
+                </Button>
+              </div>
+            ) : null}
           </>
         ) : (
           <>

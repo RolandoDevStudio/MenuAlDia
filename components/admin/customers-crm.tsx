@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Cake, Search, Trash2 } from "lucide-react";
+import { Cake, ChevronDown, Search, Trash2 } from "lucide-react";
 import type { BusinessType, Customer, CustomerPhoto, CustomerVisit, Order, OrderLogPayload } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import { compressImage } from "@/lib/compress-image";
@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { mexicoCityTodayYmd } from "@/lib/dates";
+import { mexicoCityTodayYmd, formatMexicoCityDate, formatMexicoCityDateTime } from "@/lib/dates";
 import { Emoji } from "@/components/ui-emoji";
 import { UI_EMOJI } from "@/lib/ui-emoji";
 import { cn } from "@/lib/utils";
@@ -27,10 +27,16 @@ import { normalizeBusinessType } from "@/lib/business-labels";
 import { normalizeMxPhone } from "@/lib/phone";
 import { FULFILLMENT_LABELS, parseFulfillment } from "@/lib/fulfillment";
 import { formatMxn } from "@/lib/money";
-import { formatMexicoCityDateTime } from "@/lib/dates";
 
 const TAG_OPTIONS = ["VIP", "Para llevar", "Frecuente", "Familiar"] as const;
 const MAX_PHOTOS = 5;
+const PHOTO_TTL_MONTHS = 6;
+
+function sixMonthsFromNowIso(from = new Date()) {
+  const d = new Date(from.getTime());
+  d.setMonth(d.getMonth() + PHOTO_TTL_MONTHS);
+  return d.toISOString();
+}
 
 type Props = {
   restaurantId: string;
@@ -39,6 +45,7 @@ type Props = {
   initialSelectedId?: string | null;
   loyaltyGoal: number;
   loyaltyRewardLabel: string;
+  loyaltyEnabled?: boolean;
   businessType?: BusinessType | string | null;
 };
 
@@ -56,6 +63,7 @@ export function CustomersCrm({
   initialSelectedId = null,
   loyaltyGoal: initialGoal,
   loyaltyRewardLabel: initialReward,
+  loyaltyEnabled: initialLoyaltyEnabled = false,
   businessType,
 }: Props) {
   const isServicios = normalizeBusinessType(businessType) === "servicios";
@@ -73,9 +81,13 @@ export function CustomersCrm({
   const [rewardLabel, setRewardLabel] = useState(
     initialReward || "Recompensa gratis",
   );
+  const [loyaltyOn, setLoyaltyOn] = useState(initialLoyaltyEnabled);
   const [msg, setMsg] = useState<string | null>(null);
   const [rewardOpen, setRewardOpen] = useState<Customer | null>(null);
   const [photos, setPhotos] = useState<CustomerPhoto[]>([]);
+  const [galleryOpen, setGalleryOpen] = useState(
+    () => isServicios && Boolean(initialSelectedId),
+  );
   const [busy, setBusy] = useState(false);
 
   const selected = customers.find((c) => c.id === selectedId) ?? null;
@@ -105,15 +117,37 @@ export function CustomersCrm({
     openCampaignWhatsApp(c.phone, msg);
   }
 
+  function selectCustomer(id: string) {
+    setSelectedId(id);
+    setPhotos([]);
+    setActivity([]);
+    setGalleryOpen(isServicios);
+  }
+
   useEffect(() => {
-    if (!selectedId) {
-      setPhotos([]);
-      setActivity([]);
+    if (!selectedId) return;
+    let cancelled = false;
+    void loadActivity(selectedId);
+    if (isServicios) {
+      void loadPhotos(selectedId);
       return;
     }
-    void loadPhotos(selectedId);
-    void loadActivity(selectedId);
-  }, [selectedId]);
+    void (async () => {
+      const supabase = createClient();
+      const { count } = await supabase
+        .from("customer_photos")
+        .select("id", { count: "exact", head: true })
+        .eq("customer_id", selectedId);
+      if (cancelled) return;
+      if ((count ?? 0) > 0) {
+        setGalleryOpen(true);
+        await loadPhotos(selectedId);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedId, isServicios]);
 
   async function loadActivity(customerId: string) {
     const supabase = createClient();
@@ -182,6 +216,42 @@ export function CustomersCrm({
     setMsg(error ? error.message : "Meta de lealtad guardada");
   }
 
+  async function setLoyaltyEnabled(enabled: boolean) {
+    if (
+      !enabled &&
+      !confirm(
+        "¿Desactivar el programa de visitas? Deja de mostrar sellos; no se borra el historial.",
+      )
+    ) {
+      return;
+    }
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("restaurants")
+      .update({ loyalty_enabled: enabled })
+      .eq("id", restaurantId);
+    if (error) {
+      setMsg(error.message);
+      return;
+    }
+    setLoyaltyOn(enabled);
+    if (!enabled) setRewardOpen(null);
+    setMsg(
+      enabled
+        ? "Programa de visitas activado"
+        : "Programa de visitas desactivado",
+    );
+  }
+
+  async function openGallery() {
+    if (galleryOpen) {
+      setGalleryOpen(false);
+      return;
+    }
+    setGalleryOpen(true);
+    if (selectedId) await loadPhotos(selectedId);
+  }
+
   async function createCustomer() {
     const phone = window.prompt("Teléfono (WhatsApp) del cliente");
     if (!phone?.trim()) return;
@@ -208,7 +278,7 @@ export function CustomersCrm({
       return;
     }
     setCustomers((list) => [data as Customer, ...list]);
-    setSelectedId(data.id);
+    selectCustomer(data.id);
     setMsg("Cliente creado");
   }
 
@@ -304,6 +374,7 @@ export function CustomersCrm({
         restaurant_id: restaurantId,
         customer_id: selected.id,
         storage_path: path,
+        expires_at: sixMonthsFromNowIso(),
       });
       if (error) throw error;
       await loadPhotos(selected.id);
@@ -322,6 +393,24 @@ export function CustomersCrm({
     setPhotos((list) => list.filter((p) => p.id !== photo.id));
   }
 
+  async function renewPhoto(photo: CustomerPhoto) {
+    const expiresAt = sixMonthsFromNowIso();
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("customer_photos")
+      .update({ expires_at: expiresAt })
+      .eq("id", photo.id)
+      .eq("restaurant_id", restaurantId);
+    if (error) {
+      setMsg(error.message);
+      return;
+    }
+    setPhotos((list) =>
+      list.map((p) => (p.id === photo.id ? { ...p, expires_at: expiresAt } : p)),
+    );
+    toast.success("Caducidad renovada 6 meses");
+  }
+
   function toggleTag(tag: string) {
     if (!selected) return;
     const tags = new Set(selected.tags ?? []);
@@ -332,14 +421,6 @@ export function CustomersCrm({
 
   return (
     <div className="space-y-4">
-      {isServicios ? (
-        <div className="rounded-xl border border-brand/20 bg-brand/5 px-3 py-2 text-xs text-muted">
-          Tip: pide autorización verbal antes de tomar fotos del servicio. Las
-          fichas y fotos son privadas; solo tú las ves en tu panel. Enfoca el
-          trabajo (corte, uñas, etc.), no rostros completos cuando sea posible.
-        </div>
-      ) : null}
-
       <CampaignPanel
         customers={customers}
         businessName={restaurantName}
@@ -347,37 +428,66 @@ export function CustomersCrm({
         onFilterChange={setCampaignFilter}
       />
 
-      <div className="grid gap-3 rounded-xl border border-black/5 bg-surface p-3 sm:grid-cols-[1fr_1fr_auto]">
-        <div className="space-y-1">
-          <Label htmlFor="loyalty-goal">Meta de visitas</Label>
-          <Input
-            id="loyalty-goal"
-            type="number"
-            min={1}
-            value={goal}
-            onChange={(e) => setGoal(Number(e.target.value) || 10)}
-          />
+      {loyaltyOn ? (
+        <div className="grid gap-3 rounded-xl border border-black/5 bg-surface p-3 sm:grid-cols-[1fr_1fr_auto_auto]">
+          <div className="space-y-1">
+            <Label htmlFor="loyalty-goal">Meta de visitas</Label>
+            <Input
+              id="loyalty-goal"
+              type="number"
+              min={1}
+              value={goal}
+              onChange={(e) => setGoal(Number(e.target.value) || 10)}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="loyalty-reward">Recompensa</Label>
+            <Input
+              id="loyalty-reward"
+              value={rewardLabel}
+              onChange={(e) => setRewardLabel(e.target.value)}
+            />
+          </div>
+          <div className="flex items-end">
+            <Button
+              type="button"
+              variant="secondary"
+              className="min-h-11 w-full"
+              onClick={() => void saveLoyaltySettings()}
+            >
+              <Emoji char={UI_EMOJI.save} />
+              Guardar meta
+            </Button>
+          </div>
+          <div className="flex items-end">
+            <Button
+              type="button"
+              variant="ghost"
+              className="min-h-11 w-full"
+              onClick={() => void setLoyaltyEnabled(false)}
+            >
+              Desactivar
+            </Button>
+          </div>
         </div>
-        <div className="space-y-1">
-          <Label htmlFor="loyalty-reward">Recompensa</Label>
-          <Input
-            id="loyalty-reward"
-            value={rewardLabel}
-            onChange={(e) => setRewardLabel(e.target.value)}
-          />
-        </div>
-        <div className="flex items-end">
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-black/5 bg-surface px-3 py-3">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold">Programa de visitas</p>
+            <p className="text-xs text-muted">
+              Si el cliente viene en persona y quieres sellar en caja.
+            </p>
+          </div>
           <Button
             type="button"
             variant="secondary"
-            className="min-h-11 w-full"
-            onClick={() => void saveLoyaltySettings()}
+            className="min-h-11"
+            onClick={() => void setLoyaltyEnabled(true)}
           >
-            <Emoji char={UI_EMOJI.save} />
-            Guardar meta
+            Activar
           </Button>
         </div>
-      </div>
+      )}
 
       <div className="flex flex-wrap gap-2">
         <div className="relative min-w-[200px] flex-1">
@@ -424,11 +534,11 @@ export function CustomersCrm({
                   <div
                     role="button"
                     tabIndex={0}
-                    onClick={() => setSelectedId(c.id)}
+                    onClick={() => selectCustomer(c.id)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
-                        setSelectedId(c.id);
+                        selectCustomer(c.id);
                       }
                     }}
                     className={cn(
@@ -453,8 +563,10 @@ export function CustomersCrm({
                           ) : null}
                         </p>
                         <p className="text-xs text-muted">
-                          {c.phone || "Sin teléfono"} · {c.visit_count ?? 0}{" "}
-                          visitas
+                          {c.phone || "Sin teléfono"}
+                          {loyaltyOn
+                            ? ` · ${c.visit_count ?? 0} visitas`
+                            : null}
                         </p>
                         {(c.tags ?? []).length > 0 ? (
                           <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-brand">
@@ -462,39 +574,45 @@ export function CustomersCrm({
                           </p>
                         ) : null}
                       </div>
-                      <Button
-                        type="button"
-                        size="sm"
-                        className={cn(
-                          "shrink-0",
-                          visitPulseId === c.id &&
-                            "motion-safe:animate-pulse ring-2 ring-brand/40",
-                        )}
-                        disabled={busy}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void addVisit(c);
-                        }}
-                      >
-                        +1 visita
-                      </Button>
+                      {loyaltyOn ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          className={cn(
+                            "shrink-0",
+                            visitPulseId === c.id &&
+                              "motion-safe:animate-pulse ring-2 ring-brand/40",
+                          )}
+                          disabled={busy}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void addVisit(c);
+                          }}
+                        >
+                          +1 visita
+                        </Button>
+                      ) : null}
                     </div>
-                    <div
-                      className={cn(
-                        "mt-2 h-1.5 overflow-hidden rounded-full bg-black/10",
-                        visitPulseId === c.id &&
-                          "motion-safe:animate-pulse",
-                      )}
-                    >
-                      <div
-                        className="h-full rounded-full bg-brand transition-[width] duration-300"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                    <p className="mt-1 text-[11px] text-muted">
-                      Lealtad {toward}/{goalN}
-                      {toward >= goalN ? " · ¡Listo para canjear!" : ""}
-                    </p>
+                    {loyaltyOn ? (
+                      <>
+                        <div
+                          className={cn(
+                            "mt-2 h-1.5 overflow-hidden rounded-full bg-black/10",
+                            visitPulseId === c.id &&
+                              "motion-safe:animate-pulse",
+                          )}
+                        >
+                          <div
+                            className="h-full rounded-full bg-brand transition-[width] duration-300"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <p className="mt-1 text-[11px] text-muted">
+                          Lealtad {toward}/{goalN}
+                          {toward >= goalN ? " · ¡Listo para canjear!" : ""}
+                        </p>
+                      </>
+                    ) : null}
                   </div>
                 </li>
               );
@@ -671,79 +789,123 @@ export function CustomersCrm({
               </div>
 
               <div className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <Label>Galería privada ({photos.length}/{MAX_PHOTOS})</Label>
-                  <label className="cursor-pointer text-sm font-semibold text-brand">
-                    Subir
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      className="sr-only"
-                      disabled={busy || photos.length >= MAX_PHOTOS}
-                      onChange={(e) => {
-                        void uploadPhoto(e.target.files?.[0] ?? null);
-                        e.target.value = "";
-                      }}
-                    />
-                  </label>
-                </div>
-                {photos.length === 0 ? (
-                  <p className="text-xs text-muted">Sin fotos aún.</p>
-                ) : (
-                  <div className="grid grid-cols-3 gap-2">
-                    {photos.map((p) => (
-                      <div
-                        key={p.id}
-                        className="relative aspect-square overflow-hidden rounded-lg bg-black/5"
-                      >
-                        {p.signed_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={p.signed_url}
-                            alt=""
-                            className="h-full w-full object-cover"
-                          />
-                        ) : null}
-                        <button
-                          type="button"
-                          className="absolute right-1 top-1 rounded bg-black/60 p-1 text-white"
-                          onClick={() => void deletePhoto(p)}
-                          aria-label="Eliminar foto"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex flex-wrap gap-2 pt-2">
-                <Button
+                <button
                   type="button"
-                  className="min-h-11 flex-1"
-                  disabled={busy}
-                  onClick={() => void addVisit(selected)}
+                  className="flex w-full items-center justify-between gap-2 text-left"
+                  onClick={() => void openGallery()}
+                  aria-expanded={galleryOpen}
                 >
-                  +1 visita
-                </Button>
-                {(selected.visits_toward_reward ?? 0) >= goal ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="min-h-11 flex-1"
-                    onClick={() => setRewardOpen(selected)}
-                  >
-                    Canjear recompensa
-                  </Button>
+                  <span className="text-sm font-medium">
+                    Fotos privadas (opcional)
+                    {galleryOpen ? ` (${photos.length}/${MAX_PHOTOS})` : ""}
+                  </span>
+                  <ChevronDown
+                    className={cn(
+                      "h-4 w-4 shrink-0 text-muted transition-transform",
+                      galleryOpen && "rotate-180",
+                    )}
+                    aria-hidden
+                  />
+                </button>
+                <p className="text-xs text-muted">
+                  Solo tú las ves; pide permiso y evita rostros. Se borran a los
+                  6 meses.
+                </p>
+                {galleryOpen ? (
+                  <div className="space-y-2">
+                    <div className="rounded-xl border border-brand/20 bg-brand/5 px-3 py-2 text-xs text-muted">
+                      Tip: pide autorización verbal antes de tomar fotos. Las
+                      fichas y fotos son privadas; solo tú las ves en tu panel.
+                      Enfoca el trabajo (corte, uñas, etc.), no rostros
+                      completos cuando sea posible. Renueva las que aún uses.
+                    </div>
+                    <div className="flex items-center justify-end">
+                      <label className="cursor-pointer text-sm font-semibold text-brand">
+                        Subir
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          className="sr-only"
+                          disabled={busy || photos.length >= MAX_PHOTOS}
+                          onChange={(e) => {
+                            void uploadPhoto(e.target.files?.[0] ?? null);
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
+                    </div>
+                    {photos.length === 0 ? (
+                      <p className="text-xs text-muted">Sin fotos aún.</p>
+                    ) : (
+                      <div className="grid grid-cols-3 gap-2">
+                        {photos.map((p) => (
+                          <div key={p.id} className="space-y-1">
+                            <div className="relative aspect-square overflow-hidden rounded-lg bg-black/5">
+                              {p.signed_url ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={p.signed_url}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : null}
+                              <button
+                                type="button"
+                                className="absolute right-1 top-1 rounded bg-black/60 p-1 text-white"
+                                onClick={() => void deletePhoto(p)}
+                                aria-label="Eliminar foto"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                            {p.expires_at ? (
+                              <p className="text-[10px] leading-tight text-muted">
+                                Se borra el {formatMexicoCityDate(p.expires_at)}
+                              </p>
+                            ) : null}
+                            <button
+                              type="button"
+                              className="text-[11px] font-semibold text-brand"
+                              onClick={() => void renewPhoto(p)}
+                            >
+                              Renovar 6 meses
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 ) : null}
               </div>
+
+              {loyaltyOn ? (
+                <div className="flex flex-wrap gap-2 pt-2">
+                  <Button
+                    type="button"
+                    className="min-h-11 flex-1"
+                    disabled={busy}
+                    onClick={() => void addVisit(selected)}
+                  >
+                    +1 visita
+                  </Button>
+                  {(selected.visits_toward_reward ?? 0) >= goal ? (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="min-h-11 flex-1"
+                      onClick={() => setRewardOpen(selected)}
+                    >
+                      Canjear recompensa
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           )}
         </div>
       </div>
 
-      {rewardOpen ? (
+      {loyaltyOn && rewardOpen ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
           <div className="w-full max-w-md space-y-3 rounded-2xl bg-background p-5 shadow-xl">
             <p className="text-lg font-semibold text-brand-dark">

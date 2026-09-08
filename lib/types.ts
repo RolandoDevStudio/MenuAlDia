@@ -77,6 +77,8 @@ export interface Restaurant {
   terms_accepted_at?: string | null;
   loyalty_goal?: number;
   loyalty_reward_label?: string;
+  /** Punch-card visits in Clientes / Pedidos; off by default */
+  loyalty_enabled?: boolean;
   /** Lifecycle after cancel/expiry */
   grace_ends_at?: string | null;
   purge_scheduled_at?: string | null;
@@ -261,6 +263,7 @@ export interface CustomerPhoto {
   customer_id: string;
   storage_path: string;
   created_at: string;
+  expires_at?: string | null;
   signed_url?: string | null;
 }
 
@@ -282,6 +285,8 @@ export interface Order {
   created_at: string;
   /** Correlative per restaurant, assigned by trigger */
   folio?: number | null;
+  /** Opaque share token for /t/[token]; never expose on public lists */
+  public_token?: string | null;
 }
 
 /** Persisted in order_logs / orders JSONB. Address only on the panel channel. */

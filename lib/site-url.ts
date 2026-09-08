@@ -16,3 +16,8 @@ export function publicMenuUrl(slug: string, origin?: string): string {
   const base = (origin ?? getAppOrigin()).replace(/\/$/, "");
   return `${base}/${slug}`;
 }
+
+export function publicOrderTicketUrl(token: string, origin?: string): string {
+  const base = (origin ?? getAppOrigin()).replace(/\/$/, "");
+  return `${base}/t/${encodeURIComponent(token)}`;
+}

@@ -51,7 +51,11 @@ export default async function OrdersPage() {
           CSV
         </a>
       </div>
-      <OrdersBoard initialOrders={orders} channelCrm={channelCrm} />
+      <OrdersBoard
+        initialOrders={orders}
+        channelCrm={channelCrm}
+        loyaltyEnabled={session.restaurant.loyalty_enabled === true}
+      />
     </div>
   );
 }

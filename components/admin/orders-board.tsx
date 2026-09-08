@@ -68,9 +68,11 @@ function playChime(ctx: AudioContext) {
 export function OrdersBoard({
   initialOrders,
   channelCrm = false,
+  loyaltyEnabled = false,
 }: {
   initialOrders: Order[];
   channelCrm?: boolean;
+  loyaltyEnabled?: boolean;
 }) {
   const [orders, setOrders] = useState(initialOrders);
   const [filter, setFilter] = useState<Filter>("today");
@@ -259,6 +261,7 @@ export function OrdersBoard({
             const status = parseOrderStatus(o.status) ?? "submitted";
             const phone = payload.phone;
             const canStamp =
+              loyaltyEnabled &&
               (mode === "pickup" || mode === "dine_in") &&
               Boolean(o.customer_id);
             return (

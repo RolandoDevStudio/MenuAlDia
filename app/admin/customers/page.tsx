@@ -74,6 +74,7 @@ export default async function CustomersPage({
         loyaltyRewardLabel={
           session.restaurant.loyalty_reward_label || "Recompensa gratis"
         }
+        loyaltyEnabled={session.restaurant.loyalty_enabled === true}
         businessType={session.restaurant.business_type}
       />
     </div>

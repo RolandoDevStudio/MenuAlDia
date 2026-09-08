@@ -10,6 +10,12 @@ export async function POST(request: Request) {
   if (!can(session.restaurant.plan_type, "crm")) {
     return NextResponse.json({ error: "plan required: pro" }, { status: 403 });
   }
+  if (session.restaurant.loyalty_enabled !== true) {
+    return NextResponse.json(
+      { error: "El programa de visitas está desactivado" },
+      { status: 403 },
+    );
+  }
 
   const body = (await request.json()) as { customer_id?: string };
   const customerId = body.customer_id?.trim();

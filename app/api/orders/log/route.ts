@@ -142,6 +142,7 @@ export async function POST(request: Request) {
 
     let orderId: string | null = null;
     let folio: number | null = null;
+    let publicToken: string | null = null;
 
     if (can(plan, "crm")) {
       try {
@@ -150,13 +151,35 @@ export async function POST(request: Request) {
 
         // A double tap (or a retried request) must not create a second order.
         const since = new Date(Date.now() - 60_000).toISOString();
-        const { data: recent } = await admin
-          .from("orders")
-          .select("id, folio, payload, total")
-          .eq("restaurant_id", body.restaurant_id)
-          .gte("created_at", since)
-          .order("created_at", { ascending: false })
-          .limit(5);
+        let recent: {
+          id: string;
+          folio?: number | null;
+          public_token?: string | null;
+          payload: OrderLogPayload | null;
+          total: number;
+        }[] | null = null;
+
+        {
+          const withToken = await admin
+            .from("orders")
+            .select("id, folio, public_token, payload, total")
+            .eq("restaurant_id", body.restaurant_id)
+            .gte("created_at", since)
+            .order("created_at", { ascending: false })
+            .limit(5);
+          if (withToken.error) {
+            const fallback = await admin
+              .from("orders")
+              .select("id, folio, payload, total")
+              .eq("restaurant_id", body.restaurant_id)
+              .gte("created_at", since)
+              .order("created_at", { ascending: false })
+              .limit(5);
+            recent = fallback.data;
+          } else {
+            recent = withToken.data;
+          }
+        }
 
         const duplicate = (recent ?? []).find(
           (o) =>
@@ -168,6 +191,7 @@ export async function POST(request: Request) {
             ok: true,
             orderId: duplicate.id,
             folio: duplicate.folio ?? null,
+            publicToken: duplicate.public_token ?? null,
             duplicate: true,
           });
         }
@@ -182,7 +206,7 @@ export async function POST(request: Request) {
           },
         );
 
-        const { data: inserted } = await admin
+        const insert = await admin
           .from("orders")
           .insert({
             restaurant_id: body.restaurant_id,
@@ -194,8 +218,17 @@ export async function POST(request: Request) {
           .select("id, folio")
           .maybeSingle();
 
-        orderId = inserted?.id ?? null;
-        folio = inserted?.folio ?? null;
+        orderId = insert.data?.id ?? null;
+        folio = insert.data?.folio ?? null;
+
+        if (orderId) {
+          const { data: tokenRow } = await admin
+            .from("orders")
+            .select("public_token")
+            .eq("id", orderId)
+            .maybeSingle();
+          publicToken = tokenRow?.public_token ?? null;
+        }
 
         try {
           const { emitTenantNotification } = await import(
@@ -217,7 +250,7 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({ ok: true, orderId, folio });
+    return NextResponse.json({ ok: true, orderId, folio, publicToken });
   } catch (e) {
     console.error(e);
     return NextResponse.json({ error: "server error" }, { status: 500 });

@@ -7,6 +7,7 @@ import { FULFILLMENT_LABELS } from "@/lib/fulfillment";
 import { formatMexicoCityDateTime } from "@/lib/dates";
 import { formatClabeDisplay } from "@/lib/transfer-details";
 import type { PublicTransferDetails } from "@/lib/transfer-details";
+import { TicketQr } from "@/components/public/ticket-qr";
 
 export type OrderTicketData = {
   folio: number | null;
@@ -58,10 +59,12 @@ export function OrderTicket({
   data,
   variant = "sheet",
   autoPrint = false,
+  qrUrl,
 }: {
   data: OrderTicketData;
-  variant?: "sheet" | "print";
+  variant?: "sheet" | "print" | "page";
   autoPrint?: boolean;
+  qrUrl?: string | null;
 }) {
   useEffect(() => {
     if (!autoPrint) return;
@@ -70,6 +73,7 @@ export function OrderTicket({
   }, [autoPrint]);
 
   const isPrint = variant === "print";
+  const isPage = variant === "page";
   const status = statusLabel(data.status);
 
   return (
@@ -78,7 +82,9 @@ export function OrderTicket({
       className={
         isPrint
           ? "print-ticket-80mm mx-auto bg-white font-mono text-[12px] leading-tight text-black"
-          : "rounded-xl border border-dashed border-black/20 bg-background/60 p-4"
+          : isPage
+            ? "rounded-2xl border border-black/10 bg-white p-5 shadow-sm"
+            : "rounded-xl border border-dashed border-black/20 bg-background/60 p-4"
       }
     >
       <div className={isPrint ? "text-center" : "text-center"}>
@@ -250,12 +256,27 @@ export function OrderTicket({
           {data.address ? <p>Dirección: {data.address}</p> : null}
           {data.references ? <p>Ref: {data.references}</p> : null}
           <p className="mt-2 text-center">{status.text}</p>
+          {qrUrl ? (
+            <div className="mt-2 flex flex-col items-center gap-1">
+              <TicketQr url={qrUrl} size={120} />
+              <p className="text-center text-[10px] break-all">{qrUrl}</p>
+            </div>
+          ) : null}
         </div>
       ) : (
         <p className="mt-3 text-center text-[11px] text-muted">
           Este comprobante no es un documento fiscal.
         </p>
       )}
+
+      {isPage && qrUrl ? (
+        <div className="mt-4 flex flex-col items-center gap-1 print:hidden">
+          <TicketQr url={qrUrl} size={168} />
+          <p className="text-center text-[11px] text-muted">
+            Escanea para abrir este comprobante
+          </p>
+        </div>
+      ) : null}
     </div>
   );
 }

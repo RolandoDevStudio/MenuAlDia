@@ -4,7 +4,9 @@ import { requireTenantSession } from "@/lib/admin-session";
 import { can } from "@/lib/plans";
 import { parseFulfillment } from "@/lib/fulfillment";
 import { publicTransferDetails } from "@/lib/transfer-details";
+import { publicOrderTicketUrl } from "@/lib/site-url";
 import { OrderTicket } from "@/components/public/order-ticket";
+import { OrderPrintToolbar } from "@/components/admin/order-print-toolbar";
 import type { Order, OrderLogPayload } from "@/lib/types";
 
 export default async function OrderPrintPage({
@@ -32,12 +34,15 @@ export default async function OrderPrintPage({
 
   return (
     <div className="mx-auto max-w-md space-y-4 py-4">
-      <p className="text-center text-sm text-muted print:hidden">
-        Preparando la comanda para imprimir…
-      </p>
+      <OrderPrintToolbar folio={order.folio ?? null} />
       <OrderTicket
         variant="print"
         autoPrint
+        qrUrl={
+          order.public_token
+            ? publicOrderTicketUrl(order.public_token)
+            : null
+        }
         data={{
           folio: order.folio ?? null,
           createdAt: order.created_at,

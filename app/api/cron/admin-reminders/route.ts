@@ -7,6 +7,7 @@ import {
 import { can } from "@/lib/plans";
 import { mexicoCityTodayYmd } from "@/lib/dates";
 import { daysUntil } from "@/lib/subscription-lifecycle";
+import { purgeExpiredCustomerPhotos } from "@/lib/crm-photos-ttl";
 
 function authorized(request: Request) {
   const secret = process.env.CRON_SECRET?.trim();
@@ -31,6 +32,7 @@ export async function POST(request: Request) {
   let menuReminders = 0;
   let subReminders = 0;
   let skipped = 0;
+  let purgedPhotos = 0;
 
   const { data: restaurants } = await admin
     .from("restaurants")
@@ -105,12 +107,22 @@ export async function POST(request: Request) {
     }
   }
 
+  try {
+    purgedPhotos = await purgeExpiredCustomerPhotos(admin);
+  } catch (e) {
+    console.warn(
+      "[crm-photos-ttl]",
+      e instanceof Error ? e.message : e,
+    );
+  }
+
   return NextResponse.json({
     ok: true,
     at: nowIso,
     menuReminders,
     subReminders,
     skipped,
+    purgedPhotos,
   });
 }
 
