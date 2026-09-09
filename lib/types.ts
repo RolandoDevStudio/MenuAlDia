@@ -160,6 +160,8 @@ export interface Dish {
   name: string;
   description: string;
   photo_url: string | null;
+  /** True when photo came from AI generation */
+  photo_is_ai?: boolean;
   price: number;
   is_side: boolean;
   is_active: boolean;
@@ -193,6 +195,8 @@ export interface Combo {
   title: string;
   description: string;
   photo_url: string | null;
+  /** True when photo came from AI generation */
+  photo_is_ai?: boolean;
   fixed_price: number | null;
   is_active: boolean;
   sort_order: number;

@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { DishPhotoUpload } from "@/components/admin/dish-photo-upload";
+import { ProductAiPhotoButton } from "@/components/admin/product-ai-photo-button";
 import { useAdminDockSave } from "@/components/admin/admin-dock";
 import {
   UNIT_TYPE_LABELS,
@@ -68,6 +69,7 @@ export function DishForm({
     String(dish?.step_value ?? defaultStepForUnit("unit")),
   );
   const [photoUrl, setPhotoUrl] = useState<string | null>(dish?.photo_url ?? null);
+  const [photoIsAi, setPhotoIsAi] = useState(Boolean(dish?.photo_is_ai));
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -171,6 +173,7 @@ export function DishForm({
       is_active: parsed.data.is_active,
       is_popular: isPopular,
       photo_url: parsed.data.photo_url || null,
+      photo_is_ai: Boolean(parsed.data.photo_url) && photoIsAi,
       allow_purchase: allowPurchase,
       allow_booking: allowBooking,
       unit_type: isTienda ? unitType : "unit",
@@ -272,7 +275,10 @@ export function DishForm({
       <DishPhotoUpload
         restaurantId={restaurantId}
         value={photoUrl}
-        onChange={setPhotoUrl}
+        onChange={(url) => {
+          setPhotoUrl(url);
+          setPhotoIsAi(false);
+        }}
         canAddPhoto={canAddPhoto}
         limitMessage={photoLimitMessage}
         guide="product"
@@ -297,6 +303,18 @@ export function DishForm({
           onChange={(e) => setDescription(e.target.value)}
         />
       </div>
+      <ProductAiPhotoButton
+        restaurantId={restaurantId}
+        mode="item"
+        itemName={name}
+        description={description}
+        currentPhotoUrl={photoUrl}
+        canAddPhoto={canAddPhoto}
+        onApplied={(url) => {
+          setPhotoUrl(url);
+          setPhotoIsAi(true);
+        }}
+      />
       <div className="space-y-1.5">
         <Label htmlFor="price">Precio regular (MXN)</Label>
         <Input

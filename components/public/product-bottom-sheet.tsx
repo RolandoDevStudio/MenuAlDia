@@ -164,12 +164,17 @@ export function ProductBottomSheet({
         {dish ? (
           <>
             {dish.photo_url ? (
-              <div className="h-48 w-full overflow-hidden">
+              <div className="relative h-48 w-full overflow-hidden">
                 <ZoomableMenuPhoto
                   src={dish.photo_url}
                   alt={dish.name}
                   className="h-48"
                 />
+                {dish.photo_is_ai ? (
+                  <p className="absolute bottom-2 left-2 rounded-md bg-black/55 px-2 py-0.5 text-[10px] text-white/95">
+                    Foto ilustrativa
+                  </p>
+                ) : null}
               </div>
             ) : (
               <div

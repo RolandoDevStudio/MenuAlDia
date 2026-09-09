@@ -4,16 +4,19 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
+type Pool = {
+  used: number;
+  limit: number;
+  bonus: number;
+  total: number;
+  remaining: number;
+};
+
 type UsagePayload = {
   paused: boolean;
   scans: { used: number; limit: number; remaining: number };
-  images: {
-    used: number;
-    limit: number;
-    bonus: number;
-    total: number;
-    remaining: number;
-  };
+  images: Pool;
+  productImages?: Pool;
   pack: { size: number; priceMxn: number; pending: boolean };
 };
 
@@ -71,13 +74,18 @@ export function AiUsagePanel() {
 
   if (!data) return null;
 
-  const showPackCta =
-    !data.paused && data.images.remaining === 0 && !data.pack.pending;
+  const product = data.productImages;
+  const outOfCredits =
+    data.images.remaining === 0 ||
+    (product != null && product.remaining === 0);
+  const showPackCta = !data.paused && outOfCredits && !data.pack.pending;
 
   return (
     <div className="space-y-3">
       <p className="text-[11px] text-muted">
-        Los escaneos y las imágenes (flyer, banner, fondo) cuentan por mes.
+        Flyers/marketing y fotos de menú tienen cupos mensuales separados. Los
+        packs SPEI suman créditos flexibles (sirven para ambos) cuando se acaba
+        el incluido. El precio del pack lo define el superadmin.
       </p>
 
       {data.paused ? (
@@ -95,22 +103,34 @@ export function AiUsagePanel() {
         </li>
         <li className="flex items-center justify-between gap-3">
           <span className="text-muted">
-            Imágenes IA
+            Marketing IA (flyer/banner/fondo)
             {data.images.bonus > 0 ? (
-              <span className="ml-1 text-[11px]">
-                (plan {data.images.limit} + bonus {data.images.bonus})
-              </span>
+              <span className="ml-1 text-[11px]">(+pack flexible)</span>
             ) : null}
           </span>
           <span className="font-semibold tabular-nums">
-            {data.images.used} / {data.images.total}
+            {data.images.used} / {data.images.limit}
+            {data.images.remaining !== Math.max(0, data.images.limit - data.images.used)
+              ? ` · quedan ${data.images.remaining}`
+              : ""}
           </span>
         </li>
+        {product ? (
+          <li className="flex items-center justify-between gap-3">
+            <span className="text-muted">Fotos de menú / combos IA</span>
+            <span className="font-semibold tabular-nums">
+              {product.used} / {product.limit}
+              {product.remaining !== Math.max(0, product.limit - product.used)
+                ? ` · quedan ${product.remaining}`
+                : ""}
+            </span>
+          </li>
+        ) : null}
       </ul>
 
       {data.pack.pending ? (
         <p className="text-xs text-muted">
-          Solicitud de pack pendiente (+{data.pack.size} imágenes · $
+          Solicitud de pack pendiente (+{data.pack.size} créditos · $
           {data.pack.priceMxn} MXN).
         </p>
       ) : null}
@@ -118,16 +138,17 @@ export function AiUsagePanel() {
       {showPackCta ? (
         <Button
           type="button"
-          variant="outline"
-          size="sm"
+          className="min-h-11 w-full"
           disabled={requesting}
           onClick={() => void requestPack()}
         >
           {requesting
             ? "Enviando…"
-            : `Pedir pack (+${data.pack.size} · $${data.pack.priceMxn} MXN)`}
+            : `Pedir pack (+${data.pack.size} · $${data.pack.priceMxn} MXN SPEI)`}
         </Button>
       ) : null}
     </div>
   );
+}
+
 }

@@ -10,6 +10,7 @@ import {
 import {
   assertAiAllowed,
   finalizeUsage,
+  getDualImageQuotaStatus,
   getImageQuotaStatus,
   reserveImageUsage,
 } from "@/lib/ai-quota";
@@ -25,6 +26,11 @@ import {
   type FlyerMenuItemForPrompt,
 } from "@/lib/flyer-ai-prompt";
 import {
+  buildProductComboPrompt,
+  buildProductItemPrompt,
+  isTenantStoragePhotoUrl,
+} from "@/lib/product-ai-prompt";
+import {
   formatWhatsappDisplay,
   socialHandleFromUrl,
 } from "@/lib/flyer-types";
@@ -33,6 +39,7 @@ export const maxDuration = 60;
 
 const MAX_PRODUCT_PHOTOS = 6;
 const MAX_PRODUCT_BYTES = 900_000;
+const MAX_COMBO_ATTACH = 4;
 
 const marketingSchema = z
   .object({
@@ -74,7 +81,28 @@ const menuItemSchema = z.object({
 });
 
 const bodySchema = z.object({
-  imageKind: z.enum(["flyer", "banner", "background"]),
+  imageKind: z.enum(["flyer", "banner", "background", "product"]),
+  productMode: z.enum(["item", "combo"]).optional(),
+  productName: z.string().max(120).optional(),
+  productDescription: z.string().max(500).optional(),
+  productItems: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(120),
+        quantity: z.number().int().min(1).max(20),
+        photoUrl: z
+          .string()
+          .max(2000)
+          .optional()
+          .nullable()
+          .refine(
+            (v) => v == null || v === "" || /^https?:\/\//i.test(v),
+            "photoUrl inválida",
+          ),
+      }),
+    )
+    .max(8)
+    .optional(),
   preset: z
     .enum([
       "flyer",
@@ -118,16 +146,17 @@ const bodySchema = z.object({
 });
 
 function usageKind(
-  imageKind: "flyer" | "banner" | "background",
-): "flyer" | "banner" | "background" {
+  imageKind: "flyer" | "banner" | "background" | "product",
+): "flyer" | "banner" | "background" | "product" {
   return imageKind;
 }
 
 function resolvePreset(
-  imageKind: "flyer" | "banner" | "background",
+  imageKind: "flyer" | "banner" | "background" | "product",
   preset?: AiImagePreset,
   aspectRatio?: "4:5" | "9:16" | "1:1",
 ): AiImagePreset {
+  if (imageKind === "product") return "flyer_square";
   if (imageKind === "flyer" && aspectRatio) {
     return aspectRatioToImagePreset(aspectRatio);
   }
@@ -175,6 +204,11 @@ async function fetchProductImage(opts: {
 
 export async function GET() {
   const session = await requireTenantSession();
+  const dual = await getDualImageQuotaStatus({
+    restaurantId: session.restaurant.id,
+    plan: session.restaurant.plan_type as PlanType,
+    bonus: session.restaurant.ai_image_bonus ?? 0,
+  });
   const status = await getImageQuotaStatus({
     restaurantId: session.restaurant.id,
     plan: session.restaurant.plan_type as PlanType,
@@ -182,6 +216,8 @@ export async function GET() {
   });
   return NextResponse.json({
     ...status,
+    product: dual.product,
+    marketing: dual.marketing,
     paused: Boolean(session.restaurant.ai_paused),
   });
 }
@@ -224,6 +260,143 @@ export async function POST(request: Request) {
   const aspect = IMAGE_KIND_ASPECTS[preset];
   const kind = usageKind(body.imageKind);
   const userPromptText = (body.prompt ?? "").trim();
+  const businessType =
+    session.restaurant.business_type ?? body.businessType ?? "restaurante";
+
+  // --- Product / combo menu photos (base64 only; client uploads on "Usar") ---
+  if (body.imageKind === "product") {
+    const productMode = body.productMode ?? "item";
+    const productName = (body.productName ?? "").trim();
+    if (productName.length < 2) {
+      return NextResponse.json(
+        {
+          error: "bad_request",
+          message: "Escribe el nombre del producto o combo primero.",
+        },
+        { status: 400 },
+      );
+    }
+    if (productMode === "combo") {
+      const items = body.productItems ?? [];
+      if (items.length < 2) {
+        return NextResponse.json(
+          {
+            error: "bad_request",
+            message: "Agrega al menos 2 productos al combo para generar la foto.",
+          },
+          { status: 400 },
+        );
+      }
+    }
+
+    const reserved = await reserveImageUsage({
+      restaurantId,
+      kind: "product",
+      plan,
+      bonus,
+    });
+    if (!reserved.ok) {
+      return NextResponse.json(
+        { error: reserved.error, message: reserved.message },
+        { status: reserved.status },
+      );
+    }
+
+    try {
+      let prompt: string;
+      let bytes: Buffer;
+      let mimeType: string;
+      let attachedPhotos = 0;
+
+      if (productMode === "combo") {
+        const items = (body.productItems ?? []).map((i) => ({
+          name: i.name,
+          quantity: i.quantity,
+          photoUrl: i.photoUrl,
+        }));
+        const productImages: {
+          base64: string;
+          mimeType: string;
+          label: string;
+        }[] = [];
+        for (const it of items) {
+          if (productImages.length >= MAX_COMBO_ATTACH) break;
+          const url = it.photoUrl?.trim();
+          if (!url || !isTenantStoragePhotoUrl(url, restaurantId)) continue;
+          const fetched = await fetchProductImage({
+            url,
+            label: it.name,
+          });
+          if (fetched) productImages.push(fetched);
+        }
+        attachedPhotos = productImages.length;
+        prompt = buildProductComboPrompt({
+          name: productName,
+          description: body.productDescription,
+          businessType,
+          style: body.style,
+          items,
+          attachedPhotoCount: attachedPhotos,
+        });
+        if (productImages.length > 0) {
+          const out = await generateFlyerMultimodal({
+            prompt,
+            aspectRatio: "1:1",
+            includeReferenceImage: false,
+            productImages,
+          });
+          bytes = out.bytes;
+          mimeType = out.mimeType;
+        } else {
+          const out = await generateImagenBytes({
+            prompt,
+            aspectRatio: "1:1",
+          });
+          bytes = out.bytes;
+          mimeType = out.mimeType;
+        }
+      } else {
+        prompt = buildProductItemPrompt({
+          name: productName,
+          description: body.productDescription,
+          businessType,
+          style: body.style,
+        });
+        const out = await generateImagenBytes({
+          prompt,
+          aspectRatio: "1:1",
+        });
+        bytes = out.bytes;
+        mimeType = out.mimeType;
+      }
+
+      await finalizeUsage(reserved.usageId, true);
+      return NextResponse.json({
+        imageBase64: bytes.toString("base64"),
+        mimeType,
+        preset: "flyer_square",
+        targetAspect: { w: 1, h: 1 },
+        nativeAspect: "1:1",
+        remaining: reserved.remaining,
+        total: reserved.total,
+        productMode,
+        attachedPhotos,
+      });
+    } catch (e) {
+      await finalizeUsage(reserved.usageId, false);
+      if (e instanceof GeminiUnavailableError) {
+        return NextResponse.json(
+          { error: "AI_UNAVAILABLE", message: e.message },
+          { status: e.status },
+        );
+      }
+      console.error("[generate-image] product", e);
+      return NextResponse.json(
+        { error: "server_error", message: "No se pudo generar la foto." },
+        { status: 500 },
+      );
+    }
+  }
 
   const useComposition =
     body.imageKind === "flyer" &&

@@ -106,8 +106,15 @@ export function photoLimitLabel(
   return `Hasta ${photoDishLimit(plan)} productos con foto`;
 }
 
-/** Monthly AI image generations (flyer + banner + background) by plan. */
+/** Monthly AI marketing images (flyer + banner + background) by plan. */
 export const MONTHLY_AI_IMAGE_LIMITS: Record<PlanType, number> = {
+  catalog: 0,
+  daily: 8,
+  pro: 25,
+};
+
+/** Monthly AI product/combo menu photos by plan (separate pool). */
+export const MONTHLY_AI_PRODUCT_IMAGE_LIMITS: Record<PlanType, number> = {
   catalog: 0,
   daily: 8,
   pro: 25,
@@ -118,6 +125,15 @@ export function monthlyAiImagesLimit(
 ): number {
   const p = (plan ?? "catalog") as PlanType;
   return MONTHLY_AI_IMAGE_LIMITS[p] ?? MONTHLY_AI_IMAGE_LIMITS.catalog;
+}
+
+export function monthlyAiProductImagesLimit(
+  plan: PlanType | string | null | undefined,
+): number {
+  const p = (plan ?? "catalog") as PlanType;
+  return (
+    MONTHLY_AI_PRODUCT_IMAGE_LIMITS[p] ?? MONTHLY_AI_PRODUCT_IMAGE_LIMITS.catalog
+  );
 }
 
 export function isSubscriptionActive(restaurant: {

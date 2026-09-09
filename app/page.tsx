@@ -81,8 +81,8 @@ const AI_FEATURES = [
   },
   {
     icon: Sparkles,
-    title: "Catálogo más rápido",
-    body: "Apoyo con IA para armar el menú (incl. escanear fotos) y que el cliente encuentre qué pedir.",
+    title: "Fotos de menú y combos",
+    body: "Genera fotos de platillos, productos y combos con IA para publicar el menú el mismo día.",
   },
 ] as const;
 

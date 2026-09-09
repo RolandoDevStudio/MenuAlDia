@@ -44,7 +44,7 @@ export default function SuperAdminAiPage() {
   const [dailyLimit, setDailyLimit] = useState(1200);
   const [scanLimit, setScanLimit] = useState(8);
   const [packSize, setPackSize] = useState(10);
-  const [packPrice, setPackPrice] = useState(99);
+  const [packPrice, setPackPrice] = useState(29);
 
   const load = useCallback(async () => {
     setLoading(true);

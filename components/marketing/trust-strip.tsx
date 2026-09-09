@@ -3,7 +3,7 @@ import { Reveal } from "@/components/marketing/reveal";
 
 const BULLETS = [
   "Pedidos por WhatsApp sin comisiones de intermediarios",
-  "IA para flyers y mensajes — sin diseñador",
+  "IA para fotos de menú, flyers y mensajes",
   "Menú listo el mismo día — sin app nueva para tus clientes",
 ] as const;
 

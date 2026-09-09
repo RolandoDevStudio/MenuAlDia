@@ -10,6 +10,7 @@ import { formatMxn } from "@/lib/money";
 import { buildComboShareMessage } from "@/lib/whatsapp";
 import { label, normalizeBusinessType } from "@/lib/business-labels";
 import { DishPhotoUpload } from "@/components/admin/dish-photo-upload";
+import { ProductAiPhotoButton } from "@/components/admin/product-ai-photo-button";
 import { Button } from "@/components/ui/button";
 import { Emoji } from "@/components/ui-emoji";
 import { UI_EMOJI } from "@/lib/ui-emoji";
@@ -83,6 +84,7 @@ export function CombosManager({
   const [slug, setSlug] = useState("");
   const [fixedPrice, setFixedPrice] = useState("");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [photoIsAi, setPhotoIsAi] = useState(false);
   const [allowPurchase, setAllowPurchase] = useState(true);
   const [allowBooking, setAllowBooking] = useState(isServicios);
   /** dishId → quantity (0 = not included) */
@@ -219,6 +221,7 @@ export function CombosManager({
         slug: s,
         description: description.trim(),
         photo_url: photoUrl,
+        photo_is_ai: Boolean(photoUrl) && photoIsAi,
         fixed_price: fixedPrice ? Number(fixedPrice) : null,
         is_active: true,
         allow_purchase: allowPurchase,
@@ -249,6 +252,7 @@ export function CombosManager({
     setSlug("");
     setFixedPrice("");
     setPhotoUrl(null);
+    setPhotoIsAi(false);
     setAllowPurchase(true);
     setAllowBooking(isServicios);
     setQtyById({});
@@ -523,10 +527,34 @@ export function CombosManager({
         <DishPhotoUpload
           restaurantId={restaurant.id}
           value={photoUrl}
-          onChange={setPhotoUrl}
+          onChange={(url) => {
+            setPhotoUrl(url);
+            setPhotoIsAi(false);
+          }}
           label="Imagen promo"
           kind="og"
           guide="og"
+        />
+        <ProductAiPhotoButton
+          restaurantId={restaurant.id}
+          mode="combo"
+          itemName={title}
+          description={description}
+          currentPhotoUrl={photoUrl}
+          comboItems={Object.entries(qtyById)
+            .filter(([, q]) => q > 0)
+            .map(([dishId, quantity]) => {
+              const d = allDishMap.get(dishId);
+              return {
+                name: d?.name ?? "Producto",
+                quantity,
+                photoUrl: d?.photo_url ?? null,
+              };
+            })}
+          onApplied={(url) => {
+            setPhotoUrl(url);
+            setPhotoIsAi(true);
+          }}
         />
 
         {isServicios ? (

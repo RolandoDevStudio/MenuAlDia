@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   countScansThisMonth,
   getAiImagePackMeta,
-  getImageQuotaStatus,
+  getDualImageQuotaStatus,
   getScanMonthlyLimit,
   isAiGloballyPaused,
 } from "@/lib/ai-quota";
@@ -16,11 +16,11 @@ export async function GET() {
   const plan = (session.restaurant.plan_type as PlanType) || "catalog";
   const bonus = session.restaurant.ai_image_bonus ?? 0;
 
-  const [scanLimit, scansUsed, images, packMeta, globalPaused] =
+  const [scanLimit, scansUsed, dual, packMeta, globalPaused] =
     await Promise.all([
       getScanMonthlyLimit(),
       countScansThisMonth(restaurantId),
-      getImageQuotaStatus({ restaurantId, plan, bonus }),
+      getDualImageQuotaStatus({ restaurantId, plan, bonus }),
       getAiImagePackMeta(),
       isAiGloballyPaused(),
     ]);
@@ -44,11 +44,19 @@ export async function GET() {
       remaining: Math.max(0, scanLimit - scansUsed),
     },
     images: {
-      used: images.used,
-      limit: images.limit,
-      bonus: images.bonus,
-      total: images.total,
-      remaining: images.remaining,
+      used: dual.marketing.used,
+      limit: dual.marketing.limit,
+      bonus: dual.bonus,
+      total: dual.marketing.total,
+      remaining: dual.marketing.remaining,
+    },
+    productImages: {
+      used: dual.product.used,
+      limit: dual.product.limit,
+      bonus: dual.bonus,
+      total: dual.product.total,
+      remaining: dual.product.remaining,
+      bonusRemaining: dual.product.bonusRemaining,
     },
     pack: {
       size: packMeta.size,

@@ -1,6 +1,7 @@
 import { createServiceClient } from "@/lib/supabase/admin";
 import {
   monthlyAiImagesLimit,
+  monthlyAiProductImagesLimit,
   type PlanType,
 } from "@/lib/plans";
 import { createHash } from "crypto";
@@ -9,11 +10,15 @@ export type AiUsageKind =
   | "flyer"
   | "banner"
   | "background"
+  | "product"
   | "scan"
   | "intent"
   | "broadcast";
 
-const IMAGE_KINDS: AiUsageKind[] = ["flyer", "banner", "background"];
+export type ImageUsageKind = "flyer" | "banner" | "background" | "product";
+
+const MARKETING_KINDS: ImageUsageKind[] = ["flyer", "banner", "background"];
+const PRODUCT_KINDS: ImageUsageKind[] = ["product"];
 
 function monthStartIso(d = new Date()): string {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toISOString();
@@ -57,15 +62,16 @@ export async function getScanMonthlyLimit(): Promise<number> {
   return Number.isFinite(n) && n >= 0 ? n : 8;
 }
 
+/** Pack size/price from platform_settings (superadmin editable). Defaults 10 / $29. */
 export async function getAiImagePackMeta(): Promise<{
   size: number;
   priceMxn: number;
 }> {
   const size = Number(await getSetting("ai_image_pack_size", 10));
-  const priceMxn = Number(await getSetting("ai_image_pack_price_mxn", 99));
+  const priceMxn = Number(await getSetting("ai_image_pack_price_mxn", 29));
   return {
     size: Number.isFinite(size) && size > 0 ? size : 10,
-    priceMxn: Number.isFinite(priceMxn) && priceMxn >= 0 ? priceMxn : 99,
+    priceMxn: Number.isFinite(priceMxn) && priceMxn >= 0 ? priceMxn : 29,
   };
 }
 
@@ -83,29 +89,31 @@ export async function countUsageSince(opts: {
   if (opts.restaurantId) q = q.eq("restaurant_id", opts.restaurantId);
   if (opts.kinds?.length) q = q.in("kind", opts.kinds);
   if (opts.okOnly) q = q.eq("ok", true);
-  else if (opts.kinds?.some((k) => IMAGE_KINDS.includes(k))) {
-    // Pending reservations (ok=false) + successes both consume image quota
-    // until failed rows are deleted.
-  }
   const { count } = await q;
   return count ?? 0;
 }
 
-export async function countImageQuotaUsed(
+async function countPoolUsed(
   restaurantId: string,
+  kinds: ImageUsageKind[],
 ): Promise<number> {
   const admin = createServiceClient();
   const since = monthStartIso();
-  // Count ok=true OR recent pending (ok=false) as reserved
   const { count } = await admin
     .from("ai_usage")
     .select("id", { count: "exact", head: true })
     .eq("restaurant_id", restaurantId)
-    .in("kind", IMAGE_KINDS)
+    .in("kind", kinds)
     .gte("created_at", since)
     .or("ok.eq.true,ok.eq.false");
-  // All rows this month for image kinds count as reservation until deleted on fail
   return count ?? 0;
+}
+
+/** @deprecated Prefer getDualImageQuotaStatus — marketing pool only (ok+pending). */
+export async function countImageQuotaUsed(
+  restaurantId: string,
+): Promise<number> {
+  return countPoolUsed(restaurantId, MARKETING_KINDS);
 }
 
 export async function countSuccessfulImages(
@@ -113,7 +121,7 @@ export async function countSuccessfulImages(
 ): Promise<number> {
   return countUsageSince({
     restaurantId,
-    kinds: IMAGE_KINDS,
+    kinds: MARKETING_KINDS,
     sinceIso: monthStartIso(),
     okOnly: true,
   });
@@ -143,10 +151,92 @@ export function imageQuotaForRestaurant(opts: {
   return { limit, bonus, total: limit + bonus };
 }
 
+function poolIncluded(
+  kind: ImageUsageKind,
+  plan: PlanType | string | null | undefined,
+): number {
+  if (kind === "product") return monthlyAiProductImagesLimit(plan);
+  return monthlyAiImagesLimit(plan);
+}
+
+export type PoolQuotaStatus = {
+  used: number;
+  remaining: number;
+  total: number;
+  limit: number;
+  bonus: number;
+  bonusRemaining: number;
+};
+
+export async function getDualImageQuotaStatus(opts: {
+  restaurantId: string;
+  plan: PlanType | string | null | undefined;
+  bonus: number;
+}): Promise<{
+  marketing: PoolQuotaStatus;
+  product: PoolQuotaStatus;
+  bonus: number;
+}> {
+  const bonus = Math.max(0, Math.floor(opts.bonus || 0));
+  const mLimit = monthlyAiImagesLimit(opts.plan);
+  const pLimit = monthlyAiProductImagesLimit(opts.plan);
+  const [mUsed, pUsed] = await Promise.all([
+    countPoolUsed(opts.restaurantId, MARKETING_KINDS),
+    countPoolUsed(opts.restaurantId, PRODUCT_KINDS),
+  ]);
+  const bonusConsumed =
+    Math.max(0, mUsed - mLimit) + Math.max(0, pUsed - pLimit);
+  const bonusRemaining = Math.max(0, bonus - bonusConsumed);
+
+  function status(used: number, limit: number): PoolQuotaStatus {
+    const includedLeft = Math.max(0, limit - used);
+    const remaining = includedLeft + bonusRemaining;
+    return {
+      used,
+      remaining,
+      total: limit + bonus,
+      limit,
+      bonus,
+      bonusRemaining,
+    };
+  }
+
+  return {
+    marketing: status(mUsed, mLimit),
+    product: status(pUsed, pLimit),
+    bonus,
+  };
+}
+
+/** Marketing pool status (backward compatible for flyer UI). */
+export async function getImageQuotaStatus(opts: {
+  restaurantId: string;
+  plan: PlanType | string | null | undefined;
+  bonus: number;
+}): Promise<{
+  used: number;
+  remaining: number;
+  total: number;
+  limit: number;
+  bonus: number;
+}> {
+  const dual = await getDualImageQuotaStatus(opts);
+  return {
+    used: dual.marketing.used,
+    remaining: dual.marketing.remaining,
+    total: dual.marketing.total,
+    limit: dual.marketing.limit,
+    bonus: dual.bonus,
+  };
+}
+
 export async function assertAiAllowed(opts: {
   restaurantId: string;
   aiPaused?: boolean | null;
-}): Promise<{ ok: true } | { ok: false; status: number; error: string; message: string }> {
+}): Promise<
+  | { ok: true }
+  | { ok: false; status: number; error: string; message: string }
+> {
   if (opts.aiPaused) {
     return {
       ok: false,
@@ -176,10 +266,10 @@ export async function assertAiAllowed(opts: {
   return { ok: true };
 }
 
-/** Reserve one image credit before calling Imagen. */
+/** Reserve one image credit (marketing or product pool + flexible SPEI bonus). */
 export async function reserveImageUsage(opts: {
   restaurantId: string;
-  kind: "flyer" | "banner" | "background";
+  kind: ImageUsageKind;
   plan: PlanType | string | null | undefined;
   bonus: number;
 }): Promise<
@@ -196,18 +286,23 @@ export async function reserveImageUsage(opts: {
   });
   if (!gate.ok) return gate;
 
-  const { total } = imageQuotaForRestaurant({
+  const dual = await getDualImageQuotaStatus({
+    restaurantId: opts.restaurantId,
     plan: opts.plan,
     bonus: opts.bonus,
   });
-  const used = await countImageQuotaUsed(opts.restaurantId);
-  if (used >= total) {
+  const pool = opts.kind === "product" ? dual.product : dual.marketing;
+  if (pool.remaining <= 0) {
+    const isProduct = opts.kind === "product";
     return {
       ok: false,
       status: 403,
       error: "QUOTA_EXCEEDED",
-      message:
-        "Has alcanzado el límite mensual de imágenes con IA de tu plan.",
+      message: isProduct
+        ? pool.limit === 0
+          ? "Las fotos de menú con IA están en Menú al Día y Pro. Puedes pedir un pack SPEI."
+          : "Has alcanzado el límite mensual de fotos de menú con IA. Pide un pack SPEI o espera al próximo mes."
+        : "Has alcanzado el límite mensual de imágenes con IA de tu plan.",
     };
   }
 
@@ -247,11 +342,13 @@ export async function reserveImageUsage(opts: {
         : "No se pudo reservar el crédito de IA.",
     };
   }
+
+  const included = poolIncluded(opts.kind, opts.plan);
   return {
     ok: true,
     usageId: data.id,
-    remaining: Math.max(0, total - used - 1),
-    total,
+    remaining: Math.max(0, pool.remaining - 1),
+    total: included + dual.bonus,
   };
 }
 
@@ -315,20 +412,4 @@ export async function setIntentCache(
     result,
     expires_at: expires.toISOString(),
   });
-}
-
-export async function getImageQuotaStatus(opts: {
-  restaurantId: string;
-  plan: PlanType | string | null | undefined;
-  bonus: number;
-}): Promise<{ used: number; remaining: number; total: number; limit: number; bonus: number }> {
-  const q = imageQuotaForRestaurant(opts);
-  const used = await countSuccessfulImages(opts.restaurantId);
-  return {
-    used,
-    remaining: Math.max(0, q.total - used),
-    total: q.total,
-    limit: q.limit,
-    bonus: q.bonus,
-  };
 }

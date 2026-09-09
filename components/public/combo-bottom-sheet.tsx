@@ -138,12 +138,17 @@ export function ComboBottomSheet({
         {combo ? (
           <div className="space-y-4 px-5 pt-5">
             {combo.photo_url ? (
-              <div className="h-40 w-full overflow-hidden rounded-2xl">
+              <div className="relative h-40 w-full overflow-hidden rounded-2xl">
                 <ZoomableMenuPhoto
                   src={combo.photo_url}
                   alt={combo.title}
                   className="h-40"
                 />
+                {combo.photo_is_ai ? (
+                  <p className="absolute bottom-2 left-2 rounded-md bg-black/55 px-2 py-0.5 text-[10px] text-white/95">
+                    Foto ilustrativa
+                  </p>
+                ) : null}
               </div>
             ) : null}
             <DialogHeader>
