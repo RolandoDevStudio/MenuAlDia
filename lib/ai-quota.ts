@@ -210,7 +210,19 @@ export async function reserveImageUsage(opts: {
     };
   }
 
-  const admin = createServiceClient();
+  let admin;
+  try {
+    admin = createServiceClient();
+  } catch {
+    return {
+      ok: false,
+      status: 500,
+      error: "USAGE_RESERVE_FAILED",
+      message:
+        "Falta SUPABASE_SERVICE_ROLE_KEY en el servidor. Configúrala en .env.local y reinicia.",
+    };
+  }
+
   const { data, error } = await admin
     .from("ai_usage")
     .insert({
@@ -220,12 +232,18 @@ export async function reserveImageUsage(opts: {
     })
     .select("id")
     .single();
+
   if (error || !data) {
+    const invalidKey =
+      /invalid api key/i.test(error?.message ?? "") ||
+      /service_role/i.test(error?.hint ?? "");
     return {
       ok: false,
       status: 500,
-      error: "USAGE_RESERVE_FAILED",
-      message: "No se pudo reservar el crédito de IA.",
+      error: invalidKey ? "SUPABASE_SERVICE_KEY_INVALID" : "USAGE_RESERVE_FAILED",
+      message: invalidKey
+        ? "SUPABASE_SERVICE_ROLE_KEY inválida o de otro proyecto. Cópiala de nuevo en .env.local (Settings → API) y reinicia npm run dev."
+        : "No se pudo reservar el crédito de IA.",
     };
   }
   return {

@@ -1,3 +1,5 @@
+"use client";
+
 import type { ReactNode } from "react";
 import type { Dish, Restaurant } from "@/lib/types";
 import { formatMxn } from "@/lib/money";
@@ -5,9 +7,11 @@ import { offersPublicDelivery } from "@/lib/fulfillment";
 import {
   FLYER_ASPECT_SIZE,
   formatWhatsappDisplay,
+  socialHandleFromUrl,
   type FlyerEditorOptions,
 } from "@/lib/flyer-types";
 import { getFlyerTheme } from "@/lib/flyer-themes";
+import { FlyerMenuQr } from "@/components/flyer/flyer-menu-qr";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -18,6 +22,8 @@ type Props = {
   options: FlyerEditorOptions;
   id?: string;
   sidesTitle?: string;
+  backgroundImageUrl?: string | null;
+  menuPublicUrl?: string;
 };
 
 const TEXT_SCALE = {
@@ -34,6 +40,9 @@ const LOGO_SIZE = {
   lg: 128,
 } as const;
 
+const READABLE_SHADOW =
+  "0 2px 8px rgba(0,0,0,0.55), 0 1px 2px rgba(0,0,0,0.4)";
+
 export function FlyerCanvas({
   restaurant,
   dishes,
@@ -42,6 +51,8 @@ export function FlyerCanvas({
   options,
   id = "flyer-canvas",
   sidesTitle = "Guarniciones",
+  backgroundImageUrl,
+  menuPublicUrl,
 }: Props) {
   const theme = getFlyerTheme(options.themePack);
   const { w, h } = FLYER_ASPECT_SIZE[options.aspect];
@@ -52,16 +63,28 @@ export function FlyerCanvas({
   const phone = formatWhatsappDisplay(restaurant.phone_whatsapp);
   const subtitle = options.subtitle.trim() || restaurant.slogan || "Sabor casero";
   const showWa = options.showWhatsapp && Boolean(phone);
+  const ig = socialHandleFromUrl(restaurant.instagram_url);
+  const fb = socialHandleFromUrl(restaurant.facebook_url);
+  const showIg = options.showInstagram && Boolean(ig);
+  const showFb = options.showFacebook && Boolean(fb);
+  const showQr = options.showMenuQr && Boolean(menuPublicUrl);
   const showShip =
     options.showFreeShipping &&
     offersPublicDelivery(restaurant) &&
     (restaurant.free_shipping || Number(restaurant.shipping_cost) === 0);
   const chalk = theme.id === "urbano_pizarra";
+  const hasAiBg = Boolean(backgroundImageUrl);
 
   const fitClass =
     options.objectFit === "contain"
       ? "object-contain"
       : "object-cover";
+
+  const panelBg = hasAiBg
+    ? chalk
+      ? "rgba(20,20,20,0.55)"
+      : "rgba(255,255,255,0.72)"
+    : theme.panelBg;
 
   function dishCard(dish: Dish, i: number, tall?: boolean) {
     const polaroid = options.frameStyle === "polaroid";
@@ -152,6 +175,7 @@ export function FlyerCanvas({
 
   function dishesBlock() {
     if (options.layout === "text_only") {
+      if (mains.length === 0) return null;
       return (
         <div className="mt-8">
           {listPanel(
@@ -192,6 +216,7 @@ export function FlyerCanvas({
         </div>
       );
     }
+    if (mains.length === 0) return null;
     const cols = mains.length <= 1 ? 1 : 2;
     return (
       <div
@@ -224,6 +249,7 @@ export function FlyerCanvas({
               style={{
                 fontFamily: theme.displayFont,
                 fontSize: ts.headline,
+                textShadow: READABLE_SHADOW,
               }}
             >
               {options.headline}
@@ -232,7 +258,6 @@ export function FlyerCanvas({
         </div>
       );
     }
-    // chalk
     return (
       <div className="mt-4 text-center">
         <p
@@ -241,7 +266,7 @@ export function FlyerCanvas({
             fontFamily: theme.displayFont,
             fontSize: ts.headline,
             color: theme.text,
-            textShadow: "0 2px 0 rgba(0,0,0,0.45)",
+            textShadow: READABLE_SHADOW,
           }}
         >
           {options.headline}
@@ -268,15 +293,47 @@ export function FlyerCanvas({
         fontFamily: theme.bodyFont,
       }}
     >
+      {hasAiBg ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={backgroundImageUrl!}
+          alt=""
+          crossOrigin="anonymous"
+          className="absolute inset-0 h-full w-full object-cover"
+          aria-hidden
+        />
+      ) : null}
+
       <div
         className="pointer-events-none absolute inset-0"
         style={{
           backgroundImage: theme.textureSvg,
-          opacity: theme.textureOpacity,
+          opacity: hasAiBg ? theme.textureOpacity * 0.35 : theme.textureOpacity,
           mixBlendMode: chalk ? "overlay" : "multiply",
         }}
         aria-hidden
       />
+
+      {options.contrastScrim ? (
+        <>
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 h-48"
+            style={{
+              background:
+                "linear-gradient(to bottom, rgba(0,0,0,0.55), transparent)",
+            }}
+            aria-hidden
+          />
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-56"
+            style={{
+              background:
+                "linear-gradient(to top, rgba(0,0,0,0.6), transparent)",
+            }}
+            aria-hidden
+          />
+        </>
+      ) : null}
 
       <div
         className="absolute inset-6"
@@ -285,7 +342,7 @@ export function FlyerCanvas({
           borderWidth: chalk ? 3 : 6,
           borderStyle: chalk ? "dashed" : "solid",
           borderColor: theme.panelBorder,
-          background: theme.panelBg,
+          background: panelBg,
         }}
       />
 
@@ -315,13 +372,18 @@ export function FlyerCanvas({
                 fontFamily: theme.displayFont,
                 fontSize: ts.name,
                 color: chalk ? theme.text : theme.muted,
+                textShadow: READABLE_SHADOW,
               }}
             >
               {restaurant.name}
             </p>
             <p
               className="mt-2 font-semibold uppercase tracking-[0.2em]"
-              style={{ fontSize: ts.body * 0.85, color: theme.accent }}
+              style={{
+                fontSize: ts.body * 0.85,
+                color: theme.accent,
+                textShadow: READABLE_SHADOW,
+              }}
             >
               {subtitle}
             </p>
@@ -409,74 +471,111 @@ export function FlyerCanvas({
               >
                 <p
                   className="text-lg font-bold"
-                  style={{ color: theme.waText }}
+                  style={{
+                    color: theme.waText,
+                    textShadow: READABLE_SHADOW,
+                  }}
                 >
                   Pedidos por WhatsApp
                 </p>
                 <p
                   className="text-2xl font-semibold"
-                  style={{ color: theme.text }}
+                  style={{
+                    color: theme.text,
+                    textShadow: READABLE_SHADOW,
+                  }}
                 >
                   {phone}
                 </p>
               </div>
             ) : null}
+            {showIg ? (
+              <p
+                className="text-xl font-semibold"
+                style={{ color: theme.text, textShadow: READABLE_SHADOW }}
+              >
+                IG {ig}
+              </p>
+            ) : null}
+            {showFb ? (
+              <p
+                className="text-xl font-semibold"
+                style={{ color: theme.text, textShadow: READABLE_SHADOW }}
+              >
+                FB {fb}
+              </p>
+            ) : null}
           </div>
 
-          {options.priceMode === "package" ? (
-            options.priceBadge === "ribbon" ? (
-              <div
-                className="px-6 py-4 text-center text-white shadow-xl"
-                style={{
-                  background: theme.priceBg,
-                  color: chalk ? theme.sealText : "#fff",
-                  borderRadius: chalk ? 12 : 16,
-                  clipPath: chalk
-                    ? undefined
-                    : "polygon(0 12%, 100% 0, 100% 88%, 0 100%)",
-                }}
-              >
-                <p className="text-sm font-semibold uppercase tracking-wider">
-                  Platillo completo
-                </p>
+          <div className="flex flex-col items-end gap-3">
+            {showQr && menuPublicUrl ? (
+              <div className="rounded-2xl bg-white p-3 shadow-lg">
+                <FlyerMenuQr url={menuPublicUrl} size={140} />
                 <p
-                  className="leading-none"
-                  style={{
-                    fontFamily: theme.displayFont,
-                    fontSize: ts.price,
-                  }}
+                  className="mt-1 text-center text-sm font-bold uppercase tracking-wide"
+                  style={{ color: "#111" }}
                 >
-                  {formatMxn(packagePrice).replace(/\s?MX\$?/i, "$")}
+                  Menú
                 </p>
               </div>
-            ) : (
-              <div
-                className="flex h-40 w-40 items-center justify-center rounded-full text-center shadow-xl"
-                style={{
-                  background: theme.priceBg,
-                  color: chalk ? theme.sealText : "#fff",
-                  boxShadow: chalk
-                    ? `0 0 0 4px ${theme.cardBorder}, 0 8px 0 ${theme.priceShadow}`
-                    : `0 10px 0 ${theme.priceShadow}`,
-                }}
-              >
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-wider opacity-90">
-                    Solo
+            ) : null}
+
+            {options.priceMode === "package" &&
+            (mains.length > 0 || sides.length > 0) ? (
+              options.priceBadge === "ribbon" ? (
+                <div
+                  className="px-6 py-4 text-center text-white shadow-xl"
+                  style={{
+                    background: theme.priceBg,
+                    color: chalk ? theme.sealText : "#fff",
+                    borderRadius: chalk ? 12 : 16,
+                    clipPath: chalk
+                      ? undefined
+                      : "polygon(0 12%, 100% 0, 100% 88%, 0 100%)",
+                  }}
+                >
+                  <p className="text-sm font-semibold uppercase tracking-wider">
+                    Platillo completo
                   </p>
                   <p
                     className="leading-none"
                     style={{
                       fontFamily: theme.displayFont,
-                      fontSize: ts.price * 0.85,
+                      fontSize: ts.price,
                     }}
                   >
                     {formatMxn(packagePrice).replace(/\s?MX\$?/i, "$")}
                   </p>
                 </div>
-              </div>
-            )
-          ) : null}
+              ) : (
+                <div
+                  className="flex h-40 w-40 items-center justify-center rounded-full text-center shadow-xl"
+                  style={{
+                    background: theme.priceBg,
+                    color: chalk ? theme.sealText : "#fff",
+                    boxShadow: chalk
+                      ? `0 0 0 4px ${theme.cardBorder}, 0 8px 0 ${theme.priceShadow}`
+                      : `0 10px 0 ${theme.priceShadow}`,
+                  }}
+                >
+                  <div>
+                    <p className="text-sm font-semibold uppercase tracking-wider opacity-90">
+                      Solo
+                    </p>
+                    <p
+                      className="leading-none"
+                      style={{
+                        fontFamily: theme.displayFont,
+                        fontSize: ts.price * 0.85,
+                      }}
+                    >
+                      {formatMxn(packagePrice).replace(/\s?MX\$?/i, "$")}
+                    </p>
+                  </div>
+                </div>
+              )
+            ) : null}
+          </div>
         </div>
       </div>
     </div>

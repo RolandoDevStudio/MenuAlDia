@@ -15,6 +15,8 @@ type Props = {
   packagePrice: number;
   options: FlyerEditorOptions;
   sidesTitle?: string;
+  backgroundImageUrl?: string | null;
+  menuPublicUrl?: string;
 };
 
 export function FlyerPreview({
@@ -24,6 +26,8 @@ export function FlyerPreview({
   packagePrice,
   options,
   sidesTitle,
+  backgroundImageUrl,
+  menuPublicUrl,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.3);
@@ -56,6 +60,8 @@ export function FlyerPreview({
           packagePrice={packagePrice}
           options={options}
           sidesTitle={sidesTitle}
+          backgroundImageUrl={backgroundImageUrl}
+          menuPublicUrl={menuPublicUrl}
         />
       </div>
 
@@ -78,6 +84,8 @@ export function FlyerPreview({
               packagePrice={packagePrice}
               options={options}
               sidesTitle={sidesTitle}
+              backgroundImageUrl={backgroundImageUrl}
+              menuPublicUrl={menuPublicUrl}
               id="flyer-preview"
             />
           </div>

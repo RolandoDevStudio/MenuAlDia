@@ -1,11 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireTenantSession } from "@/lib/admin-session";
-import { FlyerStudio } from "@/components/flyer/flyer-studio";
-import { FlyerAiPanel } from "@/components/admin/flyer-ai-panel";
+import { FlyerWorkspace } from "@/components/admin/flyer-workspace";
 import { PlanGate } from "@/components/admin/plan-gate";
 import { DifusionSubnav } from "@/components/admin/difusion-subnav";
 import { can } from "@/lib/plans";
+import { labelsFor } from "@/lib/business-labels";
 import type { Dish } from "@/lib/types";
+import Link from "next/link";
 
 type Props = {
   searchParams: Promise<{ combo?: string; from?: string }>;
@@ -17,6 +18,7 @@ const DISH_SELECT =
 export default async function FlyerPage({ searchParams }: Props) {
   const session = await requireTenantSession();
   const sp = await searchParams;
+  const labels = labelsFor(session.restaurant.business_type);
 
   const plan = session.restaurant.plan_type || "catalog";
   if (!can(plan, "flyer")) {
@@ -30,6 +32,28 @@ export default async function FlyerPage({ searchParams }: Props) {
   const supabase = await createClient();
   const fromToday = sp.from === "today";
 
+  const [{ data: allDishes }, { data: categories }] = await Promise.all([
+    supabase
+      .from("dishes")
+      .select(DISH_SELECT)
+      .eq("restaurant_id", session.restaurant.id)
+      .eq("is_active", true)
+      .is("archived_at", null)
+      .order("sort_order"),
+    supabase
+      .from("categories")
+      .select("id, name, sort_order")
+      .eq("restaurant_id", session.restaurant.id)
+      .order("sort_order"),
+  ]);
+
+  const catalog = (allDishes ?? []) as Dish[];
+  const cats = (categories ?? []) as {
+    id: string;
+    name: string;
+    sort_order: number;
+  }[];
+
   if (sp.combo) {
     const { data: combo } = await supabase
       .from("combos")
@@ -41,9 +65,12 @@ export default async function FlyerPage({ searchParams }: Props) {
 
     if (!combo) {
       return (
-        <p className="text-sm text-muted">
-          Combo no encontrado. Vuelve a Combos y elige “Usar en Flyer”.
-        </p>
+        <div>
+          <DifusionSubnav />
+          <p className="text-sm text-muted">
+            Combo no encontrado. Vuelve a Combos y elige “Usar en Flyer”.
+          </p>
+        </div>
       );
     }
 
@@ -54,36 +81,51 @@ export default async function FlyerPage({ searchParams }: Props) {
       .order("sort_order");
 
     const dishIds = (links ?? []).map((l) => l.dish_id);
-    const { data: dishes } = dishIds.length
-      ? await supabase.from("dishes").select(DISH_SELECT).in("id", dishIds)
-      : { data: [] as Dish[] };
-
-    const map = new Map(((dishes ?? []) as Dish[]).map((d) => [d.id, d]));
-    const comboDishes = (links ?? [])
-      .map((l) => map.get(l.dish_id))
+    const map = new Map(catalog.map((d) => [d.id, d]));
+    // Prefer catalog rows; fall back to fetching missing combo dishes
+    let comboDishes = dishIds
+      .map((id) => map.get(id))
       .filter(Boolean) as Dish[];
+
+    const missing = dishIds.filter((id) => !map.has(id));
+    if (missing.length) {
+      const { data: extra } = await supabase
+        .from("dishes")
+        .select(DISH_SELECT)
+        .in("id", missing);
+      const extraMap = new Map(((extra ?? []) as Dish[]).map((d) => [d.id, d]));
+      comboDishes = dishIds
+        .map((id) => map.get(id) ?? extraMap.get(id))
+        .filter(Boolean) as Dish[];
+    }
 
     const price =
       combo.fixed_price != null
         ? Number(combo.fixed_price)
         : comboDishes.reduce((s, d) => s + Number(d.price), 0);
 
+    const mainIds = comboDishes.filter((d) => !d.is_side).map((d) => d.id);
+    const sideIds = comboDishes.filter((d) => d.is_side).map((d) => d.id);
+
     return (
       <div>
         <DifusionSubnav />
-        <FlyerAiPanel
-          restaurantId={session.restaurant.id}
-          restaurantSlug={session.restaurant.slug}
-        />
-        <FlyerStudio
-          restaurant={session.restaurant}
-          dishes={comboDishes}
-          sides={[]}
-          packagePrice={price}
-          initialHeadline={combo.title.toUpperCase()}
-          sidesTitle="Incluye"
-          sourceLabel={`Promo del combo “${combo.title}”. Descarga y difunde en WhatsApp.`}
-        />
+        {catalog.length === 0 ? (
+          <EmptyCatalog labels={labels} />
+        ) : (
+          <FlyerWorkspace
+            restaurant={session.restaurant}
+            dishes={catalog}
+            categories={cats}
+            packagePrice={price}
+            preselectedMainIds={mainIds}
+            preselectedSideIds={sideIds}
+            todayPreselectedIds={[...mainIds, ...sideIds]}
+            initialHeadline={combo.title.toUpperCase()}
+            sidesTitle="Incluye"
+            sourceLabel={`Promo del combo “${combo.title}”. Descarga y difunde en WhatsApp.`}
+          />
+        )}
       </div>
     );
   }
@@ -94,77 +136,71 @@ export default async function FlyerPage({ searchParams }: Props) {
     .eq("restaurant_id", session.restaurant.id)
     .maybeSingle();
 
-  if (!selection) {
-    return (
-      <p className="text-sm text-muted">
-        Primero configura los especiales de hoy en el panel principal, o crea un
-        combo y elige “Usar en Flyer”.
-      </p>
-    );
+  let preMain: string[] = [];
+  let preSide: string[] = [];
+  let packagePrice = 0;
+
+  if (selection) {
+    const [{ data: mainLinks }, { data: sideLinks }] = await Promise.all([
+      supabase
+        .from("daily_menu_dishes")
+        .select("dish_id")
+        .eq("daily_menu_id", selection.id),
+      supabase
+        .from("daily_menu_sides")
+        .select("dish_id")
+        .eq("daily_menu_id", selection.id),
+    ]);
+    preMain = (mainLinks ?? []).map((l) => l.dish_id);
+    preSide = (sideLinks ?? []).map((l) => l.dish_id);
+    packagePrice = Number(selection.package_price) || 0;
   }
 
-  const [{ data: mainLinks }, { data: sideLinks }] = await Promise.all([
-    supabase
-      .from("daily_menu_dishes")
-      .select("dish_id")
-      .eq("daily_menu_id", selection.id),
-    supabase
-      .from("daily_menu_sides")
-      .select("dish_id")
-      .eq("daily_menu_id", selection.id),
-  ]);
-
-  const selectedIds = [
-    ...new Set([
-      ...(mainLinks ?? []).map((l) => l.dish_id),
-      ...(sideLinks ?? []).map((l) => l.dish_id),
-    ]),
-  ];
-
-  const { data: dishes } =
-    selectedIds.length > 0
-      ? await supabase.from("dishes").select(DISH_SELECT).in("id", selectedIds)
-      : { data: [] as Dish[] };
-
-  const map = new Map(((dishes ?? []) as Dish[]).map((d) => [d.id, d]));
-  const dailyDishes = (mainLinks ?? [])
-    .map((l) => map.get(l.dish_id))
-    .filter(Boolean) as Dish[];
-  const dailySides = (sideLinks ?? [])
-    .map((l) => map.get(l.dish_id))
-    .filter(Boolean) as Dish[];
-
-  if (dailyDishes.length === 0 && dailySides.length === 0) {
-    return (
-      <div>
-        <DifusionSubnav />
-        <p className="text-sm text-muted">
-          Elige al menos un platillo o guarnición en Especiales de hoy para generar
-          el flyer.
-        </p>
-      </div>
-    );
-  }
+  const todayIds = [...new Set([...preMain, ...preSide])];
 
   return (
     <div>
       <DifusionSubnav />
-      <FlyerAiPanel
-        restaurantId={session.restaurant.id}
-        restaurantSlug={session.restaurant.slug}
-      />
-      <FlyerStudio
-        restaurant={session.restaurant}
-        dishes={dailyDishes}
-        sides={dailySides}
-        packagePrice={Number(selection.package_price)}
-        fromToday={fromToday || !sp.combo}
-        sourceLabel={
-          fromToday
-            ? "Precargado desde Especiales de hoy. Ajusta solo si quieres y descarga."
-            : "Vista previa del volante con el menú del día. Descarga en alta resolución."
-        }
-      />
+      {catalog.length === 0 ? (
+        <EmptyCatalog labels={labels} />
+      ) : (
+        <FlyerWorkspace
+          restaurant={session.restaurant}
+          dishes={catalog}
+          categories={cats}
+          packagePrice={packagePrice}
+          preselectedMainIds={fromToday || todayIds.length > 0 ? preMain : []}
+          preselectedSideIds={fromToday || todayIds.length > 0 ? preSide : []}
+          todayPreselectedIds={todayIds}
+          fromToday={fromToday}
+          sourceLabel={
+            fromToday
+              ? "Precargado desde Especiales de hoy. Ajusta solo si quieres y descarga."
+              : "Elige productos del catálogo o deja el flyer solo texto / redes. Descarga en alta resolución."
+          }
+        />
+      )}
+    </div>
+  );
+}
+
+function EmptyCatalog({
+  labels,
+}: {
+  labels: ReturnType<typeof labelsFor>;
+}) {
+  return (
+    <div className="rounded-2xl border border-black/10 bg-surface p-6 text-center">
+      <p className="text-sm text-muted">
+        Aún no hay {labels.dishes.toLowerCase()} activos. Agrega productos en el
+        catálogo para armar tu flyer.
+      </p>
+      <Link
+        href="/admin/catalog"
+        className="mt-3 inline-block text-sm font-semibold text-brand"
+      >
+        Ir a {labels.catalog}
+      </Link>
     </div>
   );
 }

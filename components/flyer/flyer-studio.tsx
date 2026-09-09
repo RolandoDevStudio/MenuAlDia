@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import Link from "next/link";
 import { Download, Library, Settings2, Trash2 } from "lucide-react";
 import { toPng, getFontEmbedCSS } from "html-to-image";
+import { toast } from "sonner";
 import type { Dish, Restaurant } from "@/lib/types";
 import {
   FLYER_ASPECT_SIZE,
@@ -11,6 +12,7 @@ import {
   defaultFlyerOptions,
   dishToSnap,
   formatWhatsappDisplay,
+  socialHandleFromUrl,
   type FlyerAspect,
   type FlyerBullet,
   type FlyerEditorOptions,
@@ -29,6 +31,7 @@ import {
 } from "@/lib/flyer-themes";
 import { FlyerPreview } from "@/components/flyer/flyer-preview";
 import { FlyerExportButton } from "@/components/flyer/flyer-export-button";
+import { FlyerDishPicker } from "@/components/admin/flyer-dish-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -56,15 +59,25 @@ type LibraryFlyer = {
   created_at: string;
 };
 
+type CategoryLite = { id: string; name: string; sort_order: number };
+
 type Props = {
   restaurant: Restaurant;
+  /** Full active catalog (mains + sides). */
   dishes: Dish[];
-  sides: Dish[];
+  /** @deprecated prefer dishes; kept for callers that still split lists */
+  sides?: Dish[];
+  categories?: CategoryLite[];
   packagePrice: number;
+  preselectedMainIds?: string[];
+  preselectedSideIds?: string[];
   initialHeadline?: string;
   sidesTitle?: string;
   fromToday?: boolean;
   sourceLabel?: string;
+  aiBackgroundUrl?: string | null;
+  onClearAiBackground?: () => void;
+  menuPublicUrl?: string;
 };
 
 const ASPECTS: { value: FlyerAspect; label: string }[] = [
@@ -84,14 +97,44 @@ type MobileTab = "edit" | "library";
 
 export function FlyerStudio({
   restaurant,
-  dishes,
-  sides,
+  dishes: dishesProp,
+  sides: sidesProp,
+  categories = [],
   packagePrice: initialPrice,
+  preselectedMainIds,
+  preselectedSideIds,
   initialHeadline,
   sidesTitle = "Guarniciones",
   fromToday,
   sourceLabel,
+  aiBackgroundUrl,
+  onClearAiBackground,
+  menuPublicUrl,
 }: Props) {
+  const catalog = useMemo(() => {
+    if (sidesProp && sidesProp.length > 0) {
+      const seen = new Set(dishesProp.map((d) => d.id));
+      return [...dishesProp, ...sidesProp.filter((d) => !seen.has(d.id))];
+    }
+    return dishesProp;
+  }, [dishesProp, sidesProp]);
+
+  const mainPool = useMemo(
+    () => catalog.filter((d) => !d.is_side),
+    [catalog],
+  );
+  const sidePool = useMemo(
+    () => catalog.filter((d) => d.is_side),
+    [catalog],
+  );
+
+  const phone = formatWhatsappDisplay(restaurant.phone_whatsapp);
+  const hasWa = Boolean(phone);
+  const hasIg = Boolean(socialHandleFromUrl(restaurant.instagram_url));
+  const hasFb = Boolean(socialHandleFromUrl(restaurant.facebook_url));
+  const hasMenuUrl = Boolean(menuPublicUrl);
+  const giroLabels = labelsFor(restaurant.business_type);
+
   const [options, setOptions] = useState<FlyerEditorOptions>(() =>
     defaultFlyerOptions({
       headline: initialHeadline ?? "ESPECIALES DE HOY",
@@ -99,15 +142,19 @@ export function FlyerStudio({
       showFreeShipping:
         offersPublicDelivery(restaurant) &&
         (restaurant.free_shipping || Number(restaurant.shipping_cost) === 0),
-      showWhatsapp: Boolean(formatWhatsappDisplay(restaurant.phone_whatsapp)),
+      showWhatsapp: Boolean(phone),
+      showInstagram: false,
+      showFacebook: false,
+      showMenuQr: false,
+      contrastScrim: true,
     }),
   );
   const [packagePrice, setPackagePrice] = useState(initialPrice);
-  const [activeMainIds, setActiveMainIds] = useState<string[]>(() =>
-    dishes.filter((d) => !d.is_side).map((d) => d.id),
+  const [activeMainIds, setActiveMainIds] = useState<string[]>(
+    () => preselectedMainIds ?? [],
   );
-  const [activeSideIds, setActiveSideIds] = useState<string[]>(() =>
-    sides.map((d) => d.id),
+  const [activeSideIds, setActiveSideIds] = useState<string[]>(
+    () => preselectedSideIds ?? [],
   );
   const [mobileTab, setMobileTab] = useState<MobileTab>("edit");
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -116,23 +163,57 @@ export function FlyerStudio({
   const [libMsg, setLibMsg] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const autoSavedRef = useRef(false);
-
-  const phone = formatWhatsappDisplay(restaurant.phone_whatsapp);
-  const hasWa = Boolean(phone);
-  const giroLabels = labelsFor(restaurant.business_type);
+  const emptyConfiguredRef = useRef(false);
 
   const selectedDishes = useMemo(
-    () => dishes.filter((d) => activeMainIds.includes(d.id)),
-    [dishes, activeMainIds],
+    () => mainPool.filter((d) => activeMainIds.includes(d.id)),
+    [mainPool, activeMainIds],
   );
   const selectedSides = useMemo(
-    () => sides.filter((d) => activeSideIds.includes(d.id)),
-    [sides, activeSideIds],
+    () => sidePool.filter((d) => activeSideIds.includes(d.id)),
+    [sidePool, activeSideIds],
   );
+
+  const preMain = preselectedMainIds ?? [];
+  const preSide = preselectedSideIds ?? [];
+  const hasTodayPreset = preMain.length > 0 || preSide.length > 0;
 
   function patch(partial: Partial<FlyerEditorOptions>) {
     autoSavedRef.current = false;
     setOptions((o) => ({ ...o, ...partial }));
+  }
+
+  useEffect(() => {
+    const empty = activeMainIds.length === 0 && activeSideIds.length === 0;
+    if (!empty) {
+      emptyConfiguredRef.current = false;
+      return;
+    }
+    if (emptyConfiguredRef.current) return;
+    emptyConfiguredRef.current = true;
+    setOptions((o) => ({
+      ...o,
+      layout: "text_only",
+      showWhatsapp: hasWa ? true : o.showWhatsapp,
+      showInstagram: hasIg ? true : o.showInstagram,
+      showFacebook: hasFb ? true : o.showFacebook,
+      showMenuQr: hasMenuUrl ? true : o.showMenuQr,
+      contrastScrim: true,
+    }));
+  }, [
+    activeMainIds.length,
+    activeSideIds.length,
+    hasWa,
+    hasIg,
+    hasFb,
+    hasMenuUrl,
+  ]);
+
+  function applyTodaySpecials() {
+    setActiveMainIds(preMain);
+    setActiveSideIds(preSide);
+    emptyConfiguredRef.current = false;
+    toast.success("Especiales de hoy cargados");
   }
 
   async function capturePng(): Promise<string> {
@@ -143,15 +224,22 @@ export function FlyerStudio({
     const size = FLYER_ASPECT_SIZE[options.aspect];
     const fontEmbedCSS = await getFontEmbedCSS(node);
     const theme = getFlyerTheme(options.themePack);
-    return toPng(node, {
+    const base = {
       cacheBust: true,
-      pixelRatio: 2,
       backgroundColor: theme.exportBg,
       width: size.w,
       height: size.h,
       fontEmbedCSS,
       skipFonts: false,
-    });
+    } as const;
+    try {
+      return await toPng(node, { ...base, pixelRatio: 3 });
+    } catch {
+      toast.message("Exportación en calidad media", {
+        description: "Se usó resolución 2× para completar la captura.",
+      });
+      return toPng(node, { ...base, pixelRatio: 2 });
+    }
   }
 
   const loadLibrary = useCallback(async () => {
@@ -266,7 +354,6 @@ export function FlyerStudio({
   }
 
   function onAfterLocalExport(_action: string, dataUrl: string) {
-    // Local-first: export already delivered. One background save per edit set.
     if (autoSavedRef.current) return;
     void saveToLibrary(dataUrl);
   }
@@ -325,18 +412,19 @@ export function FlyerStudio({
     }
   }
 
-  function toggleId(
-    id: string,
-    list: string[],
-    setList: (v: string[]) => void,
-  ) {
-    setList(
-      list.includes(id) ? list.filter((x) => x !== id) : [...list, id],
-    );
-  }
-
   const controls = (
     <div className="space-y-4">
+      {hasTodayPreset ? (
+        <Button
+          type="button"
+          variant="secondary"
+          className="min-h-11 w-full"
+          onClick={applyTodaySpecials}
+        >
+          Usar Especiales de hoy
+        </Button>
+      ) : null}
+
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="flyer-weekday">Día</Label>
@@ -383,7 +471,6 @@ export function FlyerStudio({
               onClick={() =>
                 patch({
                   themePack: pack.id as FlyerThemePackId,
-                  // Soft defaults that match the skin without locking controls
                   ...(pack.id === "urbano_pizarra"
                     ? { bullet: "star" as const, priceBadge: "ribbon" as const }
                     : {
@@ -550,7 +637,7 @@ export function FlyerStudio({
 
       <div className="space-y-3 rounded-xl border border-black/5 bg-surface p-3">
         <ToggleRow
-          label="Mostrar guarniciones"
+          label={`Mostrar ${giroLabels.sides.toLowerCase()}`}
           checked={options.showSides}
           onChange={(v) => patch({ showSides: v })}
         />
@@ -566,6 +653,38 @@ export function FlyerStudio({
           disabled={!hasWa}
           onChange={(v) => patch({ showWhatsapp: v })}
         />
+        <ToggleRow
+          label="Instagram"
+          checked={options.showInstagram && hasIg}
+          disabled={!hasIg}
+          onChange={(v) => patch({ showInstagram: v })}
+        />
+        <ToggleRow
+          label="Facebook"
+          checked={options.showFacebook && hasFb}
+          disabled={!hasFb}
+          onChange={(v) => patch({ showFacebook: v })}
+        />
+        <ToggleRow
+          label="QR al menú"
+          checked={options.showMenuQr && hasMenuUrl}
+          disabled={!hasMenuUrl}
+          onChange={(v) => patch({ showMenuQr: v })}
+        />
+        <ToggleRow
+          label="Contraste (scrim)"
+          checked={options.contrastScrim}
+          onChange={(v) => patch({ contrastScrim: v })}
+        />
+        {aiBackgroundUrl ? (
+          <ToggleRow
+            label="Fondo IA"
+            checked
+            onChange={(v) => {
+              if (!v) onClearAiBackground?.();
+            }}
+          />
+        ) : null}
         {!hasWa ? (
           <p className="text-xs text-muted">
             Configura el número en{" "}
@@ -577,44 +696,31 @@ export function FlyerStudio({
         ) : (
           <p className="text-xs text-muted">WA: {phone}</p>
         )}
+        {!hasIg && !hasFb ? (
+          <p className="text-xs text-muted">
+            Agrega Instagram/Facebook en Ajustes para mostrarlos en el flyer.
+          </p>
+        ) : null}
       </div>
 
-      {dishes.length > 0 ? (
-        <div className="space-y-2">
-          <Label>{giroLabels.dishes} en el flyer</Label>
-          <div className="flex flex-wrap gap-2">
-            {dishes
-              .filter((d) => !d.is_side)
-              .map((d) => (
-                <Chip
-                  key={d.id}
-                  active={activeMainIds.includes(d.id)}
-                  onClick={() =>
-                    toggleId(d.id, activeMainIds, setActiveMainIds)
-                  }
-                >
-                  {d.name}
-                </Chip>
-              ))}
-          </div>
-        </div>
-      ) : null}
+      <FlyerDishPicker
+        dishes={mainPool}
+        categories={categories}
+        selectedIds={activeMainIds}
+        onChange={setActiveMainIds}
+        businessType={restaurant.business_type}
+        label={`${giroLabels.dishes} en el flyer`}
+      />
 
-      {sides.length > 0 ? (
-        <div className="space-y-2">
-          <Label>{giroLabels.sides}</Label>
-          <div className="flex flex-wrap gap-2">
-            {sides.map((d) => (
-              <Chip
-                key={d.id}
-                active={activeSideIds.includes(d.id)}
-                onClick={() => toggleId(d.id, activeSideIds, setActiveSideIds)}
-              >
-                {d.name}
-              </Chip>
-            ))}
-          </div>
-        </div>
+      {sidePool.length > 0 ? (
+        <FlyerDishPicker
+          dishes={sidePool}
+          categories={categories}
+          selectedIds={activeSideIds}
+          onChange={setActiveSideIds}
+          businessType={restaurant.business_type}
+          label={giroLabels.sides}
+        />
       ) : null}
 
       <Button
@@ -624,7 +730,9 @@ export function FlyerStudio({
         disabled={saving}
         onClick={() => void saveToLibrary()}
       >
-        {saving ? "Guardando…" : (
+        {saving ? (
+          "Guardando…"
+        ) : (
           <>
             <Emoji char={UI_EMOJI.save} />
             Guardar en biblioteca
@@ -642,9 +750,7 @@ export function FlyerStudio({
   const libraryPanel = (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-medium">
-          Biblioteca ({library.length}/20)
-        </p>
+        <p className="text-sm font-medium">Biblioteca ({library.length}/20)</p>
         <Button
           type="button"
           variant="ghost"
@@ -685,8 +791,7 @@ export function FlyerStudio({
                   {f.headline || f.title || "Flyer"}
                 </p>
                 <p className="text-xs text-muted">
-                  {f.weekday_label} ·{" "}
-                  {formatMexicoCityDate(f.created_at)}
+                  {f.weekday_label} · {formatMexicoCityDate(f.created_at)}
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-0.5">
@@ -697,11 +802,7 @@ export function FlyerStudio({
                   disabled={!f.png_path}
                   onClick={() => void downloadLibraryFlyer(f)}
                   aria-label="Descargar"
-                  title={
-                    f.png_path
-                      ? "Descargar"
-                      : "Sin imagen guardada"
-                  }
+                  title={f.png_path ? "Descargar" : "Sin imagen guardada"}
                 >
                   <Download className="h-4 w-4" />
                 </Button>
@@ -753,10 +854,11 @@ export function FlyerStudio({
           packagePrice={packagePrice}
           options={options}
           sidesTitle={sidesTitle}
+          backgroundImageUrl={aiBackgroundUrl}
+          menuPublicUrl={menuPublicUrl}
         />
 
-        {/* Desktop side panel */}
-        <div className="mt-4 hidden lg:block space-y-6">
+        <div className="mt-4 hidden space-y-6 lg:block">
           <div>
             <p className="mb-3 text-sm font-semibold">Controles</p>
             {controls}
@@ -768,7 +870,6 @@ export function FlyerStudio({
         </div>
       </div>
 
-      {/* Mobile tabs + bottom sheet */}
       <div className="lg:hidden">
         <div className="flex gap-2">
           <Button

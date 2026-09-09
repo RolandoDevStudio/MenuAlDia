@@ -35,6 +35,11 @@ export type FlyerEditorOptions = {
   showSides: boolean;
   showFreeShipping: boolean;
   showWhatsapp: boolean;
+  showInstagram: boolean;
+  showFacebook: boolean;
+  showMenuQr: boolean;
+  /** Dark gradient overlays for readability over AI / busy backgrounds */
+  contrastScrim: boolean;
   weekdayLabel: string;
   headline: string;
   subtitle: string;
@@ -76,6 +81,10 @@ export function defaultFlyerOptions(partial?: Partial<FlyerEditorOptions>): Flye
     showSides: true,
     showFreeShipping: true,
     showWhatsapp: true,
+    showInstagram: false,
+    showFacebook: false,
+    showMenuQr: false,
+    contrastScrim: true,
     weekdayLabel: todayWeekdayEs(),
     headline: "ESPECIALES DE HOY",
     subtitle: "",
@@ -106,4 +115,23 @@ export function formatWhatsappDisplay(phone: string | null | undefined): string 
   if (digits.length < 10) return phone?.trim() || "";
   const local = digits.slice(-10);
   return `${local.slice(0, 2)} ${local.slice(2, 6)} ${local.slice(6)}`;
+}
+
+/** Extract @handle or last path segment from a social URL. */
+export function socialHandleFromUrl(url: string | null | undefined): string {
+  const raw = (url ?? "").trim();
+  if (!raw) return "";
+  if (raw.startsWith("@")) return raw;
+  try {
+    const href = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+    const u = new URL(href);
+    const parts = u.pathname.replace(/\/+$/, "").split("/").filter(Boolean);
+    if (parts.length > 0) {
+      const last = parts[parts.length - 1]!;
+      return last.startsWith("@") ? last : `@${last}`;
+    }
+    return u.hostname.replace(/^www\./, "");
+  } catch {
+    return raw;
+  }
 }

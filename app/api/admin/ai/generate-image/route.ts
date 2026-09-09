@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireTenantSession } from "@/lib/admin-session";
 import {
   GeminiUnavailableError,
+  describeImageStyleBrief,
   generateImagenBytes,
 } from "@/lib/gemini";
 import {
@@ -118,12 +119,22 @@ export async function POST(request: Request) {
   }
 
   const styleBit = body.style ? ` Estilo: ${body.style}.` : "";
-  const prompt = `${body.prompt.trim()}.${styleBit} Formato publicitario para restaurante/negocio en México. Sin texto ilegible. Aspecto aproximado ${aspect.native}.`;
+  let prompt = `${body.prompt.trim()}.${styleBit} Formato publicitario para restaurante/negocio en México. Sin texto ilegible. Aspecto aproximado ${aspect.native}.`;
 
   try {
-    // Reference image is noted in prompt only for Imagen 3 (no edit API in v1)
-    if (body.referenceBase64) {
-      // keep prompt enrichment light
+    if (body.referenceBase64 && body.referenceMime) {
+      try {
+        const { brief } = await describeImageStyleBrief({
+          base64: body.referenceBase64,
+          mimeType: body.referenceMime,
+        });
+        const clean = (brief ?? "").trim();
+        if (clean) {
+          prompt = `${prompt} Referencia de estilo: ${clean}`;
+        }
+      } catch (refErr) {
+        console.warn("[generate-image] style brief skipped", refErr);
+      }
     }
     const { bytes, mimeType } = await generateImagenBytes({
       prompt,

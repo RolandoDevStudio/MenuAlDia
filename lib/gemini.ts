@@ -1,9 +1,28 @@
-import { GoogleGenAI, type Schema } from "@google/genai";
+import { GoogleGenAI, Type, type Schema } from "@google/genai";
 
 export const GEMINI_TEXT_MODEL =
   process.env.GCP_GEMINI_MODEL?.trim() || "gemini-2.5-flash";
+/** Image generation model (Imagen was shut down; use Gemini image models). */
 export const IMAGEN_MODEL =
-  process.env.GCP_IMAGEN_MODEL?.trim() || "imagen-3.0-generate-002";
+  process.env.GCP_IMAGEN_MODEL?.trim() || "gemini-2.5-flash-image";
+
+const GEMINI_IMAGE_ASPECTS = new Set([
+  "1:1",
+  "2:3",
+  "3:2",
+  "3:4",
+  "4:3",
+  "4:5",
+  "5:4",
+  "9:16",
+  "16:9",
+  "21:9",
+]);
+
+function normalizeImageAspectRatio(ratio?: string): string {
+  const r = (ratio ?? "1:1").trim();
+  return GEMINI_IMAGE_ASPECTS.has(r) ? r : "1:1";
+}
 
 export class GeminiUnavailableError extends Error {
   status: number;
@@ -167,31 +186,74 @@ export async function generateJson<T>(opts: {
   }
 }
 
-/** Imagen 3 — returns PNG/JPEG bytes (base64 decoded). */
+/** Flash multimodal → short style brief from a reference image (for Imagen prompts). */
+export async function describeImageStyleBrief(opts: {
+  base64: string;
+  mimeType: string;
+}): Promise<{ brief: string }> {
+  return generateJson<{ brief: string }>({
+    system:
+      "Eres un director de arte. Describe el estilo visual de la imagen de referencia en un breve (1–2 oraciones) en español o inglés técnico, útil para guiar una generación Imagen: colores, iluminación, textura, mood, composición. Sin texto ilegible ni marcas. Solo JSON.",
+    parts: [
+      {
+        inlineData: {
+          mimeType: opts.mimeType || "image/jpeg",
+          data: opts.base64,
+        },
+      },
+      {
+        text: "Resume el estilo visual de esta referencia para generar un fondo publicitario similar.",
+      },
+    ],
+    schema: {
+      type: Type.OBJECT,
+      properties: {
+        brief: { type: Type.STRING },
+      },
+      required: ["brief"],
+    },
+    temperature: 0.3,
+  });
+}
+
+/** Generate one image via Gemini image models (replaces discontinued Imagen). */
 export async function generateImagenBytes(opts: {
   prompt: string;
   aspectRatio?: string;
   numberOfImages?: number;
 }): Promise<{ bytes: Buffer; mimeType: string }> {
   const ai = getGenAI();
+  const aspectRatio = normalizeImageAspectRatio(opts.aspectRatio);
+  const model = IMAGEN_MODEL;
+
   const res = await withBackoff(() =>
-    ai.models.generateImages({
-      model: IMAGEN_MODEL,
-      prompt: opts.prompt,
+    ai.models.generateContent({
+      model,
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: opts.prompt }],
+        },
+      ],
       config: {
-        numberOfImages: opts.numberOfImages ?? 1,
-        aspectRatio: opts.aspectRatio ?? "1:1",
+        responseModalities: ["IMAGE"],
+        imageConfig: {
+          aspectRatio,
+        },
       },
     }),
   );
 
-  const img = res.generatedImages?.[0]?.image;
-  const b64 = img?.imageBytes;
-  if (!b64) {
-    throw new GeminiUnavailableError("Imagen 3 no devolvió imagen.", 502);
+  const parts = res.candidates?.[0]?.content?.parts ?? [];
+  for (const part of parts) {
+    const inline = part.inlineData;
+    if (inline?.data) {
+      return {
+        bytes: Buffer.from(inline.data, "base64"),
+        mimeType: inline.mimeType || "image/png",
+      };
+    }
   }
-  return {
-    bytes: Buffer.from(b64, "base64"),
-    mimeType: img.mimeType || "image/png",
-  };
+
+  throw new GeminiUnavailableError("El modelo de imagen no devolvió imagen.", 502);
 }

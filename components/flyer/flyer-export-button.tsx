@@ -77,15 +77,19 @@ export function FlyerExportButton({
     );
     const size = FLYER_ASPECT_SIZE[aspect];
     const fontEmbedCSS = await getFontEmbedCSS(node);
-    return toPng(node, {
+    const base = {
       cacheBust: true,
-      pixelRatio: 2,
       backgroundColor,
       width: size.w,
       height: size.h,
       fontEmbedCSS,
       skipFonts: false,
-    });
+    } as const;
+    try {
+      return await toPng(node, { ...base, pixelRatio: 3 });
+    } catch {
+      return toPng(node, { ...base, pixelRatio: 2 });
+    }
   }
 
   async function dataUrlToFile(dataUrl: string, name: string) {
