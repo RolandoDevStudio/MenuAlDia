@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Bell, ImageIcon, Smartphone, MessageCircle, Shield, Zap } from "lucide-react";
+import { Bell, ImageIcon, Smartphone, MessageCircle, Shield, Sparkles, Zap } from "lucide-react";
 import {
   PLAN_LABELS,
   FALLBACK_PLAN_PRICES,
@@ -57,14 +57,32 @@ const BENEFITS = [
     body: "Cambia el menú del día en segundos, sin diseñador ni Excel.",
   },
   {
-    icon: ImageIcon,
-    title: "Flyer listo para WhatsApp",
-    body: "Genera un PNG para Status y listas de difusión en un toque.",
+    icon: Sparkles,
+    title: "Flyer e imágenes con IA",
+    body: "Sin diseñador: eliges platillos, generas el anuncio y lo mandas a Status o difusión.",
   },
   {
     icon: MessageCircle,
     title: "Pedidos sin comisiones",
     body: "El cliente pide y el mensaje llega a tu WhatsApp. Tú cobras.",
+  },
+] as const;
+
+const AI_FEATURES = [
+  {
+    icon: ImageIcon,
+    title: "Flyer del día",
+    body: "En minutos armas un anuncio con tus platillos, listo para WhatsApp e Instagram.",
+  },
+  {
+    icon: MessageCircle,
+    title: "Mensajes de difusión",
+    body: "La IA te escribe el texto para tu lista de clientes; tú copias y envías.",
+  },
+  {
+    icon: Sparkles,
+    title: "Catálogo más rápido",
+    body: "Apoyo con IA para armar el menú (incl. escanear fotos) y que el cliente encuentre qué pedir.",
   },
 ] as const;
 
@@ -263,10 +281,21 @@ export default function HomePage() {
             >
               {landing.heroSubtitle}
             </p>
+            <p
+              className="mt-2 max-w-xl text-sm font-medium text-brand-dark motion-safe:animate-[rise_0.7s_ease-out]"
+              style={{ animationDelay: "180ms", animationFillMode: "both" }}
+            >
+              Incluye IA para flyers, mensajes de WhatsApp y carga rápida del
+              menú.
+            </p>
             <div
               className="mt-4 flex flex-wrap gap-2 motion-safe:animate-[rise_0.7s_ease-out]"
               style={{ animationDelay: "200ms", animationFillMode: "both" }}
             >
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-brand/20 bg-brand/5 px-2.5 py-1 text-[11px] font-semibold text-brand-dark">
+                <Sparkles className="h-3.5 w-3.5 text-brand" aria-hidden />
+                IA incluida
+              </span>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-muted">
                 <Zap className="h-3.5 w-3.5 text-brand" aria-hidden />
                 Carga rápida
@@ -358,6 +387,61 @@ export default function HomePage() {
         <div className="mt-8">
           <ProductShots />
         </div>
+      </SectionShell>
+
+      <SectionShell id="ia" tone="brand">
+        <Reveal>
+          <p className="text-xs font-semibold uppercase tracking-wide text-brand">
+            Inteligencia artificial
+          </p>
+          <h2 className="mt-1 font-[family-name:var(--font-display)] text-4xl tracking-wide text-brand-dark sm:text-5xl">
+            IA que trabaja por ti
+          </h2>
+          <p className="mt-2 max-w-lg text-sm text-muted">
+            Ahorra tiempo cada mañana: anuncio, mensaje y menú listos sin
+            diseñador ni copywriter.
+          </p>
+        </Reveal>
+        <ul className="mt-8 grid gap-4 sm:grid-cols-3">
+          {AI_FEATURES.map(({ icon: Icon, title, body }, i) => (
+            <Reveal key={title} as="li" delayMs={i * 90}>
+              <div className="landing-card h-full rounded-2xl border border-brand/15 bg-white/90 px-4 py-4 shadow-sm">
+                <Icon className="h-6 w-6 text-brand" aria-hidden />
+                <p className="mt-3 text-sm font-semibold text-foreground">
+                  {title}
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-muted">{body}</p>
+              </div>
+            </Reveal>
+          ))}
+        </ul>
+        <Reveal delayMs={280} className="mt-6">
+          <p className="text-xs text-muted">
+            Incluida en Menú al Día y Pro. Tú revisas todo antes de publicar —
+            la IA no inventa precios ni platillos.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button
+              type="button"
+              className="landing-cta min-h-11"
+              onClick={scrollToContact}
+            >
+              Quiero verlo en WhatsApp
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="landing-cta min-h-11"
+              onClick={() =>
+                document
+                  .getElementById("precios")
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" })
+              }
+            >
+              Ver planes con IA
+            </Button>
+          </div>
+        </Reveal>
       </SectionShell>
 
       <SectionShell id="comparar" tone="plain">

@@ -37,15 +37,15 @@ export const PLAN_CARD_FEATURES: Record<PlanType, string[]> = {
     photoLimitLabel("daily"),
     "Todo lo del Catálogo",
     "Menú del día en 1 toque",
-    "Combos Express con link viral",
-    "Flyer PNG para WhatsApp",
+    "Flyer e imágenes con IA (8/mes)",
+    "Mensajes de difusión con IA",
   ],
   pro: [
     photoLimitLabel("pro"),
     "Todo lo de Menú al Día",
+    "Más generaciones IA (25/mes)",
     "Historial de clientes y pedidos",
     "Métricas básicas de venta",
-    "Exportar CSV",
   ],
 };
 
@@ -80,7 +80,8 @@ const PLAN_DETAILS: Record<PlanType, PlanDetail> = {
       "Todo lo incluido en Catálogo Digital",
       "Menú / oferta del día en 1 toque",
       "Combos Express con link para compartir",
-      "Flyer PNG para WhatsApp, Status y listas de difusión",
+      "Flyer e imágenes con IA (8 generaciones/mes) para WhatsApp y Status",
+      "Mensajes de difusión con IA, listos para copiar",
       "Actualización rápida de precios y platillos sin diseñador",
     ],
   },
@@ -92,6 +93,7 @@ const PLAN_DETAILS: Record<PlanType, PlanDetail> = {
     includes: [
       photoLimitLabel("pro"),
       "Todo lo incluido en Menú al Día",
+      "Más generaciones de flyer/imagen con IA (25/mes)",
       "Historial de clientes y pedidos",
       "Métricas básicas de venta / actividad",
       "Exportar CSV de tu información",
@@ -135,6 +137,12 @@ const COMPARE_ROWS: {
     catalog: false,
     daily: true,
     pro: true,
+  },
+  {
+    feature: "IA: flyer, mensajes y apoyo al catálogo",
+    catalog: "Packs opcionales",
+    daily: "8 imgs/mes + textos",
+    pro: "25 imgs/mes + textos",
   },
   {
     feature: "Clientes, métricas y CSV",

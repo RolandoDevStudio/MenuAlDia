@@ -71,7 +71,8 @@ export const DEFAULT_COMPARISON_ROWS: ComparisonRowContent[] = [
     problemTitle: "Catálogo estático",
     problemBody: "Esperas que alguien escanee el QR por casualidad.",
     solutionTitle: "Atracción activa",
-    solutionBody: "Flyers diarios, Cita Express y mapa local.",
+    solutionBody:
+      "Flyers con IA, mensajes de WhatsApp y Cita Express para atraer pedidos.",
     defaultProblemArt: "/marketing/compare/attraction-problem.svg",
     defaultSolutionArt: "/marketing/compare/attraction-solution.svg",
   },
@@ -118,6 +119,14 @@ export const DEFAULT_LANDING_FAQ: LandingFaqItem[] = [
     a: "El cliente escribe a tu número de negocio. MenuAlDía no cobra comisión por pedido.",
   },
   {
+    q: "¿Necesito saber de diseño para usar la IA?",
+    a: "No. Eliges tus platillos o subes una foto de referencia; la IA te arma el flyer y el mensaje. Tú revisas y publicas.",
+  },
+  {
+    q: "¿La IA inventa precios o platillos?",
+    a: "No. Usa lo que ya tienes en tu catálogo o menú del día. Tú controlas nombres, precios y qué se publica.",
+  },
+  {
     q: "¿Cuánto tarda la activación?",
     a: "Te activamos el mismo día. Configuras tu menú y ya puedes compartir el link.",
   },
@@ -131,10 +140,11 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
   heroTitle:
     "Tu catálogo y menú digital interactivo. Recibe pedidos por WhatsApp con 0% de comisiones.",
   heroSubtitle:
-    "Hecho para restaurantes, servicios y tiendas locales — sin intermediarios ni App Store.",
+    "Hecho para restaurantes, servicios y tiendas locales — sin intermediarios ni App Store. Incluye IA para flyers, mensajes de WhatsApp y carga rápida del menú.",
   contactBlurb:
-    "Te respondemos por WhatsApp y te activamos en el mismo día.",
-  socialProofLine: "Hecho para locales en México · activación el mismo día",
+    "Te respondemos por WhatsApp y te activamos el mismo día.",
+  socialProofLine:
+    "Hecho para locales en México · IA incluida · activación el mismo día",
   salesWhatsApp: SALES_WHATSAPP,
   testimonials: [],
   faq: DEFAULT_LANDING_FAQ,

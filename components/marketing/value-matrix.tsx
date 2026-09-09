@@ -26,6 +26,12 @@ const ROWS = [
     mad: "WhatsApp estructurado",
   },
   {
+    feature: "Flyer / anuncio del día",
+    pdf: "Canva a mano",
+    delivery: "No incluido",
+    mad: "Con IA en minutos",
+  },
+  {
     feature: "Dueño de los clientes",
     pdf: "Nadie",
     delivery: "La app",
