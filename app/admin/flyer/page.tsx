@@ -9,7 +9,7 @@ import type { Dish } from "@/lib/types";
 import Link from "next/link";
 
 type Props = {
-  searchParams: Promise<{ combo?: string; from?: string }>;
+  searchParams: Promise<{ combo?: string; from?: string; ref?: string }>;
 };
 
 const DISH_SELECT =
@@ -124,6 +124,7 @@ export default async function FlyerPage({ searchParams }: Props) {
             initialHeadline={combo.title.toUpperCase()}
             sidesTitle="Incluye"
             sourceLabel={`Promo del combo “${combo.title}”. Descarga y difunde en WhatsApp.`}
+            initialRefId={sp.ref ?? null}
           />
         )}
       </div>
@@ -178,6 +179,7 @@ export default async function FlyerPage({ searchParams }: Props) {
               ? "Precargado desde Especiales de hoy. Ajusta solo si quieres y descarga."
               : "Elige productos del catálogo o deja el flyer solo texto / redes. Descarga en alta resolución."
           }
+          initialRefId={sp.ref ?? null}
         />
       )}
     </div>

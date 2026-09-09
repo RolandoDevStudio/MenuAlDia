@@ -2,7 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Copy, Download, ExternalLink, Trash2, Upload } from "lucide-react";
+import {
+  Copy,
+  Download,
+  ExternalLink,
+  ImagePlus,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { compressImage } from "@/lib/compress-image";
 import { getAppOrigin } from "@/lib/site-url";
@@ -211,107 +218,119 @@ export function FlyersGallery({
 
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
-      <ul className="space-y-3">
+      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {flyers.map((f) => (
           <li
             key={f.id}
-            className="rounded-xl border border-black/5 bg-surface p-3"
+            className="overflow-hidden rounded-xl border border-black/5 bg-surface"
           >
-            <div className="flex gap-3">
+            <div className="relative aspect-[4/5] bg-black/5">
               {f.png_path ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={f.png_path}
                   alt=""
-                  className="h-24 w-20 shrink-0 rounded-lg object-cover"
+                  className="h-full w-full object-cover"
                 />
               ) : (
-                <div className="flex h-24 w-20 items-center justify-center rounded-lg bg-black/5 text-xs text-muted">
+                <div className="flex h-full items-center justify-center text-xs text-muted">
                   Sin img
                 </div>
               )}
-              <div className="min-w-0 flex-1 space-y-2">
-                <Input
-                  value={f.title}
-                  onChange={(e) => {
-                    setFlyers((prev) =>
-                      prev.map((x) =>
-                        x.id === f.id ? { ...x, title: e.target.value } : x,
-                      ),
-                    );
-                  }}
-                  onBlur={() => void patch(f.id, { title: f.title })}
-                  placeholder="Título"
-                />
-                <p className="text-[11px] text-muted">
-                  {f.source === "upload" ? "Subido" : "Studio"} ·{" "}
-                  {formatMexicoCityDate(f.created_at)}
-                </p>
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="flex items-center gap-2 text-xs">
-                    <Switch
-                      checked={f.is_active}
-                      onCheckedChange={(on) =>
-                        void patch(f.id, { is_active: on })
-                      }
-                    />
-                    Activo
-                  </div>
-                  <Input
-                    type="date"
-                    className="h-9 w-auto text-xs"
-                    value={f.expires_at ? ymdInMexicoCity(f.expires_at) : ""}
-                    onChange={(e) =>
-                      void patch(f.id, {
-                        expires_at: e.target.value
-                          ? endOfMexicoCityDay(e.target.value)
-                          : null,
-                      })
+            </div>
+            <div className="space-y-2 p-3">
+              <Input
+                value={f.title}
+                onChange={(e) => {
+                  setFlyers((prev) =>
+                    prev.map((x) =>
+                      x.id === f.id ? { ...x, title: e.target.value } : x,
+                    ),
+                  );
+                }}
+                onBlur={() => void patch(f.id, { title: f.title })}
+                placeholder="Título"
+              />
+              <p className="text-[11px] text-muted">
+                {f.source === "upload"
+                  ? "Subido"
+                  : f.source === "ai"
+                    ? "IA"
+                    : "Studio"}{" "}
+                · {formatMexicoCityDate(f.created_at)}
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-2 text-xs">
+                  <Switch
+                    checked={f.is_active}
+                    onCheckedChange={(on) =>
+                      void patch(f.id, { is_active: on })
                     }
                   />
+                  Activo
                 </div>
-                <div className="flex flex-wrap gap-1">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => shareWa(f)}
+                <Input
+                  type="date"
+                  className="h-9 w-auto text-xs"
+                  value={f.expires_at ? ymdInMexicoCity(f.expires_at) : ""}
+                  onChange={(e) =>
+                    void patch(f.id, {
+                      expires_at: e.target.value
+                        ? endOfMexicoCityDay(e.target.value)
+                        : null,
+                    })
+                  }
+                />
+              </div>
+              <div className="flex flex-wrap gap-1">
+                <Button asChild size="sm" variant="secondary">
+                  <Link
+                    href={`/admin/flyer?ref=${encodeURIComponent(f.id)}`}
+                    title="Usar como referencia"
                   >
-                    <Emoji char={UI_EMOJI.whatsapp} />
-                    WhatsApp
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => void copyUrl(f)}
-                  >
-                    <Copy className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={!f.png_path}
-                    onClick={() => void download(f)}
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button asChild size="sm" variant="ghost">
-                    <a href={smartUrl(f.id)} target="_blank" rel="noreferrer">
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </a>
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    className="text-red-700"
-                    onClick={() => void remove(f.id)}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
+                    <ImagePlus className="h-3.5 w-3.5" />
+                    Referencia
+                  </Link>
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => shareWa(f)}
+                >
+                  <Emoji char={UI_EMOJI.whatsapp} />
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void copyUrl(f)}
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={!f.png_path}
+                  onClick={() => void download(f)}
+                >
+                  <Download className="h-3.5 w-3.5" />
+                </Button>
+                <Button asChild size="sm" variant="ghost">
+                  <a href={smartUrl(f.id)} target="_blank" rel="noreferrer">
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="text-red-700"
+                  onClick={() => void remove(f.id)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
               </div>
             </div>
           </li>

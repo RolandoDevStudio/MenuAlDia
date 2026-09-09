@@ -186,14 +186,21 @@ export async function generateJson<T>(opts: {
   }
 }
 
-/** Flash multimodal → short style brief from a reference image (for Imagen prompts). */
+export type ImageStyleBrief = {
+  brief: string;
+  palette?: string;
+  structures?: string;
+  negativeSpace?: string;
+};
+
+/** Flash multimodal → style brief from a reference image (for flyer composition prompts). */
 export async function describeImageStyleBrief(opts: {
   base64: string;
   mimeType: string;
-}): Promise<{ brief: string }> {
-  return generateJson<{ brief: string }>({
+}): Promise<ImageStyleBrief> {
+  return generateJson<ImageStyleBrief>({
     system:
-      "Eres un director de arte. Describe el estilo visual de la imagen de referencia en un breve (1–2 oraciones) en español o inglés técnico, útil para guiar una generación Imagen: colores, iluminación, textura, mood, composición. Sin texto ilegible ni marcas. Solo JSON.",
+      "Eres un director de arte para flyers de negocios en México. Analiza la imagen de referencia y devuelve JSON con: brief (2–4 oraciones: mood, iluminación, textura, composición general), palette (colores dominantes), structures (marcos/banners estructurales: brushstroke headers, floating cards, footer bars, divisiones, cintas), negativeSpace (dónde hay aire útil para tipografía/overlays). No transcribas texto ilegible ni marcas. Inglés técnico o español claro. Solo JSON.",
     parts: [
       {
         inlineData: {
@@ -202,18 +209,45 @@ export async function describeImageStyleBrief(opts: {
         },
       },
       {
-        text: "Resume el estilo visual de esta referencia para generar un fondo publicitario similar.",
+        text: "Describe palette, mood, layout, negative space, and structural frames (headers, cards, footer bars) so we can generate a matching advertising background with empty overlay regions.",
       },
     ],
     schema: {
       type: Type.OBJECT,
       properties: {
         brief: { type: Type.STRING },
+        palette: { type: Type.STRING },
+        structures: { type: Type.STRING },
+        negativeSpace: { type: Type.STRING },
       },
       required: ["brief"],
     },
     temperature: 0.3,
   });
+}
+
+type InlineImagePart = {
+  base64: string;
+  mimeType: string;
+  label?: string;
+};
+
+function extractImageFromResponse(res: {
+  candidates?: Array<{
+    content?: { parts?: Array<{ inlineData?: { data?: string; mimeType?: string } }> };
+  }>;
+}): { bytes: Buffer; mimeType: string } {
+  const parts = res.candidates?.[0]?.content?.parts ?? [];
+  for (const part of parts) {
+    const inline = part.inlineData;
+    if (inline?.data) {
+      return {
+        bytes: Buffer.from(inline.data, "base64"),
+        mimeType: inline.mimeType || "image/png",
+      };
+    }
+  }
+  throw new GeminiUnavailableError("El modelo de imagen no devolvió imagen.", 502);
 }
 
 /** Generate one image via Gemini image models (replaces discontinued Imagen). */
@@ -244,16 +278,81 @@ export async function generateImagenBytes(opts: {
     }),
   );
 
-  const parts = res.candidates?.[0]?.content?.parts ?? [];
-  for (const part of parts) {
-    const inline = part.inlineData;
-    if (inline?.data) {
-      return {
-        bytes: Buffer.from(inline.data, "base64"),
-        mimeType: inline.mimeType || "image/png",
-      };
-    }
+  return extractImageFromResponse(res);
+}
+
+/**
+ * Publish-ready flyer: multimodal generateContent with optional reference + product photos.
+ * Similarity bands control whether/how strongly the reference image is attached.
+ */
+export async function generateFlyerMultimodal(opts: {
+  prompt: string;
+  aspectRatio?: string;
+  /** When false, reference is omitted even if provided (inspiration band). */
+  includeReferenceImage?: boolean;
+  reference?: InlineImagePart | null;
+  productImages?: InlineImagePart[];
+}): Promise<{ bytes: Buffer; mimeType: string }> {
+  const ai = getGenAI();
+  const aspectRatio = normalizeImageAspectRatio(opts.aspectRatio);
+  const model = IMAGEN_MODEL;
+
+  type ContentPart =
+    | { text: string }
+    | { inlineData: { mimeType: string; data: string } };
+
+  const parts: ContentPart[] = [];
+
+  const includeRef =
+    opts.includeReferenceImage !== false &&
+    Boolean(opts.reference?.base64);
+
+  if (includeRef && opts.reference) {
+    parts.push({
+      text: "REFERENCE LAYOUT IMAGE (visual style/structure guide — do not copy illegible text from it):",
+    });
+    parts.push({
+      inlineData: {
+        mimeType: opts.reference.mimeType || "image/jpeg",
+        data: opts.reference.base64,
+      },
+    });
   }
 
-  throw new GeminiUnavailableError("El modelo de imagen no devolvió imagen.", 502);
+  const products = (opts.productImages ?? []).filter((p) => p.base64);
+  for (let i = 0; i < products.length; i++) {
+    const p = products[i]!;
+    const label = (p.label ?? `product ${i + 1}`).trim();
+    parts.push({
+      text: `PRODUCT PHOTO ${i + 1} — integrate this real photo into the flyer for: ${label}`,
+    });
+    parts.push({
+      inlineData: {
+        mimeType: p.mimeType || "image/jpeg",
+        data: p.base64,
+      },
+    });
+  }
+
+  parts.push({ text: opts.prompt });
+
+  const res = await withBackoff(() =>
+    ai.models.generateContent({
+      model,
+      contents: [
+        {
+          role: "user",
+          parts,
+        },
+      ],
+      config: {
+        responseModalities: ["IMAGE"],
+        imageConfig: {
+          aspectRatio,
+        },
+      },
+    }),
+  );
+
+  return extractImageFromResponse(res);
 }

@@ -314,7 +314,7 @@ export function FlyerCanvas({
         aria-hidden
       />
 
-      {options.contrastScrim ? (
+      {options.contrastScrim || hasAiBg ? (
         <>
           <div
             className="pointer-events-none absolute inset-x-0 top-0 h-48"

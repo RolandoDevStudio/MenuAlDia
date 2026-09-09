@@ -25,6 +25,11 @@ import {
   type FlyerLogoScale,
 } from "@/lib/flyer-types";
 import {
+  aspectRatioToFlyerAspect,
+  type FlyerAiAspectRatio,
+} from "@/lib/flyer-ai-prompt";
+import type { FlyerOverlayPatch } from "@/components/admin/flyer-ai-panel";
+import {
   FLYER_THEME_LIST,
   getFlyerTheme,
   type FlyerThemePackId,
@@ -78,6 +83,15 @@ type Props = {
   aiBackgroundUrl?: string | null;
   onClearAiBackground?: () => void;
   menuPublicUrl?: string;
+  /** Hide built-in library tab/panel (library lives in workspace). */
+  libraryExternal?: boolean;
+  /** When false, skip mounting heavy preview/controls. */
+  enabled?: boolean;
+  /** Sync aspect from AI wizard. */
+  externalAspect?: FlyerAiAspectRatio | null;
+  /** Patch options when AI applies overlays. */
+  overlayPatch?: FlyerOverlayPatch | null;
+  onOverlayPatchConsumed?: () => void;
 };
 
 const ASPECTS: { value: FlyerAspect; label: string }[] = [
@@ -110,6 +124,11 @@ export function FlyerStudio({
   aiBackgroundUrl,
   onClearAiBackground,
   menuPublicUrl,
+  libraryExternal = false,
+  enabled = true,
+  externalAspect,
+  overlayPatch,
+  onOverlayPatchConsumed,
 }: Props) {
   const catalog = useMemo(() => {
     if (sidesProp && sidesProp.length > 0) {
@@ -264,8 +283,54 @@ export function FlyerStudio({
   }, []);
 
   useEffect(() => {
+    if (libraryExternal) return;
     void loadLibrary();
-  }, [loadLibrary]);
+  }, [loadLibrary, libraryExternal]);
+
+  useEffect(() => {
+    if (!externalAspect) return;
+    const next = aspectRatioToFlyerAspect(externalAspect);
+    setOptions((o) => (o.aspect === next ? o : { ...o, aspect: next }));
+  }, [externalAspect]);
+
+  useEffect(() => {
+    if (!overlayPatch) return;
+    const {
+      selectedDishIds,
+      layoutPreset: _lp,
+      productImageSource,
+      ...opts
+    } = overlayPatch;
+    setOptions((o) => ({
+      ...o,
+      ...Object.fromEntries(
+        Object.entries(opts).filter(([, v]) => v !== undefined),
+      ),
+    }));
+    if (selectedDishIds && selectedDishIds.length > 0) {
+      let ordered = [...selectedDishIds];
+      if (productImageSource === "real_catalog") {
+        ordered = [...selectedDishIds].sort((a, b) => {
+          const da = catalog.find((d) => d.id === a);
+          const db = catalog.find((d) => d.id === b);
+          const pa = da?.photo_url ? 1 : 0;
+          const pb = db?.photo_url ? 1 : 0;
+          return pb - pa;
+        });
+      }
+      const mains = ordered.filter((id) => mainPool.some((d) => d.id === id));
+      const sides = ordered.filter((id) => sidePool.some((d) => d.id === id));
+      if (mains.length) setActiveMainIds(mains);
+      if (sides.length) setActiveSideIds(sides);
+    }
+    onOverlayPatchConsumed?.();
+  }, [
+    overlayPatch,
+    onOverlayPatchConsumed,
+    mainPool,
+    sidePool,
+    catalog,
+  ]);
 
   async function saveToLibrary(dataUrl?: string) {
     setSaving(true);
@@ -826,6 +891,8 @@ export function FlyerStudio({
 
   return (
     <div className="space-y-4">
+      {!enabled ? null : (
+      <>
       <div>
         <h1 className="text-lg font-semibold">
           <Emoji char={UI_EMOJI.flyer} />
@@ -835,6 +902,9 @@ export function FlyerStudio({
           {sourceLabel ??
             "Ajusta el volante y descarga, comparte o copia para WhatsApp."}
           {restaurant.logo_url ? " Logo incluido." : ""}
+          {aiBackgroundUrl
+            ? " Fondo IA activo — guarda el compuesto en biblioteca."
+            : ""}
         </p>
       </div>
 
@@ -863,10 +933,12 @@ export function FlyerStudio({
             <p className="mb-3 text-sm font-semibold">Controles</p>
             {controls}
           </div>
-          <div>
-            <p className="mb-3 text-sm font-semibold">Biblioteca</p>
-            {libraryPanel}
-          </div>
+          {!libraryExternal ? (
+            <div>
+              <p className="mb-3 text-sm font-semibold">Biblioteca</p>
+              {libraryPanel}
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -884,18 +956,20 @@ export function FlyerStudio({
             <Settings2 className="h-4 w-4" />
             Ajustes
           </Button>
-          <Button
-            type="button"
-            variant={mobileTab === "library" ? "default" : "secondary"}
-            className="min-h-11 flex-1"
-            onClick={() => {
-              setMobileTab("library");
-              setSheetOpen(true);
-            }}
-          >
-            <Library className="h-4 w-4" />
-            Biblioteca
-          </Button>
+          {!libraryExternal ? (
+            <Button
+              type="button"
+              variant={mobileTab === "library" ? "default" : "secondary"}
+              className="min-h-11 flex-1"
+              onClick={() => {
+                setMobileTab("library");
+                setSheetOpen(true);
+              }}
+            >
+              <Library className="h-4 w-4" />
+              Biblioteca
+            </Button>
+          ) : null}
         </div>
 
         {sheetOpen ? (
@@ -920,11 +994,15 @@ export function FlyerStudio({
                   Listo
                 </Button>
               </div>
-              {mobileTab === "edit" ? controls : libraryPanel}
+              {mobileTab === "edit" || libraryExternal
+                ? controls
+                : libraryPanel}
             </div>
           </div>
         ) : null}
       </div>
+      </>
+      )}
     </div>
   );
 }

@@ -1,6 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { cropImageToAspect, compressImage } from "@/lib/compress-image";
@@ -10,8 +15,45 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import type { AiImagePreset } from "@/lib/ai-schemas";
 import { IMAGE_KIND_ASPECTS } from "@/lib/ai-schemas";
+import type {
+  FlyerAiAspectRatio,
+  FlyerLayoutPreset,
+  FlyerMarketingOpts,
+  ProductImageSource,
+} from "@/lib/flyer-ai-prompt";
+import { aspectRatioToImagePreset } from "@/lib/flyer-ai-prompt";
 
 type ImageKind = "flyer" | "banner" | "background";
+
+export type FlyerCompositionItem = {
+  name: string;
+  price?: number | null;
+  category?: string | null;
+  photoUrl?: string | null;
+  isSide?: boolean;
+};
+
+export type FlyerCompositionPayload = {
+  mode: "menu" | "business" | "free";
+  dishNames?: string[];
+  items?: FlyerCompositionItem[];
+  title?: string;
+  restaurantName?: string;
+  slogan?: string;
+  businessType?: string | null;
+  marketing?: Partial<FlyerMarketingOpts>;
+  layoutPreset?: FlyerLayoutPreset;
+  productImageSource?: ProductImageSource;
+  similarity?: number;
+  aspectRatio?: FlyerAiAspectRatio;
+  finishedAsset?: boolean;
+  followReferenceLayout?: boolean;
+};
+
+type ReferencePayload = {
+  referenceBase64: string;
+  referenceMime: string;
+};
 
 type Props = {
   restaurantId: string;
@@ -19,24 +61,35 @@ type Props = {
   defaultPreset?: AiImagePreset;
   onApplied?: (publicUrl: string) => void;
   applyLabel?: string;
-  /** Optional second action after preview (e.g. studio background). */
   onApplyBackground?: (publicUrl: string) => void;
   applyBackgroundLabel?: string;
-  /** Controlled prompt when provided. */
+  advancedStudioCollapsed?: boolean;
+  downloadLabel?: string;
   prompt?: string;
   onPromptChange?: (value: string) => void;
-  /** Show reference image picker (default: true for flyer). */
   referenceEnabled?: boolean;
-  /** Extra controls next to Generar (e.g. suggest prompt). */
   extraActions?: ReactNode;
+  composition?: FlyerCompositionPayload | null;
+  externalReference?: ReferencePayload | null;
+  slim?: boolean;
+  onQuotaChange?: (quota: { remaining: number; total: number }) => void;
+  onBusyChange?: (busy: boolean) => void;
 };
 
 const STYLES = ["fonda", "pizarra", "minimal", "color marca"] as const;
 const REF_MAX_B64 = 400_000;
 
-async function fileToReferencePayload(
+const MARKETING_TIPS = [
+  "Tip: en feed, 3–5 platillos se leen mejor que una lista larga.",
+  "Tip: una foto nítida del protagonista vale más que muchas medianas.",
+  "Tip: publica al mediodía o al atardecer, cuando más piden comida.",
+  "Tip: precios claros y un solo CTA (WhatsApp) convierten mejor.",
+  "Tip: menos texto = más claridad; la IA también deforma menos.",
+];
+
+export async function fileToReferencePayload(
   file: File,
-): Promise<{ referenceBase64: string; referenceMime: string } | null> {
+): Promise<ReferencePayload | null> {
   const compressed = await compressImage(file, "scan");
   const buf = await compressed.arrayBuffer();
   const bytes = new Uint8Array(buf);
@@ -47,7 +100,6 @@ async function fileToReferencePayload(
   }
   let b64 = btoa(binary);
   if (b64.length > REF_MAX_B64) {
-    // Re-compress harder via smaller canvas edge
     const blob = new Blob([bytes], { type: compressed.type });
     const imgUrl = URL.createObjectURL(blob);
     try {
@@ -90,6 +142,45 @@ async function fileToReferencePayload(
   };
 }
 
+export async function urlToReferencePayload(
+  url: string,
+): Promise<ReferencePayload | null> {
+  try {
+    const res = await fetch(url, { mode: "cors" });
+    if (!res.ok) throw new Error("No se pudo cargar la referencia");
+    const blob = await res.blob();
+    const file = new File([blob], "reference.jpg", {
+      type: blob.type || "image/jpeg",
+    });
+    return fileToReferencePayload(file);
+  } catch {
+    toast.error("No se pudo usar esa imagen como referencia");
+    return null;
+  }
+}
+
+export function probeImageAspectFromUrl(
+  url: string,
+): Promise<{ width: number; height: number } | null> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () =>
+      resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+}
+
+export function probeImageAspectFromBase64(
+  base64: string,
+  mimeType: string,
+): Promise<{ width: number; height: number } | null> {
+  return probeImageAspectFromUrl(
+    `data:${mimeType || "image/jpeg"};base64,${base64}`,
+  );
+}
+
 export function AiImageGenerator({
   restaurantId,
   imageKind,
@@ -98,39 +189,60 @@ export function AiImageGenerator({
   applyLabel = "Aplicar al menú público",
   onApplyBackground,
   applyBackgroundLabel = "Usar como fondo del estudio",
+  advancedStudioCollapsed = false,
+  downloadLabel = "Descargar",
   prompt: controlledPrompt,
   onPromptChange,
   referenceEnabled,
   extraActions,
+  composition,
+  externalReference,
+  slim = false,
+  onQuotaChange,
+  onBusyChange,
 }: Props) {
+  const [showStudioAdvanced, setShowStudioAdvanced] = useState(
+    !advancedStudioCollapsed,
+  );
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [internalPrompt, setInternalPrompt] = useState("");
   const prompt = controlledPrompt ?? internalPrompt;
   const setPrompt = onPromptChange ?? setInternalPrompt;
 
   const [style, setStyle] = useState<string>(STYLES[0]);
   const [busy, setBusy] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [tipIndex, setTipIndex] = useState(0);
   const [quota, setQuota] = useState<{ remaining: number; total: number } | null>(
     null,
   );
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewFile, setPreviewFile] = useState<File | null>(null);
   const [referenceName, setReferenceName] = useState<string | null>(null);
-  const [referencePayload, setReferencePayload] = useState<{
-    referenceBase64: string;
-    referenceMime: string;
-  } | null>(null);
+  const [referencePayload, setReferencePayload] =
+    useState<ReferencePayload | null>(null);
 
   const allowReference =
-    referenceEnabled ?? imageKind === "flyer";
+    !slim && (referenceEnabled ?? imageKind === "flyer");
+  const compositionMode = Boolean(composition) || slim;
 
-  const preset: AiImagePreset =
-    defaultPreset ??
-    (imageKind === "banner"
-      ? "banner"
-      : imageKind === "background"
-        ? "background"
-        : "flyer");
+  const preset: AiImagePreset = composition?.aspectRatio
+    ? aspectRatioToImagePreset(composition.aspectRatio)
+    : (defaultPreset ??
+      (imageKind === "banner"
+        ? "banner"
+        : imageKind === "background"
+          ? "background"
+          : "flyer"));
   const aspect = IMAGE_KIND_ASPECTS[preset];
+
+  const setBusyAll = useCallback(
+    (next: boolean) => {
+      setBusy(next);
+      onBusyChange?.(next);
+    },
+    [onBusyChange],
+  );
 
   const loadQuota = useCallback(async () => {
     try {
@@ -140,19 +252,39 @@ export function AiImageGenerator({
         total?: number;
       };
       if (res.ok) {
-        setQuota({
+        const next = {
           remaining: json.remaining ?? 0,
           total: json.total ?? 0,
-        });
+        };
+        setQuota(next);
+        onQuotaChange?.(next);
       }
     } catch {
       /* ignore */
     }
-  }, []);
+  }, [onQuotaChange]);
 
   useEffect(() => {
     void loadQuota();
   }, [loadQuota]);
+
+  useEffect(() => {
+    if (!generating) return;
+    const id = window.setInterval(() => {
+      setTipIndex((i) => (i + 1) % MARKETING_TIPS.length);
+    }, 4500);
+    return () => window.clearInterval(id);
+  }, [generating]);
+
+  useEffect(() => {
+    if (!generating) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [generating]);
 
   async function onReferenceFile(file: File | null) {
     if (!file) {
@@ -160,7 +292,7 @@ export function AiImageGenerator({
       setReferencePayload(null);
       return;
     }
-    setBusy(true);
+    setBusyAll(true);
     try {
       const payload = await fileToReferencePayload(file);
       if (!payload) return;
@@ -172,12 +304,12 @@ export function AiImageGenerator({
       setReferenceName(null);
       setReferencePayload(null);
     } finally {
-      setBusy(false);
+      setBusyAll(false);
     }
   }
 
   async function generate() {
-    if (prompt.trim().length < 8) {
+    if (!compositionMode && prompt.trim().length < 8) {
       toast.error("Describe un poco más lo que quieres generar");
       return;
     }
@@ -192,8 +324,11 @@ export function AiImageGenerator({
       return;
     }
 
-    setBusy(true);
+    setBusyAll(true);
+    setGenerating(true);
+    setTipIndex(0);
     try {
+      const ref = externalReference ?? referencePayload;
       const res = await fetch("/api/admin/ai/generate-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -201,8 +336,28 @@ export function AiImageGenerator({
           imageKind,
           preset,
           prompt: prompt.trim(),
-          style,
-          ...(referencePayload ?? {}),
+          ...(compositionMode ? {} : { style }),
+          ...(ref ?? {}),
+          ...(composition
+            ? {
+                mode: composition.mode,
+                dishNames: composition.dishNames,
+                items: composition.items,
+                title: composition.title,
+                restaurantName: composition.restaurantName,
+                slogan: composition.slogan,
+                businessType: composition.businessType,
+                marketing: composition.marketing,
+                layoutPreset: composition.layoutPreset,
+                productImageSource: composition.productImageSource,
+                similarity: composition.similarity,
+                aspectRatio: composition.aspectRatio,
+                finishedAsset: composition.finishedAsset !== false,
+                followReferenceLayout: Boolean(
+                  composition.followReferenceLayout,
+                ),
+              }
+            : {}),
         }),
       });
       const json = (await res.json()) as {
@@ -212,6 +367,7 @@ export function AiImageGenerator({
         total?: number;
         message?: string;
         targetAspect?: { w: number; h: number };
+        finishedAsset?: boolean;
       };
       if (!res.ok) {
         toast.error(json.message || "No se pudo generar");
@@ -222,7 +378,9 @@ export function AiImageGenerator({
         toast.error("Respuesta vacía");
         return;
       }
-      const bin = Uint8Array.from(atob(json.imageBase64), (c) => c.charCodeAt(0));
+      const bin = Uint8Array.from(atob(json.imageBase64), (c) =>
+        c.charCodeAt(0),
+      );
       const blob = new Blob([bin], { type: json.mimeType || "image/png" });
       const target = json.targetAspect ?? aspect.target;
       const cropped = await cropImageToAspect(blob, target.w, target.h);
@@ -231,16 +389,23 @@ export function AiImageGenerator({
       setPreviewUrl(url);
       setPreviewFile(cropped);
       if (typeof json.remaining === "number" && typeof json.total === "number") {
-        setQuota({ remaining: json.remaining, total: json.total });
+        const next = { remaining: json.remaining, total: json.total };
+        setQuota(next);
+        onQuotaChange?.(next);
       } else {
         await loadQuota();
       }
-      toast.success("Imagen lista. Descarga o aplícala.");
+      toast.success(
+        composition?.finishedAsset !== false && compositionMode
+          ? "Flyer listo para publicar. Guárdalo o descárgalo."
+          : "Imagen lista. Descarga o aplícala.",
+      );
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error al generar");
       await loadQuota();
     } finally {
-      setBusy(false);
+      setGenerating(false);
+      setBusyAll(false);
     }
   }
 
@@ -265,7 +430,7 @@ export function AiImageGenerator({
 
   async function uploadAndApply() {
     if (!previewFile || !onApplied) return;
-    setBusy(true);
+    setBusyAll(true);
     try {
       const url = await uploadPreview();
       if (!url) return;
@@ -274,13 +439,13 @@ export function AiImageGenerator({
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "No se pudo subir");
     } finally {
-      setBusy(false);
+      setBusyAll(false);
     }
   }
 
   async function uploadAndApplyBackground() {
     if (!previewFile || !onApplyBackground) return;
-    setBusy(true);
+    setBusyAll(true);
     try {
       const url = await uploadPreview();
       if (!url) return;
@@ -289,7 +454,7 @@ export function AiImageGenerator({
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "No se pudo subir");
     } finally {
-      setBusy(false);
+      setBusyAll(false);
     }
   }
 
@@ -316,7 +481,26 @@ export function AiImageGenerator({
   }
 
   return (
-    <div className="space-y-3 rounded-2xl border border-dashed border-brand/30 bg-brand/5 p-3">
+    <div className="relative space-y-3 rounded-2xl border border-dashed border-brand/30 bg-brand/5 p-3">
+      {generating ? (
+        <div
+          className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 rounded-2xl bg-white/90 px-4 text-center backdrop-blur-sm"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="h-10 w-10 animate-spin rounded-full border-2 border-brand/20 border-t-brand" />
+          <p className="text-sm font-semibold text-brand-dark">
+            Generando tu flyer…
+          </p>
+          <p className="max-w-xs text-xs text-muted transition-opacity duration-500">
+            {MARKETING_TIPS[tipIndex]}
+          </p>
+          <p className="text-[11px] text-muted">
+            No cierres ni cambies de pestaña; suele tardar varios segundos.
+          </p>
+        </div>
+      ) : null}
+
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-brand-dark">
           Generar con IA · {aspect.label}
@@ -325,34 +509,45 @@ export function AiImageGenerator({
           Imágenes IA: {quota?.remaining ?? "—"} / {quota?.total ?? "—"}
         </span>
       </div>
-      <div className="space-y-1">
-        <Label>Prompt</Label>
-        <Textarea
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          rows={3}
-          placeholder="Ej. Banner cálido con tacos al pastor y ambiente de fonda"
-        />
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {STYLES.map((s) => (
-          <button
-            key={s}
-            type="button"
-            onClick={() => setStyle(s)}
-            className={`rounded-full px-3 py-1.5 text-xs font-medium ${
-              style === s
-                ? "bg-brand text-white"
-                : "border border-black/10 bg-white"
-            }`}
-          >
-            {s}
-          </button>
-        ))}
-      </div>
+
+      {!compositionMode ? (
+        <div className="space-y-1">
+          <Label>Prompt</Label>
+          <Textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            rows={3}
+            placeholder="Ej. Banner cálido con tacos al pastor y ambiente de fonda"
+            disabled={busy}
+          />
+        </div>
+      ) : null}
+
+      {!compositionMode ? (
+        <div className="flex flex-wrap gap-2">
+          {STYLES.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setStyle(s)}
+              disabled={busy}
+              className={`rounded-full px-3 py-1.5 text-xs font-medium ${
+                style === s
+                  ? "bg-brand text-white"
+                  : "border border-black/10 bg-white"
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
       {allowReference ? (
         <div className="space-y-1">
-          <Label htmlFor={`ai-ref-${imageKind}`}>Imagen de referencia (opcional)</Label>
+          <Label htmlFor={`ai-ref-${imageKind}`}>
+            Imagen de referencia (opcional)
+          </Label>
           <Input
             id={`ai-ref-${imageKind}`}
             type="file"
@@ -378,11 +573,16 @@ export function AiImageGenerator({
           ) : null}
         </div>
       ) : null}
+
       <div className="flex flex-wrap gap-2">
-        <Button type="button" disabled={busy} onClick={() => void generate()}>
-          Generar
+        <Button
+          type="button"
+          disabled={busy}
+          onClick={() => void generate()}
+        >
+          {generating ? "Generando…" : "Generar"}
         </Button>
-        {extraActions}
+        {!compositionMode ? extraActions : null}
         {(quota?.remaining ?? 0) <= 0 ? (
           <Button
             type="button"
@@ -394,18 +594,50 @@ export function AiImageGenerator({
           </Button>
         ) : null}
       </div>
+
+      {compositionMode ? (
+        <div className="space-y-2 rounded-xl border border-black/5 bg-white/50 p-2">
+          <button
+            type="button"
+            className="text-xs font-semibold text-muted hover:text-brand"
+            onClick={() => setShowAdvanced((v) => !v)}
+            disabled={busy}
+          >
+            {showAdvanced
+              ? "Ocultar avanzado"
+              : "Avanzado · dirección creativa"}
+          </button>
+          {showAdvanced ? (
+            <div className="space-y-2">
+              <Label>Dirección creativa (opcional)</Label>
+              <Textarea
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                rows={2}
+                placeholder="Ej. más festivo, menos texto, colores tierra…"
+                disabled={busy}
+              />
+              <p className="text-[11px] text-muted">
+                No hace falta listar platillos ni precios: eso ya va del
+                checklist. Déjalo vacío si la referencia y los datos bastan.
+              </p>
+              {extraActions ? (
+                <div className="flex flex-wrap gap-2">{extraActions}</div>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       {previewUrl ? (
         <div className="space-y-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={previewUrl}
             alt="Vista previa IA"
-            className="max-h-56 w-full rounded-xl object-contain bg-black/5"
+            className="max-h-72 w-full rounded-xl object-contain bg-black/5"
           />
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" onClick={download}>
-              Descargar
-            </Button>
             {onApplied ? (
               <Button
                 type="button"
@@ -415,7 +647,34 @@ export function AiImageGenerator({
                 {applyLabel}
               </Button>
             ) : null}
-            {onApplyBackground ? (
+            <Button type="button" variant="outline" onClick={download}>
+              {downloadLabel}
+            </Button>
+          </div>
+          {onApplyBackground ? (
+            advancedStudioCollapsed ? (
+              <div className="space-y-2 rounded-xl border border-black/5 bg-white/50 p-2">
+                <button
+                  type="button"
+                  className="text-xs font-semibold text-brand"
+                  onClick={() => setShowStudioAdvanced((v) => !v)}
+                >
+                  {showStudioAdvanced
+                    ? "Ocultar avanzado"
+                    : "Avanzado · fondo + estudio"}
+                </button>
+                {showStudioAdvanced ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={busy}
+                    onClick={() => void uploadAndApplyBackground()}
+                  >
+                    {applyBackgroundLabel}
+                  </Button>
+                ) : null}
+              </div>
+            ) : (
               <Button
                 type="button"
                 variant="secondary"
@@ -424,8 +683,8 @@ export function AiImageGenerator({
               >
                 {applyBackgroundLabel}
               </Button>
-            ) : null}
-          </div>
+            )
+          ) : null}
         </div>
       ) : null}
     </div>
