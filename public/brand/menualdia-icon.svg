@@ -1,9 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="110.5 40 295 295" role="img" aria-label="Menu al Dia">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="110.5 28 295 307" role="img" aria-label="Menu al Dia">
   <!-- Tight square crop around the mark so favicon/PWA use full tile -->
-  <rect x="110.5" y="40" width="295" height="295" fill="#FAF6F1"/>
+  <rect x="110.5" y="28" width="295" height="307" fill="#FAF6F1"/>
   <defs>
     <linearGradient id="icon-sun" x1="0%" y1="100%" x2="0%" y2="0%">
       <stop offset="0%" stop-color="#EA580C"/>
+      <stop offset="55%" stop-color="#F59E0B"/>
       <stop offset="100%" stop-color="#FBBF24"/>
     </linearGradient>
     <linearGradient id="icon-cover" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -11,15 +12,16 @@
       <stop offset="100%" stop-color="#C2410C"/>
     </linearGradient>
   </defs>
-  <path d="M 200 130 A 56 56 0 0 1 312 130 Z" fill="url(#icon-sun)"/>
+  <!-- Full disc behind the menu — bottom is covered by pages, not a flat cut -->
+  <circle cx="256" cy="118" r="60" fill="url(#icon-sun)"/>
   <g stroke="#F59E0B" stroke-width="5" stroke-linecap="round">
-    <line x1="256" y1="58" x2="256" y2="44"/>
-    <line x1="220" y1="68" x2="212" y2="56"/>
-    <line x1="292" y1="68" x2="300" y2="56"/>
-    <line x1="188" y1="92" x2="176" y2="84"/>
-    <line x1="324" y1="92" x2="336" y2="84"/>
-    <line x1="168" y1="124" x2="154" y2="122"/>
-    <line x1="344" y1="124" x2="358" y2="122"/>
+    <line x1="256" y1="48" x2="256" y2="34"/>
+    <line x1="216" y1="58" x2="208" y2="46"/>
+    <line x1="296" y1="58" x2="304" y2="46"/>
+    <line x1="184" y1="84" x2="172" y2="76"/>
+    <line x1="328" y1="84" x2="340" y2="76"/>
+    <line x1="164" y1="118" x2="150" y2="116"/>
+    <line x1="348" y1="118" x2="362" y2="116"/>
   </g>
   <path d="M 256 142 L 366 102 C 370 100, 376 103, 376 108 L 376 272 C 376 277, 370 281, 366 283 L 256 322 Z"
         fill="#FFFDF9" stroke="#1C1917" stroke-width="8" stroke-linejoin="round"/>

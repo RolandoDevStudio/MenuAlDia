@@ -233,7 +233,7 @@ export function PlanPricing({
         </div>
       </Reveal>
 
-      <div className="mt-8 grid items-stretch gap-4 sm:grid-cols-3">
+      <div className="mt-8 grid items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {PLANS.map((plan, i) => {
           const { monthly, price, period } = priceFor(plan);
           const highlight = plan === "daily";
@@ -243,7 +243,7 @@ export function PlanPricing({
                 className={cn(
                   "landing-card flex h-full flex-col rounded-2xl border p-4",
                   highlight
-                    ? "z-10 border-brand bg-white shadow-lg sm:scale-[1.03]"
+                    ? "z-10 border-brand bg-white shadow-lg lg:scale-[1.02]"
                     : "border-black/10 bg-surface/90 hover:border-brand/30 hover:shadow-md",
                 )}
               >

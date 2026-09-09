@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Menu, X } from "lucide-react";
+import { Menu, MessageCircle, X } from "lucide-react";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -66,10 +66,11 @@ export function LandingNav({
           : "border-black/5 shadow-none",
       )}
     >
-      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-        <BrandLogo variant="lockup" size="sm" href="/" />
+      <div className="mx-auto flex max-w-5xl items-center justify-between gap-2 px-4 py-2.5 sm:gap-3 sm:px-6 sm:py-3">
+        <BrandLogo variant="lockup" size="sm" href="/" className="min-w-0" />
 
-        <nav className="hidden items-center gap-6 text-sm font-semibold md:flex">
+        {/* Full link row only when there's room (avoids crushing the WA CTA) */}
+        <nav className="hidden items-center gap-4 text-sm font-semibold lg:flex xl:gap-5">
           {LINKS.map((l) => (
             <button
               key={l.href}
@@ -82,40 +83,69 @@ export function LandingNav({
           ))}
         </nav>
 
-        <div className="hidden items-center gap-2 md:flex">
-          <Button asChild variant="ghost" size="sm">
+        <div className="hidden items-center gap-2 lg:flex">
+          <Button asChild variant="ghost" size="sm" className="px-2.5">
             <Link href="/admin/login">Entrar</Link>
           </Button>
           <Button
+            type="button"
             size="sm"
-            className="landing-cta"
+            className="landing-cta h-10 gap-1.5 px-3.5 text-sm"
             onClick={openWhatsApp}
           >
-            {whatsAppLabel}
+            <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
+            <span className="xl:hidden">WhatsApp</span>
+            <span className="hidden xl:inline">{whatsAppLabel}</span>
           </Button>
+        </div>
+
+        {/* Tablet: WhatsApp without crowding the logo */}
+        <div className="hidden items-center gap-1.5 md:flex lg:hidden">
+          <Button
+            type="button"
+            size="sm"
+            className="landing-cta h-10 gap-1.5 px-3 text-sm"
+            onClick={openWhatsApp}
+          >
+            <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
+            WhatsApp
+          </Button>
+          <button
+            type="button"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-black/5"
+            aria-label={open ? "Cerrar menú" : "Abrir menú"}
+            aria-expanded={open}
+            onClick={() => setOpen((v) => !v)}
+          >
+            {open ? (
+              <X className="h-5 w-5" aria-hidden />
+            ) : (
+              <Menu className="h-5 w-5" aria-hidden />
+            )}
+          </button>
         </div>
 
         <button
           type="button"
-          className="flex h-11 w-11 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-black/5 md:hidden"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-black/5 md:hidden"
           aria-label={open ? "Cerrar menú" : "Abrir menú"}
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
         >
-          {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          {open ? <X className="h-5 w-5" aria-hidden /> : <Menu className="h-5 w-5" aria-hidden />}
         </button>
       </div>
 
       <div
         className={cn(
-          "grid overflow-hidden border-black/5 bg-background transition-[grid-template-rows,opacity,border-width] duration-300 ease-out md:hidden",
+          "grid overflow-hidden border-black/5 bg-background transition-[grid-template-rows,opacity,border-width] duration-300 ease-out lg:hidden",
           open
             ? "grid-rows-[1fr] border-t opacity-100"
             : "grid-rows-[0fr] border-t-0 opacity-0",
         )}
       >
         <div className="min-h-0">
-          <nav className="flex flex-col gap-1 px-4 py-3">
+          <nav className="flex flex-col gap-1 px-4 py-3 pb-4">
             {LINKS.map((l) => (
               <button
                 key={l.href}
@@ -134,9 +164,11 @@ export function LandingNav({
               Entrar al admin
             </Link>
             <Button
-              className="mt-2 w-full landing-cta"
+              type="button"
+              className="landing-cta mt-2 min-h-11 w-full gap-2"
               onClick={openWhatsApp}
             >
+              <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
               {whatsAppLabel}
             </Button>
           </nav>

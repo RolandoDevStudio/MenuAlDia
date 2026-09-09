@@ -25,15 +25,16 @@ function MenuMark({
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="130 40 256 295"
+      viewBox="130 28 256 307"
       width={size}
-      height={Math.round(size * (295 / 256))}
+      height={Math.round(size * (307 / 256))}
       className={cn("shrink-0", className)}
       aria-hidden
     >
       <defs>
         <linearGradient id={sun} x1="0%" y1="100%" x2="0%" y2="0%">
           <stop offset="0%" stopColor="#EA580C" />
+          <stop offset="55%" stopColor="#F59E0B" />
           <stop offset="100%" stopColor="#FBBF24" />
         </linearGradient>
         <linearGradient id={cover} x1="0%" y1="0%" x2="100%" y2="100%">
@@ -41,15 +42,16 @@ function MenuMark({
           <stop offset="100%" stopColor="#C2410C" />
         </linearGradient>
       </defs>
-      <path d="M 200 130 A 56 56 0 0 1 312 130 Z" fill={`url(#${sun})`} />
+      {/* Full disc behind the menu — bottom is covered by pages, not a flat cut */}
+      <circle cx="256" cy="118" r="60" fill={`url(#${sun})`} />
       <g stroke="#F59E0B" strokeWidth="5" strokeLinecap="round">
-        <line x1="256" y1="58" x2="256" y2="44" />
-        <line x1="220" y1="68" x2="212" y2="56" />
-        <line x1="292" y1="68" x2="300" y2="56" />
-        <line x1="188" y1="92" x2="176" y2="84" />
-        <line x1="324" y1="92" x2="336" y2="84" />
-        <line x1="168" y1="124" x2="154" y2="122" />
-        <line x1="344" y1="124" x2="358" y2="122" />
+        <line x1="256" y1="48" x2="256" y2="34" />
+        <line x1="216" y1="58" x2="208" y2="46" />
+        <line x1="296" y1="58" x2="304" y2="46" />
+        <line x1="184" y1="84" x2="172" y2="76" />
+        <line x1="328" y1="84" x2="340" y2="76" />
+        <line x1="164" y1="118" x2="150" y2="116" />
+        <line x1="348" y1="118" x2="362" y2="116" />
       </g>
       <path
         d="M 256 142 L 366 102 C 370 100, 376 103, 376 108 L 376 272 C 376 277, 370 281, 366 283 L 256 322 Z"

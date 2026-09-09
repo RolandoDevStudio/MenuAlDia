@@ -1,7 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 300" fill="none" aria-hidden="true">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 312" fill="none" aria-hidden="true">
   <defs>
     <linearGradient id="mad-sun" x1="0%" y1="100%" x2="0%" y2="0%">
       <stop offset="0%" stop-color="#EA580C"/>
+      <stop offset="55%" stop-color="#F59E0B"/>
       <stop offset="100%" stop-color="#FBBF24"/>
     </linearGradient>
     <linearGradient id="mad-cover" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -9,17 +10,18 @@
       <stop offset="100%" stop-color="#C2410C"/>
     </linearGradient>
   </defs>
-  <!-- Shifted so mark is centered (original art ~136-376 x, 44-322 y) -->
-  <g transform="translate(-96,-36)">
-    <path d="M 200 130 A 56 56 0 0 1 312 130 Z" fill="url(#mad-sun)"/>
+  <!-- Shifted so mark is centered (original art ~136-376 x, 34-322 y) -->
+  <g transform="translate(-96,-28)">
+    <!-- Full disc behind the menu — bottom is covered by pages, not a flat cut -->
+    <circle cx="256" cy="118" r="60" fill="url(#mad-sun)"/>
     <g stroke="#F59E0B" stroke-width="5" stroke-linecap="round">
-      <line x1="256" y1="58" x2="256" y2="44"/>
-      <line x1="220" y1="68" x2="212" y2="56"/>
-      <line x1="292" y1="68" x2="300" y2="56"/>
-      <line x1="188" y1="92" x2="176" y2="84"/>
-      <line x1="324" y1="92" x2="336" y2="84"/>
-      <line x1="168" y1="124" x2="154" y2="122"/>
-      <line x1="344" y1="124" x2="358" y2="122"/>
+      <line x1="256" y1="48" x2="256" y2="34"/>
+      <line x1="216" y1="58" x2="208" y2="46"/>
+      <line x1="296" y1="58" x2="304" y2="46"/>
+      <line x1="184" y1="84" x2="172" y2="76"/>
+      <line x1="328" y1="84" x2="340" y2="76"/>
+      <line x1="164" y1="118" x2="150" y2="116"/>
+      <line x1="348" y1="118" x2="362" y2="116"/>
     </g>
     <path d="M 256 142 L 366 102 C 370 100, 376 103, 376 108 L 376 272 C 376 277, 370 281, 366 283 L 256 322 Z"
           fill="#FFFDF9" stroke="#1C1917" stroke-width="8" stroke-linejoin="round"/>

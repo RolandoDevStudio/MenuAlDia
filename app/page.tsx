@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Bell, ImageIcon, Smartphone, MessageCircle, Shield, Sparkles, Zap } from "lucide-react";
+import { Bell, ImageIcon, MessageCircle, Shield, Smartphone, Sparkles, Zap } from "lucide-react";
 import {
   PLAN_LABELS,
   FALLBACK_PLAN_PRICES,
@@ -243,7 +243,7 @@ export default function HomePage() {
   }
 
   return (
-    <main className="relative min-h-full overflow-x-clip bg-background pb-24 md:pb-0">
+    <main className="relative min-h-full overflow-x-clip bg-background pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-8">
       <LandingViewBeacon />
       <div
         className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
@@ -580,10 +580,11 @@ export default function HomePage() {
               />
             </div>
             <Button
-              className="landing-cta w-full"
+              className="landing-cta w-full gap-2"
               size="lg"
               onClick={() => contactSalesQuick("form")}
             >
+              <MessageCircle className="h-5 w-5 shrink-0" aria-hidden />
               Escribir por WhatsApp
             </Button>
           </Reveal>
@@ -627,7 +628,10 @@ export default function HomePage() {
           </div>
         </div>
       </footer>
-      <LandingStickyCta onPrimaryClick={scrollToContact} />
+      <LandingStickyCta
+        onPrimaryClick={scrollToContact}
+        onWhatsAppClick={() => contactSalesQuick("nav")}
+      />
       <LandingWhatsAppFab
         phone={salesPhone}
         giroLabel={giro ? getCanonicalDemo(giro)?.label : undefined}

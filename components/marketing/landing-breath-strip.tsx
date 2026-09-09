@@ -30,7 +30,7 @@ export function LandingBreathStrip({
         </div>
         <Button
           type="button"
-          className="landing-cta min-h-11 shrink-0"
+          className="landing-cta min-h-11 w-full shrink-0 gap-2 sm:w-auto"
           onClick={onCtaClick}
         >
           {ctaLabel}

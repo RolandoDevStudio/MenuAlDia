@@ -9,6 +9,7 @@ type Props = {
   giroLabel?: string;
 };
 
+/** Desktop-only floating WhatsApp (mobile uses the sticky bar instead). */
 export function LandingWhatsAppFab({
   phone = SALES_WHATSAPP,
   giroLabel,
@@ -23,16 +24,14 @@ export function LandingWhatsAppFab({
       href={url}
       target="_blank"
       rel="noreferrer"
-      aria-label="WhatsApp ventas"
+      aria-label="Hablar por WhatsApp"
       onClick={() => trackLandingEvent("wa_fab")}
-      className="landing-fab-pulse fixed bottom-[4.75rem] right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg transition duration-200 hover:scale-105 active:scale-95 motion-safe:animate-[rise_0.7s_ease-out] md:bottom-5 md:z-50"
+      className="landing-fab-pulse fixed bottom-6 right-6 z-40 hidden h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg transition duration-200 hover:scale-105 active:scale-95 md:flex"
       style={{
         marginBottom: "env(safe-area-inset-bottom)",
-        animationFillMode: "both",
-        animationDelay: "400ms",
       }}
     >
-      <MessageCircle className="h-7 w-7" />
+      <MessageCircle className="h-7 w-7" aria-hidden />
     </a>
   );
 }
