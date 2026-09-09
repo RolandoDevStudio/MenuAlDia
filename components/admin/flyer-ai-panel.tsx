@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
   AiImageGenerator,
@@ -11,6 +12,7 @@ import {
   type FlyerCompositionPayload,
 } from "@/components/admin/ai-image-generator";
 import { FlyerDishPicker } from "@/components/admin/flyer-dish-picker";
+import { AiCtaButton } from "@/components/admin/ai-cta-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -99,6 +101,36 @@ const ASPECTS: { id: FlyerAiAspectRatio; label: string; hint: string }[] = [
   { id: "9:16", label: "Stories 9:16", hint: "Stories / Reels" },
   { id: "1:1", label: "Cuadrado 1:1", hint: "Feed cuadrado" },
 ];
+
+function MarketingToggle({
+  label,
+  checked,
+  disabled,
+  onChange,
+  hint,
+}: {
+  label: string;
+  checked: boolean;
+  disabled?: boolean;
+  onChange: (v: boolean) => void;
+  hint?: string;
+}) {
+  return (
+    <div className="flex min-h-10 items-center justify-between gap-3">
+      <div className="min-w-0">
+        <span className={cn("text-sm", disabled && "text-muted")}>{label}</span>
+        {hint && disabled ? (
+          <p className="text-[11px] text-muted">{hint}</p>
+        ) : null}
+      </div>
+      <Switch
+        checked={checked && !disabled}
+        disabled={disabled}
+        onCheckedChange={onChange}
+      />
+    </div>
+  );
+}
 
 const PRODUCT_SOURCES: {
   id: ProductImageSource;
@@ -317,8 +349,8 @@ export function FlyerAiPanel({
   ]);
 
   useEffect(() => {
-    setCopyItems(
-      dishes
+    setCopyItems((prev) => {
+      const next = dishes
         .filter((d) => selectedIds.includes(d.id))
         .map((d) => {
           const category =
@@ -326,17 +358,28 @@ export function FlyerAiPanel({
           const catLooksLikeSide =
             Boolean(category) &&
             category!.trim().toLowerCase() === giro.sides.toLowerCase();
+          const existing = prev.find((p) => p.id === d.id);
           return {
             id: d.id,
-            name: d.name,
-            price: Number(d.price) || 0,
+            name: existing?.name ?? d.name,
+            price: existing ? existing.price : Number(d.price) || 0,
             photoUrl: d.photo_url,
             category,
             isSide: Boolean(d.is_side) || catLooksLikeSide,
           };
-        }),
-    );
+        });
+      return next;
+    });
   }, [dishes, selectedIds, categories, giro.sides]);
+
+  function removeCopyItem(item: CopyReviewItem) {
+    if (generatingBusy) return;
+    const ok = window.confirm(
+      `¿Quitar “${item.name}” de este flyer?\n\nTambién se deseleccionará en Platillos a destacar.`,
+    );
+    if (!ok) return;
+    setSelectedIds((ids) => ids.filter((id) => id !== item.id));
+  }
 
   async function applyAspectFromReferencePayload(payload: {
     referenceBase64: string;
@@ -446,7 +489,19 @@ export function FlyerAiPanel({
   }, [initialReferenceUrl]);
 
   function patchMarketing(partial: Partial<FlyerMarketingOpts>) {
+    // Preserve scroll when marketing toggles change layout below (Revisar texto).
+    const top =
+      typeof window !== "undefined"
+        ? window.scrollY || document.documentElement.scrollTop
+        : 0;
     setMarketing((m) => ({ ...m, ...partial }));
+    if (typeof window !== "undefined") {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          window.scrollTo(0, top);
+        });
+      });
+    }
   }
 
   function clearReference() {
@@ -620,36 +675,6 @@ export function FlyerAiPanel({
     finishedAsset: true,
     followReferenceLayout,
   };
-
-  function Toggle({
-    label,
-    checked,
-    disabled,
-    onChange,
-    hint,
-  }: {
-    label: string;
-    checked: boolean;
-    disabled?: boolean;
-    onChange: (v: boolean) => void;
-    hint?: string;
-  }) {
-    return (
-      <div className="flex min-h-10 items-center justify-between gap-3">
-        <div className="min-w-0">
-          <span className={cn("text-sm", disabled && "text-muted")}>{label}</span>
-          {hint && disabled ? (
-            <p className="text-[11px] text-muted">{hint}</p>
-          ) : null}
-        </div>
-        <Switch
-          checked={checked && !disabled}
-          disabled={disabled}
-          onCheckedChange={onChange}
-        />
-      </div>
-    );
-  }
 
   return (
     <div className="mb-6 space-y-4 rounded-2xl border border-black/10 bg-surface p-4">
@@ -1036,6 +1061,124 @@ export function FlyerAiPanel({
 
       {step === 3 ? (
         <div className="space-y-4">
+          <div className="space-y-2 rounded-xl border border-black/5 bg-white/60 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+              Contenido del anuncio
+            </p>
+            <div className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
+            <MarketingToggle
+              label="Logo"
+              checked={marketing.includeLogo}
+              disabled={!hasLogo}
+              hint="Sube logo en Ajustes"
+              onChange={(v) => patchMarketing({ includeLogo: v })}
+            />
+            <MarketingToggle
+              label="Nombre del negocio"
+              checked={marketing.includeName}
+              onChange={(v) => patchMarketing({ includeName: v })}
+            />
+            <MarketingToggle
+              label="Slogan"
+              checked={marketing.includeSlogan}
+              disabled={!hasSlogan}
+              hint="Agrega slogan en Ajustes"
+              onChange={(v) => patchMarketing({ includeSlogan: v })}
+            />
+            <MarketingToggle
+              label="WhatsApp / teléfono"
+              checked={marketing.includeWhatsapp}
+              disabled={!hasWa}
+              hint="Configura WA en Ajustes"
+              onChange={(v) =>
+                patchMarketing({
+                  includeWhatsapp: v,
+                  includePhoneWhatsapp: v,
+                })
+              }
+            />
+            <MarketingToggle
+              label="Instagram"
+              checked={marketing.includeInstagram}
+              disabled={!hasIg}
+              hint="Agrega IG en Ajustes"
+              onChange={(v) => patchMarketing({ includeInstagram: v })}
+            />
+            <MarketingToggle
+              label="Facebook"
+              checked={marketing.includeFacebook}
+              disabled={!hasFb}
+              hint="Agrega FB en Ajustes"
+              onChange={(v) => patchMarketing({ includeFacebook: v })}
+            />
+            <MarketingToggle
+              label="QR al menú"
+              checked={marketing.includeQr}
+              disabled={!hasQr}
+              onChange={(v) => patchMarketing({ includeQr: v })}
+            />
+            <MarketingToggle
+              label={`Nombres de ${giro.dishes.toLowerCase()}`}
+              checked={marketing.includeDishNames}
+              onChange={(v) => patchMarketing({ includeDishNames: v })}
+            />
+            <MarketingToggle
+              label={giro.categories}
+              checked={marketing.includeCategories}
+              onChange={(v) => patchMarketing({ includeCategories: v })}
+            />
+            <MarketingToggle
+              label="Precios"
+              checked={marketing.includePrices}
+              onChange={(v) =>
+                patchMarketing({
+                  includePrices: v,
+                  includePriceBadges: v,
+                })
+              }
+            />
+            <MarketingToggle
+              label="Emojis"
+              checked={marketing.includeEmojis}
+              onChange={(v) => patchMarketing({ includeEmojis: v })}
+            />
+            <MarketingToggle
+              label="Envío gratis"
+              checked={marketing.includeFreeShipping}
+              disabled={!hasShip}
+              hint="Activa envío gratis en Ajustes"
+              onChange={(v) => patchMarketing({ includeFreeShipping: v })}
+            />
+            {restaurant.business_type === "restaurante" ||
+            !restaurant.business_type ? (
+              <MarketingToggle
+                label="Incluye (tortillas, etc.)"
+                checked={marketing.includeIncludesTag}
+                onChange={(v) => patchMarketing({ includeIncludesTag: v })}
+              />
+            ) : null}
+            {restaurant.business_type === "productos" ? (
+              <MarketingToggle
+                label="Por pieza / Kg"
+                checked={marketing.includeUnitTag}
+                onChange={(v) => patchMarketing({ includeUnitTag: v })}
+              />
+            ) : null}
+            <MarketingToggle
+              label="Etiqueta del día"
+              checked={marketing.includeDayTag}
+              onChange={(v) => patchMarketing({ includeDayTag: v })}
+            />
+            <MarketingToggle
+              label="Elementos decorativos"
+              checked={marketing.includeDecorativeElements}
+              onChange={(v) =>
+                patchMarketing({ includeDecorativeElements: v })
+              }
+            />
+            </div>
+          </div>
+
           {clarityAlerts.length > 0 ? (
             <div className="space-y-1 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-950">
               {clarityAlerts.map((a) => (
@@ -1082,7 +1225,7 @@ export function FlyerAiPanel({
                   const renderRow = (it: CopyReviewItem, showPrice: boolean) => (
                     <div
                       key={it.id}
-                      className="grid grid-cols-[1fr_5.5rem] gap-2"
+                      className="grid grid-cols-[1fr_5.5rem_auto] items-start gap-2"
                     >
                       <div className="min-w-0 space-y-0.5">
                         <Input
@@ -1126,10 +1269,20 @@ export function FlyerAiPanel({
                           }
                         />
                       ) : (
-                        <span className="flex items-center justify-end text-[11px] text-muted">
+                        <span className="flex min-h-11 items-center justify-end text-[11px] text-muted">
                           Incluye
                         </span>
                       )}
+                      <button
+                        type="button"
+                        className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                        aria-label={`Quitar ${it.name}`}
+                        title="Quitar de este flyer"
+                        disabled={generatingBusy}
+                        onClick={() => removeCopyItem(it)}
+                      >
+                        <Trash2 className="h-4 w-4" aria-hidden />
+                      </button>
                     </div>
                   );
                   return (
@@ -1171,122 +1324,6 @@ export function FlyerAiPanel({
             </div>
           </div>
 
-          <div className="space-y-2 rounded-xl border border-black/5 bg-white/60 p-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted">
-              Contenido del anuncio
-            </p>
-            <Toggle
-              label="Logo"
-              checked={marketing.includeLogo}
-              disabled={!hasLogo}
-              hint="Sube logo en Ajustes"
-              onChange={(v) => patchMarketing({ includeLogo: v })}
-            />
-            <Toggle
-              label="Nombre del negocio"
-              checked={marketing.includeName}
-              onChange={(v) => patchMarketing({ includeName: v })}
-            />
-            <Toggle
-              label="Slogan"
-              checked={marketing.includeSlogan}
-              disabled={!hasSlogan}
-              hint="Agrega slogan en Ajustes"
-              onChange={(v) => patchMarketing({ includeSlogan: v })}
-            />
-            <Toggle
-              label="WhatsApp / teléfono"
-              checked={marketing.includeWhatsapp}
-              disabled={!hasWa}
-              hint="Configura WA en Ajustes"
-              onChange={(v) =>
-                patchMarketing({
-                  includeWhatsapp: v,
-                  includePhoneWhatsapp: v,
-                })
-              }
-            />
-            <Toggle
-              label="Instagram"
-              checked={marketing.includeInstagram}
-              disabled={!hasIg}
-              hint="Agrega IG en Ajustes"
-              onChange={(v) => patchMarketing({ includeInstagram: v })}
-            />
-            <Toggle
-              label="Facebook"
-              checked={marketing.includeFacebook}
-              disabled={!hasFb}
-              hint="Agrega FB en Ajustes"
-              onChange={(v) => patchMarketing({ includeFacebook: v })}
-            />
-            <Toggle
-              label="QR al menú"
-              checked={marketing.includeQr}
-              disabled={!hasQr}
-              onChange={(v) => patchMarketing({ includeQr: v })}
-            />
-            <Toggle
-              label={`Nombres de ${giro.dishes.toLowerCase()}`}
-              checked={marketing.includeDishNames}
-              onChange={(v) => patchMarketing({ includeDishNames: v })}
-            />
-            <Toggle
-              label={giro.categories}
-              checked={marketing.includeCategories}
-              onChange={(v) => patchMarketing({ includeCategories: v })}
-            />
-            <Toggle
-              label="Precios"
-              checked={marketing.includePrices}
-              onChange={(v) =>
-                patchMarketing({
-                  includePrices: v,
-                  includePriceBadges: v,
-                })
-              }
-            />
-            <Toggle
-              label="Emojis"
-              checked={marketing.includeEmojis}
-              onChange={(v) => patchMarketing({ includeEmojis: v })}
-            />
-            <Toggle
-              label="Envío gratis"
-              checked={marketing.includeFreeShipping}
-              disabled={!hasShip}
-              hint="Activa envío gratis en Ajustes"
-              onChange={(v) => patchMarketing({ includeFreeShipping: v })}
-            />
-            {restaurant.business_type === "restaurante" ||
-            !restaurant.business_type ? (
-              <Toggle
-                label="Incluye (tortillas, etc.)"
-                checked={marketing.includeIncludesTag}
-                onChange={(v) => patchMarketing({ includeIncludesTag: v })}
-              />
-            ) : null}
-            {restaurant.business_type === "productos" ? (
-              <Toggle
-                label="Por pieza / Kg"
-                checked={marketing.includeUnitTag}
-                onChange={(v) => patchMarketing({ includeUnitTag: v })}
-              />
-            ) : null}
-            <Toggle
-              label="Etiqueta del día"
-              checked={marketing.includeDayTag}
-              onChange={(v) => patchMarketing({ includeDayTag: v })}
-            />
-            <Toggle
-              label="Elementos decorativos"
-              checked={marketing.includeDecorativeElements}
-              onChange={(v) =>
-                patchMarketing({ includeDecorativeElements: v })
-              }
-            />
-          </div>
-
           <AiImageGenerator
             restaurantId={restaurant.id}
             imageKind="flyer"
@@ -1305,14 +1342,14 @@ export function FlyerAiPanel({
             onQuotaChange={onQuotaChange}
             onBusyChange={setGeneratingBusy}
             extraActions={
-              <Button
-                type="button"
-                variant="outline"
+              <AiCtaButton
+                tone="soft"
                 disabled={suggesting || generatingBusy}
+                hideIcon={suggesting}
                 onClick={() => void suggestPrompt()}
               >
                 {suggesting ? "Sugiriendo…" : "Sugerir dirección creativa"}
-              </Button>
+              </AiCtaButton>
             }
           />
 

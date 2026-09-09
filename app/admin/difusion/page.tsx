@@ -18,6 +18,7 @@ export default async function DifusionPage() {
   const restaurantId = session.restaurant.id;
 
   let itemNames: string[] = [];
+  let dishes: { id: string; name: string }[] = [];
   let packagePrice: number | null = null;
 
   if (can(plan, "daily_menu")) {
@@ -44,17 +45,28 @@ export default async function DifusionPage() {
         ...(sideLinks ?? []).map((r) => r.dish_id),
       ];
       if (ids.length > 0) {
-        const { data: dishes } = await supabase
+        const { data: dishRows } = await supabase
           .from("dishes")
           .select("id, name")
           .in("id", ids);
-        const byId = new Map((dishes ?? []).map((d) => [d.id, d.name]));
-        itemNames = ids
-          .map((id) => byId.get(id))
-          .filter((n): n is string => Boolean(n));
+        const byId = new Map((dishRows ?? []).map((d) => [d.id, d.name]));
+        dishes = ids
+          .map((id) => {
+            const name = byId.get(id);
+            return name ? { id, name } : null;
+          })
+          .filter((d): d is { id: string; name: string } => Boolean(d));
+        // Prefer mains first for names list (already ordered by query concat)
+        itemNames = dishes.map((d) => d.name);
       }
     }
   }
+
+  const { data: templateRows } = await supabase
+    .from("broadcast_templates")
+    .select("id, title, body, announcement_type, created_at, updated_at")
+    .eq("restaurant_id", restaurantId)
+    .order("updated_at", { ascending: false });
 
   const menuUrl = publicMenuUrl(session.restaurant.slug, getAppOrigin());
 
@@ -77,9 +89,11 @@ export default async function DifusionPage() {
         menuUrl={menuUrl}
         dailyLabel={labels.dailyMenu}
         itemNames={itemNames}
+        dishes={dishes}
         packagePrice={packagePrice}
         ownerPhone={session.restaurant.phone_whatsapp}
         shareCta={shareCtaFor(session.restaurant.business_type)}
+        initialTemplates={templateRows ?? []}
       />
 
       <p className="text-sm">

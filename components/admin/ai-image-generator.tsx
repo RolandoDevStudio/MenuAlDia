@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { cropImageToAspect, compressImage } from "@/lib/compress-image";
 import { Button } from "@/components/ui/button";
+import { AiCtaButton } from "@/components/admin/ai-cta-button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -575,13 +576,13 @@ export function AiImageGenerator({
       ) : null}
 
       <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
+        <AiCtaButton
           disabled={busy}
+          hideIcon={generating}
           onClick={() => void generate()}
         >
-          {generating ? "Generando…" : "Generar"}
-        </Button>
+          {generating ? "Generando…" : "Generar con IA"}
+        </AiCtaButton>
         {!compositionMode ? extraActions : null}
         {(quota?.remaining ?? 0) <= 0 ? (
           <Button

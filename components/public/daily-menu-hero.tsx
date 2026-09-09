@@ -15,6 +15,8 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Pause,
+  Play,
   ShoppingBag,
   Sparkles,
   UtensilsCrossed,
@@ -23,6 +25,7 @@ import {
 const DRAG_THRESHOLD_PX = 10;
 const PROGRAMMATIC_LOCK_MS = 400;
 const ADDED_MS = 1400;
+const ROTATION_MS = 5000;
 const CARD_IMAGE_SIZES = "(max-width: 640px) 85vw, 420px";
 
 type Props = {
@@ -91,6 +94,9 @@ export function DailyMenuHero({
   const [atStart, setAtStart] = useState(true);
   const [atEnd, setAtEnd] = useState(true);
   const [justAdded, setJustAdded] = useState(false);
+  const [autoPlay, setAutoPlay] = useState(true);
+  const [hoverPaused, setHoverPaused] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
 
   const trackRef = useRef<HTMLDivElement>(null);
   const pointerStart = useRef<{ x: number; y: number } | null>(null);
@@ -144,6 +150,45 @@ export function DailyMenuHero({
   }, []);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => setReducedMotion(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  useEffect(() => {
+    if (!multi || reducedMotion) setAutoPlay(false);
+  }, [multi, reducedMotion]);
+
+  useEffect(() => {
+    if (
+      !multi ||
+      reducedMotion ||
+      !autoPlay ||
+      hoverPaused ||
+      dishes.length < 2
+    ) {
+      return;
+    }
+    const timer = window.setInterval(() => {
+      const current = dishes.findIndex((d) => d.id === activeDishId);
+      const next = dishes[(current < 0 ? 0 : current + 1) % dishes.length];
+      if (next) snapTo(next.id);
+    }, ROTATION_MS);
+    return () => window.clearInterval(timer);
+  }, [
+    multi,
+    reducedMotion,
+    autoPlay,
+    hoverPaused,
+    dishes,
+    activeDishId,
+    snapTo,
+  ]);
+
+  useEffect(() => {
     const track = trackRef.current;
     if (!track) return;
     updateEnds();
@@ -174,6 +219,10 @@ export function DailyMenuHero({
     setExpandedIds(new Set());
   }, [activeDishId]);
 
+  function pauseAutoPlay() {
+    if (multi) setAutoPlay(false);
+  }
+
   if (dishes.length === 0 || !active) {
     return null;
   }
@@ -186,6 +235,14 @@ export function DailyMenuHero({
 
   function handlePointerDown(e: PointerEvent) {
     pointerStart.current = { x: e.clientX, y: e.clientY };
+    if (multi) setHoverPaused(true);
+  }
+
+  function handlePointerUp(e: PointerEvent) {
+    // Touch: resume pause-state after gesture; desktop hover still owns pause via enter/leave.
+    if (e.pointerType === "touch" || e.pointerType === "pen") {
+      setHoverPaused(false);
+    }
   }
 
   function wasDrag(e: MouseEvent) {
@@ -198,6 +255,7 @@ export function DailyMenuHero({
   }
 
   function toggleExpanded(id: string) {
+    pauseAutoPlay();
     setExpandedIds((prev) => {
       const next = new Set<string>();
       if (!prev.has(id)) next.add(id);
@@ -206,9 +264,13 @@ export function DailyMenuHero({
   }
 
   function handleCardClick(id: string, e: MouseEvent) {
-    if (wasDrag(e)) return;
+    if (wasDrag(e)) {
+      pauseAutoPlay();
+      return;
+    }
     if (multi && id !== activeDishId) {
       e.preventDefault();
+      pauseAutoPlay();
       snapTo(id);
       return;
     }
@@ -219,6 +281,7 @@ export function DailyMenuHero({
 
   function addToCart() {
     if (justAdded) return;
+    pauseAutoPlay();
     const sideNames = sides
       .filter((s) => selectedSides.includes(s.id))
       .map((s) => s.name);
@@ -239,7 +302,21 @@ export function DailyMenuHero({
   }
 
   return (
-    <section className="mx-auto max-w-lg px-4 py-6">
+    <section
+      className="mx-auto max-w-lg px-4 py-6"
+      onPointerEnter={() => {
+        if (multi) setHoverPaused(true);
+      }}
+      onPointerLeave={() => setHoverPaused(false)}
+      onFocusCapture={() => {
+        if (multi) setHoverPaused(true);
+      }}
+      onBlurCapture={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+          setHoverPaused(false);
+        }
+      }}
+    >
       <div className="mb-3">
         <div className="flex items-center gap-2">
           <GiroIcon giro={giro} className="h-5 w-5 shrink-0 text-brand" />
@@ -248,7 +325,11 @@ export function DailyMenuHero({
           </h2>
         </div>
         {multi ? (
-          <p className="mt-1 text-xs text-muted">Desliza para ver más</p>
+          <p className="mt-1 text-xs text-muted">
+            {autoPlay && !hoverPaused && !reducedMotion
+              ? "Cambia solo · desliza o pausa cuando quieras"
+              : "Desliza para ver más"}
+          </p>
         ) : null}
       </div>
 
@@ -262,6 +343,7 @@ export function DailyMenuHero({
               aria-disabled={atStart}
               disabled={atStart}
               onClick={() => {
+                pauseAutoPlay();
                 const prev = dishes[activeIndex - 1];
                 if (prev) snapTo(prev.id);
               }}
@@ -275,6 +357,7 @@ export function DailyMenuHero({
               aria-disabled={atEnd}
               disabled={atEnd}
               onClick={() => {
+                pauseAutoPlay();
                 const next = dishes[activeIndex + 1];
                 if (next) snapTo(next.id);
               }}
@@ -311,6 +394,7 @@ export function DailyMenuHero({
                 aria-expanded={hasDesc ? expanded : undefined}
                 tabIndex={hasDesc && isActive ? 0 : undefined}
                 onPointerDown={handlePointerDown}
+                onPointerUp={handlePointerUp}
                 onClick={(e) => handleCardClick(dish.id, e)}
                 onKeyDown={(e) => {
                   if (e.key !== "Enter" && e.key !== " ") return;
@@ -410,29 +494,49 @@ export function DailyMenuHero({
       </div>
 
       {multi ? (
-        <div
-          className="mt-3 flex justify-center gap-1.5"
-          role="group"
-          aria-label={dailyMenuLabel}
-        >
-          {dishes.map((dish, index) => {
-            const current = dish.id === active.id;
-            return (
-              <button
-                key={dish.id}
-                type="button"
-                aria-label={`${dishLabel} ${index + 1} de ${dishes.length}`}
-                aria-current={current ? "true" : undefined}
-                className={cn(
-                  "h-2 rounded-full transition-[width,background-color]",
-                  current
-                    ? "w-5 bg-(--color-primary)"
-                    : "w-2 bg-black/20",
-                )}
-                onClick={() => snapTo(dish.id)}
-              />
-            );
-          })}
+        <div className="mt-3 flex items-center justify-center gap-2">
+          {!reducedMotion ? (
+            <button
+              type="button"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-brand-dark ring-1 ring-black/10 hover:bg-black/5"
+              aria-label={autoPlay ? "Pausar rotación" : "Reanudar rotación"}
+              aria-pressed={autoPlay}
+              onClick={() => setAutoPlay((v) => !v)}
+            >
+              {autoPlay ? (
+                <Pause className="h-3.5 w-3.5" aria-hidden />
+              ) : (
+                <Play className="h-3.5 w-3.5" aria-hidden />
+              )}
+            </button>
+          ) : null}
+          <div
+            className="flex justify-center gap-1.5"
+            role="group"
+            aria-label={dailyMenuLabel}
+          >
+            {dishes.map((dish, index) => {
+              const current = dish.id === active.id;
+              return (
+                <button
+                  key={dish.id}
+                  type="button"
+                  aria-label={`${dishLabel} ${index + 1} de ${dishes.length}`}
+                  aria-current={current ? "true" : undefined}
+                  className={cn(
+                    "h-2 rounded-full transition-[width,background-color]",
+                    current
+                      ? "w-5 bg-(--color-primary)"
+                      : "w-2 bg-black/20",
+                  )}
+                  onClick={() => {
+                    pauseAutoPlay();
+                    snapTo(dish.id);
+                  }}
+                />
+              );
+            })}
+          </div>
         </div>
       ) : null}
 

@@ -10,7 +10,8 @@ export type AiUsageKind =
   | "banner"
   | "background"
   | "scan"
-  | "intent";
+  | "intent"
+  | "broadcast";
 
 const IMAGE_KINDS: AiUsageKind[] = ["flyer", "banner", "background"];
 
