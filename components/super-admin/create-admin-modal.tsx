@@ -27,6 +27,17 @@ import {
 } from "@/components/ui/dialog";
 import { Emoji } from "@/components/ui-emoji";
 import { UI_EMOJI } from "@/lib/ui-emoji";
+import {
+  CommercialOfferFields,
+  defaultOfferFormState,
+  type CommercialOfferFormState,
+} from "@/components/super-admin/commercial-offer-fields";
+import {
+  FALLBACK_FOUNDING_PARTNER_PRICES,
+  parseFoundingPartnerPrices,
+  buildOfferFromPreset,
+  type FoundingPartnerPrices,
+} from "@/lib/commercial-offer";
 
 type Props = {
   open: boolean;
@@ -58,6 +69,12 @@ export function CreateAdminModal({
   const [ownerEmail, setOwnerEmail] = useState("");
   const [ownerPassword, setOwnerPassword] = useState("");
   const [isFoundingPartner, setIsFoundingPartner] = useState(false);
+  const [offerForm, setOfferForm] = useState<CommercialOfferFormState>(() =>
+    defaultOfferFormState("none"),
+  );
+  const [foundingPrices, setFoundingPrices] = useState<FoundingPartnerPrices>(
+    FALLBACK_FOUNDING_PARTNER_PRICES,
+  );
   const [internalNotes, setInternalNotes] = useState("");
   const [acquisitionSource, setAcquisitionSource] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -71,9 +88,10 @@ export function CreateAdminModal({
     setError(null);
     setSuccessSlug(null);
     void (async () => {
-      const [templatesRes, pricesRes] = await Promise.all([
+      const [templatesRes, pricesRes, settingsRes] = await Promise.all([
         fetch("/api/super-admin/templates"),
         fetch("/api/plan-prices"),
+        fetch("/api/super-admin/settings"),
       ]);
       const templatesJson = (await templatesRes.json()) as {
         templates?: PlanTemplate[];
@@ -87,8 +105,24 @@ export function CreateAdminModal({
           pro: prices.pro ?? FALLBACK_PLAN_PRICES.pro,
         });
       }
+      if (settingsRes.ok) {
+        const settings = (await settingsRes.json()) as Record<string, unknown>;
+        setFoundingPrices(
+          parseFoundingPartnerPrices(settings.founding_partner_prices),
+        );
+      }
     })();
   }, [open]);
+
+  useEffect(() => {
+    if (offerForm.kind === "none") return;
+    setOfferForm((prev) => ({
+      ...prev,
+      monthlyPrice: String(foundingPrices[planType]),
+    }));
+    // Only sync when plan changes under an active preset
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional plan→price sync
+  }, [planType, foundingPrices]);
 
   const matchedTemplate = useMemo(() => {
     return templates.find(
@@ -110,6 +144,7 @@ export function CreateAdminModal({
     setOwnerEmail("");
     setOwnerPassword("");
     setIsFoundingPartner(false);
+    setOfferForm(defaultOfferFormState("none"));
     setInternalNotes("");
     setAcquisitionSource("");
     setSourceSlug("");
@@ -121,7 +156,17 @@ export function CreateAdminModal({
   async function submit() {
     setBusy(true);
     setError(null);
-    const body: Record<string, string | boolean> = {
+    const offerPayload = buildOfferFromPreset({
+      kind: offerForm.kind,
+      planType,
+      foundingPrices,
+      freeMonths: offerForm.freeMonths,
+      monthlyPrice: Number(offerForm.monthlyPrice) || null,
+      duration: offerForm.duration,
+      durationMonths: Number(offerForm.durationMonths) || null,
+      label: offerForm.label,
+    });
+    const body: Record<string, string | boolean | number | null> = {
       new_slug: newSlug,
       new_name: newName,
       owner_name: ownerName,
@@ -131,9 +176,11 @@ export function CreateAdminModal({
       business_type: businessType,
       plan_type: planType,
       theme_preset: themePreset,
-      is_founding_partner: isFoundingPartner,
+      is_founding_partner:
+        isFoundingPartner || offerForm.kind === "founding",
       internal_notes: internalNotes,
       acquisition_source: acquisitionSource,
+      ...offerPayload,
     };
     if (showAdvanced && sourceSlug.trim()) {
       body.source_slug = sourceSlug.trim();
@@ -349,18 +396,29 @@ export function CreateAdminModal({
               </select>
             </div>
 
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-black/5 bg-background/50 px-3 py-2">
-              <div>
-                <Label>Socio fundador</Label>
-                <p className="text-[11px] text-muted">
-                  Marca al crear cuentas de prueba / early adopters
-                </p>
+            <CommercialOfferFields
+              value={offerForm}
+              onChange={setOfferForm}
+              planType={planType}
+              foundingPrices={foundingPrices}
+              onFoundingPreset={setIsFoundingPartner}
+              showEndDateHint
+            />
+
+            {offerForm.kind !== "founding" ? (
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-black/5 bg-background/50 px-3 py-2">
+                <div>
+                  <Label>Negocio fundador (solo badge)</Label>
+                  <p className="text-[11px] text-muted">
+                    Sin oferta de precio; solo marca CRM
+                  </p>
+                </div>
+                <Switch
+                  checked={isFoundingPartner}
+                  onCheckedChange={setIsFoundingPartner}
+                />
               </div>
-              <Switch
-                checked={isFoundingPartner}
-                onCheckedChange={setIsFoundingPartner}
-              />
-            </div>
+            ) : null}
 
             <div className="space-y-1.5">
               <Label htmlFor="create-internal-notes">Notas internas</Label>

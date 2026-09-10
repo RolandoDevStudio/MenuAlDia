@@ -38,6 +38,7 @@ import { LandingStickyCta } from "@/components/marketing/landing-sticky-cta";
 import { trackLandingEvent } from "@/lib/landing-events";
 import { LandingBreathStrip } from "@/components/marketing/landing-breath-strip";
 import { TrustStrip } from "@/components/marketing/trust-strip";
+import { LogoShowcase } from "@/components/marketing/logo-showcase";
 import { FaqSection } from "@/components/marketing/faq-section";
 import { RoiCalculator } from "@/components/marketing/roi-calculator";
 import { PlanPricing } from "@/components/marketing/plan-pricing";
@@ -165,6 +166,9 @@ export default function HomePage() {
             : [],
           demoPosters: data.demoPosters ?? {},
           comparisonImages: data.comparisonImages ?? {},
+          showcaseLogos: Array.isArray(data.showcaseLogos)
+            ? data.showcaseLogos
+            : [],
         });
       }
     })();
@@ -475,6 +479,12 @@ export default function HomePage() {
       <SectionShell tone="brand">
         <TrustStrip testimonials={landing.testimonials} />
       </SectionShell>
+
+      {landing.showcaseLogos?.length ? (
+        <SectionShell id="negocios" tone="white">
+          <LogoShowcase logos={landing.showcaseLogos} />
+        </SectionShell>
+      ) : null}
 
       <SectionShell id="precios" tone="white">
         <PlanPricing

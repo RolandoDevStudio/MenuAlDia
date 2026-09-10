@@ -65,6 +65,9 @@ export function SubscriptionPanel({
   planType: PlanType;
 }) {
   const [listAmount, setListAmount] = useState(0);
+  const [effectiveAmount, setEffectiveAmount] = useState(0);
+  const [offerActive, setOfferActive] = useState(false);
+  const [offerLabel, setOfferLabel] = useState("");
   const [spei, setSpei] = useState<SpeiInfo | null>(null);
   const [code, setCode] = useState("");
   const [payAmount, setPayAmount] = useState<number | null>(null);
@@ -77,12 +80,20 @@ export function SubscriptionPanel({
     const res = await fetch("/api/admin/platform-coupons/validate");
     const json = (await res.json()) as {
       listAmount?: number;
+      effectiveAmount?: number;
+      offerActive?: boolean;
+      offerLabel?: string;
       spei?: SpeiInfo;
     };
     if (res.ok) {
-      setListAmount(json.listAmount ?? 0);
+      const list = json.listAmount ?? 0;
+      const effective = json.effectiveAmount ?? list;
+      setListAmount(list);
+      setEffectiveAmount(effective);
+      setOfferActive(json.offerActive === true);
+      setOfferLabel(json.offerLabel ?? "");
       setSpei(json.spei ?? null);
-      setPayAmount(json.listAmount ?? 0);
+      setPayAmount(effective);
     }
   }, []);
 
@@ -103,34 +114,53 @@ export function SubscriptionPanel({
       payAmount?: number;
       discount?: number;
       listAmount?: number;
+      effectiveAmount?: number;
       label?: string;
       spei?: SpeiInfo;
     };
     if (!res.ok) {
       setError(json.error ?? "Cupón no válido");
-      setPayAmount(listAmount);
+      setPayAmount(effectiveAmount);
       setDiscount(0);
       setLabel(null);
       return;
     }
-    setPayAmount(json.payAmount ?? listAmount);
+    setPayAmount(json.payAmount ?? effectiveAmount);
     setDiscount(json.discount ?? 0);
     setListAmount(json.listAmount ?? listAmount);
+    if (json.effectiveAmount != null) setEffectiveAmount(json.effectiveAmount);
     setLabel(json.label ?? null);
     if (json.spei) setSpei(json.spei);
     setMsg("Cupón aplicado (vista previa). No consume usos hasta el pago.");
   }
 
-  const transferAmount = payAmount ?? listAmount;
+  const transferAmount = payAmount ?? effectiveAmount;
 
   return (
     <div id="suscripcion" className="space-y-3 rounded-xl border border-black/5 bg-surface p-4">
       <div>
         <h2 className="text-sm font-semibold">Suscripción</h2>
         <p className="text-xs text-muted">
-          Plan {PLAN_LABELS[planType]} · precio lista{" "}
-          {formatMxn(listAmount)} / mes. Paga por SPEI y soporte confirma el
-          abono.
+          Plan {PLAN_LABELS[planType]}
+          {offerActive ? (
+            <>
+              {" "}
+              ·{" "}
+              <span className="font-semibold text-amber-900">
+                {offerLabel || "oferta comercial"} {formatMxn(effectiveAmount)}{" "}
+                / mes
+              </span>
+              {listAmount !== effectiveAmount ? (
+                <span className="text-muted">
+                  {" "}
+                  (lista {formatMxn(listAmount)})
+                </span>
+              ) : null}
+            </>
+          ) : (
+            <> · precio lista {formatMxn(listAmount)} / mes</>
+          )}
+          . Paga por SPEI y soporte confirma el abono.
         </p>
       </div>
 

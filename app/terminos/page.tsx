@@ -92,6 +92,22 @@ export default function TerminosPage() {
             contratación. Una vez concluido el periodo promocional aplicable, el
             acceso a la Plataforma se regirá bajo las tarifas estándar vigentes.
           </p>
+          <h3 className="text-base font-semibold text-brand-dark">
+            4.1 Programa de Negocios Fundadores
+          </h3>
+          <p>
+            El &quot;Programa Socio Fundador&quot; o &quot;Negocio
+            Fundador&quot; es una promoción comercial de acceso anticipado
+            destinada a establecimientos independientes. La denominación se
+            otorga con fines distintivos para identificar a los usuarios
+            registrados en dicha etapa inicial, concediéndoles tarifas
+            preferenciales y descuentos en la suscripción del software según el
+            plan elegido y las condiciones comunicadas al momento de la alta o
+            vigentes en el panel del comercio. Dicha denominación no constituye
+            una sociedad comercial, relación de empleo, asociación en
+            participación, ni otorga derechos sobre la propiedad intelectual,
+            marca o ingresos de la plataforma Menú al Día.
+          </p>
         </section>
 
         <section className="space-y-3">
@@ -376,7 +392,7 @@ export default function TerminosPage() {
         </section>
 
         <p className="border-t border-black/10 pt-6 text-muted">
-          Versión {CURRENT_TERMS_VERSION} · Última actualización: Agosto de
+          Versión {CURRENT_TERMS_VERSION} · Última actualización: Septiembre de
           2026.
         </p>
       </article>

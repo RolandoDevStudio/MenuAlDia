@@ -76,6 +76,14 @@ const RESTAURANT_FIELDS = [
   "business_type",
   "city",
   "state",
+  "commercial_offer_kind",
+  "commercial_offer_label",
+  "commercial_free_months",
+  "commercial_monthly_price",
+  "commercial_duration",
+  "commercial_duration_months",
+  "commercial_starts_at",
+  "commercial_ends_at",
 ] as const;
 
 export async function PATCH(request: Request) {
@@ -102,6 +110,14 @@ export async function PATCH(request: Request) {
     state?: string;
     owner_email?: string;
     owner_password?: string;
+    commercial_offer_kind?: string;
+    commercial_offer_label?: string;
+    commercial_free_months?: number;
+    commercial_monthly_price?: number | null;
+    commercial_duration?: string;
+    commercial_duration_months?: number | null;
+    commercial_starts_at?: string | null;
+    commercial_ends_at?: string | null;
   };
 
   if (!body.id) {
@@ -137,6 +153,65 @@ export async function PATCH(request: Request) {
     updates.show_powered_by = body.show_powered_by;
   if (typeof body.is_founding_partner === "boolean")
     updates.is_founding_partner = body.is_founding_partner;
+  if (typeof body.commercial_offer_kind === "string") {
+    const kind = body.commercial_offer_kind;
+    if (kind !== "none" && kind !== "founding" && kind !== "custom") {
+      return NextResponse.json(
+        { error: "oferta comercial inválida" },
+        { status: 400 },
+      );
+    }
+    updates.commercial_offer_kind = kind;
+    if (kind === "none") {
+      updates.commercial_offer_label = "";
+      updates.commercial_free_months = 0;
+      updates.commercial_monthly_price = null;
+      updates.commercial_duration = "lifetime";
+      updates.commercial_duration_months = null;
+      updates.commercial_starts_at = null;
+      updates.commercial_ends_at = null;
+    }
+  }
+  if (typeof body.commercial_offer_label === "string")
+    updates.commercial_offer_label = body.commercial_offer_label.trim();
+  if (typeof body.commercial_free_months === "number") {
+    updates.commercial_free_months = Math.max(
+      0,
+      Math.min(12, Math.round(body.commercial_free_months)),
+    );
+  }
+  if (body.commercial_monthly_price !== undefined) {
+    const price =
+      body.commercial_monthly_price == null
+        ? null
+        : Number(body.commercial_monthly_price);
+    updates.commercial_monthly_price =
+      price != null && price > 0 ? price : null;
+  }
+  if (typeof body.commercial_duration === "string") {
+    if (
+      body.commercial_duration !== "lifetime" &&
+      body.commercial_duration !== "months"
+    ) {
+      return NextResponse.json(
+        { error: "vigencia de oferta inválida" },
+        { status: 400 },
+      );
+    }
+    updates.commercial_duration = body.commercial_duration;
+  }
+  if (body.commercial_duration_months !== undefined) {
+    updates.commercial_duration_months =
+      body.commercial_duration_months == null
+        ? null
+        : Math.max(1, Math.round(Number(body.commercial_duration_months)));
+  }
+  if (body.commercial_starts_at !== undefined) {
+    updates.commercial_starts_at = body.commercial_starts_at;
+  }
+  if (body.commercial_ends_at !== undefined) {
+    updates.commercial_ends_at = body.commercial_ends_at;
+  }
   if (typeof body.internal_notes === "string")
     updates.internal_notes = body.internal_notes.trim();
   if (typeof body.acquisition_source === "string") {

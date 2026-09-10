@@ -43,6 +43,20 @@ import {
   ymdAtMexicoCityNoonIso,
   ymdInMexicoCity,
 } from "@/lib/dates";
+import {
+  buildOfferFromPreset,
+  FALLBACK_FOUNDING_PARTNER_PRICES,
+  hasActiveCommercialOffer,
+  parseFoundingPartnerPrices,
+  resolveEffectiveMonthlyPrice,
+  type FoundingPartnerPrices,
+} from "@/lib/commercial-offer";
+import {
+  CommercialOfferFields,
+  defaultOfferFormState,
+  offerFormFromRestaurant,
+  type CommercialOfferFormState,
+} from "@/components/super-admin/commercial-offer-fields";
 
 type Tab = "datos" | "pagos" | "cambios";
 
@@ -79,6 +93,12 @@ export function TenantEditModal({
   const [isActive, setIsActive] = useState(true);
   const [showPoweredBy, setShowPoweredBy] = useState(true);
   const [isFoundingPartner, setIsFoundingPartner] = useState(false);
+  const [offerForm, setOfferForm] = useState<CommercialOfferFormState>(() =>
+    defaultOfferFormState("none"),
+  );
+  const [foundingPrices, setFoundingPrices] = useState<FoundingPartnerPrices>(
+    FALLBACK_FOUNDING_PARTNER_PRICES,
+  );
   const [internalNotes, setInternalNotes] = useState("");
   const [acquisitionSource, setAcquisitionSource] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -112,18 +132,31 @@ export function TenantEditModal({
   useEffect(() => {
     if (!open) return;
     void (async () => {
-      const res = await fetch("/api/plan-prices");
-      if (!res.ok) return;
-      const prices = (await res.json()) as PlanPricesMap;
-      const next = {
-        catalog: prices.catalog ?? FALLBACK_PLAN_PRICES.catalog,
-        daily: prices.daily ?? FALLBACK_PLAN_PRICES.daily,
-        pro: prices.pro ?? FALLBACK_PLAN_PRICES.pro,
-      };
-      setPlanPrices(next);
+      const [pricesRes, settingsRes] = await Promise.all([
+        fetch("/api/plan-prices"),
+        fetch("/api/super-admin/settings"),
+      ]);
+      let nextPrices = { ...FALLBACK_PLAN_PRICES };
+      if (pricesRes.ok) {
+        const prices = (await pricesRes.json()) as PlanPricesMap;
+        nextPrices = {
+          catalog: prices.catalog ?? FALLBACK_PLAN_PRICES.catalog,
+          daily: prices.daily ?? FALLBACK_PLAN_PRICES.daily,
+          pro: prices.pro ?? FALLBACK_PLAN_PRICES.pro,
+        };
+        setPlanPrices(nextPrices);
+      }
+      if (settingsRes.ok) {
+        const settings = (await settingsRes.json()) as Record<string, unknown>;
+        setFoundingPrices(
+          parseFoundingPartnerPrices(settings.founding_partner_prices),
+        );
+      }
       if (restaurant) {
         const plan = (restaurant.plan_type || "catalog") as PlanType;
-        setAmount(String(next[plan]?.monthly ?? FALLBACK_PLAN_PRICES[plan].monthly));
+        setAmount(
+          String(resolveEffectiveMonthlyPrice(restaurant, nextPrices, plan)),
+        );
       }
     })();
   }, [open, restaurant]);
@@ -145,6 +178,7 @@ export function TenantEditModal({
     setIsActive(restaurant.is_active !== false);
     setShowPoweredBy(restaurant.show_powered_by !== false);
     setIsFoundingPartner(restaurant.is_founding_partner === true);
+    setOfferForm(offerFormFromRestaurant(restaurant, foundingPrices));
     setInternalNotes(restaurant.internal_notes ?? "");
     setAcquisitionSource(restaurant.acquisition_source ?? "");
     setEndDate(
@@ -157,7 +191,7 @@ export function TenantEditModal({
     setError(null);
     setMessage(null);
     setAmount(
-      String(planPrices[plan]?.monthly ?? FALLBACK_PLAN_PRICES[plan].monthly),
+      String(resolveEffectiveMonthlyPrice(restaurant, planPrices, plan)),
     );
     setPaidAt(mexicoCityTodayYmd());
     setMethod("transfer");
@@ -168,7 +202,7 @@ export function TenantEditModal({
     setNeedsInvoice(false);
     setReceiptUrl(null);
     setConfirmSlug("");
-  }, [restaurant, ownerEmail, open]);
+  }, [restaurant, ownerEmail, open, foundingPrices, planPrices]);
 
   const loadPayments = useCallback(async () => {
     if (!restaurant) return;
@@ -212,6 +246,32 @@ export function TenantEditModal({
     setBusy(true);
     setError(null);
     setMessage(null);
+    const offerPayload = buildOfferFromPreset({
+      kind: offerForm.kind,
+      planType,
+      foundingPrices,
+      freeMonths: offerForm.freeMonths,
+      monthlyPrice: Number(offerForm.monthlyPrice) || null,
+      duration: offerForm.duration,
+      durationMonths: Number(offerForm.durationMonths) || null,
+      label: offerForm.label,
+      now: restaurant.commercial_starts_at
+        ? new Date(restaurant.commercial_starts_at)
+        : undefined,
+    });
+    // Keep existing starts_at if offer already active with same kind
+    if (
+      restaurant.commercial_offer_kind === offerForm.kind &&
+      offerForm.kind !== "none" &&
+      restaurant.commercial_starts_at
+    ) {
+      offerPayload.commercial_starts_at = restaurant.commercial_starts_at;
+      if (offerForm.duration === "months") {
+        offerPayload.commercial_ends_at =
+          restaurant.commercial_ends_at ?? offerPayload.commercial_ends_at;
+      }
+    }
+
     const body: Record<string, unknown> = {
       id: restaurant.id,
       name,
@@ -224,11 +284,13 @@ export function TenantEditModal({
       state: stateMx,
       is_active: isActive,
       show_powered_by: showPoweredBy,
-      is_founding_partner: isFoundingPartner,
+      is_founding_partner:
+        isFoundingPartner || offerForm.kind === "founding",
       internal_notes: internalNotes,
       acquisition_source: acquisitionSource,
       subscription_end_date: endDate ? endOfMexicoCityDay(endDate) : null,
       owner_email: email || undefined,
+      ...offerPayload,
     };
     if (password.trim()) body.owner_password = password.trim();
 
@@ -487,18 +549,28 @@ export function TenantEditModal({
               </select>
             </div>
 
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-black/5 bg-background/50 px-3 py-2">
-              <div>
-                <Label>Socio fundador</Label>
-                <p className="text-[11px] text-muted">
-                  Badge en el admin del tenant y chip en Tenants
-                </p>
+            <CommercialOfferFields
+              value={offerForm}
+              onChange={setOfferForm}
+              planType={planType}
+              foundingPrices={foundingPrices}
+              onFoundingPreset={setIsFoundingPartner}
+            />
+
+            {offerForm.kind !== "founding" ? (
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-black/5 bg-background/50 px-3 py-2">
+                <div>
+                  <Label>Negocio fundador (solo badge)</Label>
+                  <p className="text-[11px] text-muted">
+                    Sin oferta de precio; solo marca CRM
+                  </p>
+                </div>
+                <Switch
+                  checked={isFoundingPartner}
+                  onCheckedChange={setIsFoundingPartner}
+                />
               </div>
-              <Switch
-                checked={isFoundingPartner}
-                onCheckedChange={setIsFoundingPartner}
-              />
-            </div>
+            ) : null}
 
             <div className="space-y-1.5">
               <Label htmlFor="internal-notes">Notas internas</Label>
@@ -634,6 +706,14 @@ export function TenantEditModal({
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                   />
+                  {restaurant && hasActiveCommercialOffer(restaurant) ? (
+                    <p className="text-[11px] text-amber-900">
+                      Precio oferta comercial (editable). Mes intermedio
+                      especial: ajusta el monto a mano.
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-muted">Precio de lista</p>
+                  )}
                 </div>
                 <div className="space-y-1.5">
                   <Label>Fecha de pago</Label>
@@ -661,7 +741,21 @@ export function TenantEditModal({
                   <select
                     className={selectClass}
                     value={payPlan}
-                    onChange={(e) => setPayPlan(e.target.value as PlanType)}
+                    onChange={(e) => {
+                      const next = e.target.value as PlanType;
+                      setPayPlan(next);
+                      if (restaurant) {
+                        setAmount(
+                          String(
+                            resolveEffectiveMonthlyPrice(
+                              restaurant,
+                              planPrices,
+                              next,
+                            ),
+                          ),
+                        );
+                      }
+                    }}
                   >
                     {(Object.keys(PLAN_LABELS) as PlanType[]).map((p) => (
                       <option key={p} value={p}>

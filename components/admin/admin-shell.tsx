@@ -257,7 +257,7 @@ export function AdminShell({
               </span>
               {isFoundingPartner ? (
                 <span className="inline-flex shrink-0 items-center rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-950">
-                  Socio fundador
+                  Negocio fundador
                 </span>
               ) : null}
             </p>

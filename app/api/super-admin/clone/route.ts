@@ -9,6 +9,15 @@ import {
   cloneRestaurantMenu,
 } from "@/lib/plan-templates";
 import { THEME_PRESETS } from "@/lib/theme";
+import {
+  addFreeMonthsToDate,
+  buildOfferFromPreset,
+  getFoundingPartnerPrices,
+  normalizeOfferKind,
+  type CommercialDuration,
+  type CommercialOfferKind,
+} from "@/lib/commercial-offer";
+import type { PlanType } from "@/lib/plans";
 
 export async function POST(request: Request) {
   if (!(await isCurrentUserSuperAdmin())) {
@@ -30,6 +39,12 @@ export async function POST(request: Request) {
     is_founding_partner?: boolean;
     internal_notes?: string;
     acquisition_source?: string;
+    commercial_offer_kind?: CommercialOfferKind;
+    commercial_offer_label?: string;
+    commercial_free_months?: number;
+    commercial_monthly_price?: number | null;
+    commercial_duration?: CommercialDuration;
+    commercial_duration_months?: number | null;
   };
 
   const sourceSlug = body.source_slug?.trim();
@@ -117,8 +132,33 @@ export async function POST(request: Request) {
     );
   }
 
-  const subscriptionEnd = new Date(
-    Date.now() + 30 * 24 * 60 * 60 * 1000,
+  const offerKind = normalizeOfferKind(body.commercial_offer_kind);
+  const foundingPrices = await getFoundingPartnerPrices();
+  const resolvedPlan = (planType || "catalog") as PlanType;
+  const offer = buildOfferFromPreset({
+    kind: offerKind,
+    planType: resolvedPlan,
+    foundingPrices,
+    freeMonths:
+      typeof body.commercial_free_months === "number"
+        ? body.commercial_free_months
+        : undefined,
+    monthlyPrice:
+      body.commercial_monthly_price != null
+        ? Number(body.commercial_monthly_price)
+        : undefined,
+    duration: body.commercial_duration,
+    durationMonths: body.commercial_duration_months,
+    label: body.commercial_offer_label,
+  });
+  const foundingFlag =
+    isFoundingPartner || offer.commercial_offer_kind === "founding";
+
+  const subscriptionEnd = addFreeMonthsToDate(
+    new Date(),
+    offer.commercial_offer_kind === "none"
+      ? 0
+      : offer.commercial_free_months,
   ).toISOString();
 
   let created: Record<string, unknown> | null = null;
@@ -169,10 +209,11 @@ export async function POST(request: Request) {
         business_type: businessType || template.business_type,
         plan_type: planType || template.plan_type || "catalog",
         is_active: true,
-        is_founding_partner: isFoundingPartner,
+        is_founding_partner: foundingFlag,
         internal_notes: internalNotes,
         acquisition_source: acquisitionSource,
         subscription_end_date: subscriptionEnd,
+        ...offer,
         theme_config: themeOverride ?? template.theme_config,
         slogan: "",
         address: "",
@@ -221,10 +262,11 @@ export async function POST(request: Request) {
         plan_type: planType || source.plan_type || "catalog",
         business_type: businessType || source.business_type || "restaurante",
         is_active: true,
-        is_founding_partner: isFoundingPartner,
+        is_founding_partner: foundingFlag,
         internal_notes: internalNotes,
         acquisition_source: acquisitionSource,
         subscription_end_date: subscriptionEnd,
+        ...offer,
         theme_config: themeOverride ?? source.theme_config,
       })
       .select("*")

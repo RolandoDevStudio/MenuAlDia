@@ -71,6 +71,15 @@ export interface Restaurant {
   show_powered_by?: boolean;
   /** Founding partner — badge in tenant admin + Tenants */
   is_founding_partner?: boolean;
+  /** none | founding | custom — recurring promo (not a one-shot coupon) */
+  commercial_offer_kind?: "none" | "founding" | "custom";
+  commercial_offer_label?: string;
+  commercial_free_months?: number;
+  commercial_monthly_price?: number | null;
+  commercial_duration?: "lifetime" | "months";
+  commercial_duration_months?: number | null;
+  commercial_starts_at?: string | null;
+  commercial_ends_at?: string | null;
   /** Superadmin-only internal CRM notes */
   internal_notes?: string;
   /** How they found Menu al Día */

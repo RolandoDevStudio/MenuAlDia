@@ -14,6 +14,7 @@ import {
   type ComparisonImageSlot,
   type LandingContent,
   type LandingFaqItem,
+  type LandingShowcaseLogo,
   type LandingTestimonial,
 } from "@/lib/landing-content";
 import type { CanonicalDemoId } from "@/lib/canonical-demos";
@@ -27,6 +28,13 @@ import { normalizeWhatsAppPhone } from "@/lib/whatsapp";
 import { LandingMetrics } from "@/components/super-admin/landing-metrics";
 import { Emoji } from "@/components/ui-emoji";
 import { UI_EMOJI } from "@/lib/ui-emoji";
+import {
+  FALLBACK_FOUNDING_PARTNER_PRICES,
+  parseFoundingPartnerPrices,
+  type FoundingPartnerPrices,
+} from "@/lib/commercial-offer";
+import { PLAN_LABELS } from "@/lib/plans";
+import type { Restaurant } from "@/lib/types";
 
 const GIROS: { id: CanonicalDemoId; label: string }[] = [
   { id: "restaurante", label: "Restaurante" },
@@ -77,12 +85,19 @@ function CmsFold({
 
 export default function SuperAdminSettingsPage() {
   const [prices, setPrices] = useState<PlanPricesMap>(FALLBACK_PLAN_PRICES);
+  const [foundingPrices, setFoundingPrices] = useState<FoundingPartnerPrices>(
+    FALLBACK_FOUNDING_PARTNER_PRICES,
+  );
+  const [tenantsWithLogo, setTenantsWithLogo] = useState<
+    Pick<Restaurant, "id" | "slug" | "name" | "logo_url">[]
+  >([]);
   const [landing, setLanding] = useState<LandingContent>({
     ...DEFAULT_LANDING_CONTENT,
     faq: DEFAULT_LANDING_FAQ.map((f) => ({ ...f })),
     testimonials: [],
     demoPosters: {},
     comparisonImages: {},
+    showcaseLogos: [],
   });
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -112,6 +127,11 @@ export default function SuperAdminSettingsPage() {
           ...(data.plan_prices as PlanPricesMap),
         });
       }
+      if (data.founding_partner_prices) {
+        setFoundingPrices(
+          parseFoundingPartnerPrices(data.founding_partner_prices),
+        );
+      }
       if (data.landing_content) {
         const raw = data.landing_content as Partial<LandingContent>;
         setLanding({
@@ -134,6 +154,9 @@ export default function SuperAdminSettingsPage() {
               : DEFAULT_LANDING_FAQ.map((f) => ({ ...f })),
           demoPosters: raw.demoPosters ?? {},
           comparisonImages: raw.comparisonImages ?? {},
+          showcaseLogos: Array.isArray(raw.showcaseLogos)
+            ? raw.showcaseLogos
+            : [],
         });
       }
       if (data.spei_info && typeof data.spei_info === "object") {
@@ -141,6 +164,23 @@ export default function SuperAdminSettingsPage() {
           ...DEFAULT_SPEI_INFO,
           ...(data.spei_info as SpeiInfo),
         });
+      }
+
+      const tenantsRes = await fetch("/api/super-admin/tenants");
+      if (tenantsRes.ok) {
+        const tj = (await tenantsRes.json()) as {
+          restaurants?: Restaurant[];
+        };
+        setTenantsWithLogo(
+          (tj.restaurants ?? [])
+            .filter((r) => Boolean(r.logo_url?.trim()))
+            .map((r) => ({
+              id: r.id,
+              slug: r.slug,
+              name: r.name,
+              logo_url: r.logo_url,
+            })),
+        );
       }
     })();
   }, []);
@@ -185,6 +225,20 @@ export default function SuperAdminSettingsPage() {
           return url ? [slot, url] : null;
         }).filter(Boolean) as [ComparisonImageSlot, string][],
       ),
+      showcaseLogos: (source.showcaseLogos ?? [])
+        .filter(
+          (l) =>
+            l.restaurantId?.trim() &&
+            l.slug?.trim() &&
+            l.name?.trim() &&
+            l.logoUrl?.trim(),
+        )
+        .map((l) => ({
+          restaurantId: l.restaurantId.trim(),
+          slug: l.slug.trim(),
+          name: l.name.trim(),
+          logoUrl: l.logoUrl.trim(),
+        })),
     };
   }
 
@@ -225,6 +279,14 @@ export default function SuperAdminSettingsPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ key: "plan_prices", value: prices }),
     });
+    const rFounding = await fetch("/api/super-admin/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        key: "founding_partner_prices",
+        value: foundingPrices,
+      }),
+    });
     const r2 = await fetch("/api/super-admin/settings", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -247,12 +309,12 @@ export default function SuperAdminSettingsPage() {
       }),
     });
     setSaving(false);
-    if (!r1.ok || !r2.ok || !r3.ok) {
+    if (!r1.ok || !rFounding.ok || !r2.ok || !r3.ok) {
       setError("No se pudo guardar (¿migración 004 aplicada?)");
       return;
     }
     setLanding(payload);
-    setMessage("CMS, precios y SPEI guardados");
+    setMessage("CMS, precios, fundadores y SPEI guardados");
   }
 
   function setMonthly(plan: PlanType, monthly: number) {
@@ -825,6 +887,95 @@ export default function SuperAdminSettingsPage() {
             />
           </div>
         ))}
+      </CmsFold>
+
+      <CmsFold title="Precios Negocio Fundador (MXN/mes)">
+        <p className="text-xs text-muted">
+          Plantilla al elegir preset Fundador en Crear/Editar tenant. Se
+          guarda como snapshot en cada comercio.
+        </p>
+        {(["catalog", "daily", "pro"] as PlanType[]).map((plan) => (
+          <div key={`f-${plan}`} className="flex items-center gap-3">
+            <Label className="w-36">{PLAN_LABELS[plan]}</Label>
+            <Input
+              className="min-h-11"
+              inputMode="numeric"
+              value={String(foundingPrices[plan])}
+              onChange={(e) =>
+                setFoundingPrices((prev) => ({
+                  ...prev,
+                  [plan]: Number(e.target.value) || 0,
+                }))
+              }
+            />
+          </div>
+        ))}
+      </CmsFold>
+
+      <CmsFold title="Vitrina de logos (landing)">
+        <p className="text-xs text-muted">
+          Selecciona negocios con logo. Si la lista queda vacía, la sección no
+          aparece en la landing. El logo abre /slug en nueva pestaña.
+        </p>
+        <ul className="max-h-64 space-y-2 overflow-y-auto">
+          {tenantsWithLogo.map((t) => {
+            const selected = landing.showcaseLogos.some(
+              (l) => l.restaurantId === t.id,
+            );
+            return (
+              <li
+                key={t.id}
+                className="flex items-center justify-between gap-2 rounded-lg border border-black/5 px-3 py-2"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{t.name}</p>
+                  <p className="truncate text-[11px] text-muted">/{t.slug}</p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={selected ? "secondary" : "default"}
+                  className="min-h-9 shrink-0"
+                  onClick={() => {
+                    setLanding((prev) => {
+                      const exists = prev.showcaseLogos.some(
+                        (l) => l.restaurantId === t.id,
+                      );
+                      if (exists) {
+                        return {
+                          ...prev,
+                          showcaseLogos: prev.showcaseLogos.filter(
+                            (l) => l.restaurantId !== t.id,
+                          ),
+                        };
+                      }
+                      const entry: LandingShowcaseLogo = {
+                        restaurantId: t.id,
+                        slug: t.slug,
+                        name: t.name,
+                        logoUrl: t.logo_url || "",
+                      };
+                      return {
+                        ...prev,
+                        showcaseLogos: [...prev.showcaseLogos, entry],
+                      };
+                    });
+                  }}
+                >
+                  {selected ? "Quitar" : "Añadir"}
+                </Button>
+              </li>
+            );
+          })}
+        </ul>
+        {landing.showcaseLogos.length > 0 ? (
+          <p className="text-xs text-muted">
+            En vitrina ({landing.showcaseLogos.length}):{" "}
+            {landing.showcaseLogos.map((l) => l.name).join(", ")}
+          </p>
+        ) : (
+          <p className="text-xs text-muted">Ningún logo en vitrina.</p>
+        )}
       </CmsFold>
 
       {error ? <p className="text-sm text-red-600">{error}</p> : null}

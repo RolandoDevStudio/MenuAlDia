@@ -99,6 +99,13 @@ export const DEFAULT_COMPARISON_ROWS: ComparisonRowContent[] = [
   },
 ];
 
+export type LandingShowcaseLogo = {
+  restaurantId: string;
+  slug: string;
+  name: string;
+  logoUrl: string;
+};
+
 export type LandingContent = {
   heroTitle: string;
   heroSubtitle: string;
@@ -110,6 +117,8 @@ export type LandingContent = {
   faq: LandingFaqItem[];
   demoPosters: LandingDemoPosters;
   comparisonImages: LandingComparisonImages;
+  /** Curated business logos for landing marquee; empty = hide section */
+  showcaseLogos: LandingShowcaseLogo[];
 };
 
 export const DEFAULT_LANDING_FAQ: LandingFaqItem[] = [
@@ -153,6 +162,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
   faq: DEFAULT_LANDING_FAQ,
   demoPosters: {},
   comparisonImages: {},
+  showcaseLogos: [],
 };
 
 function asString(value: unknown): string {
@@ -219,12 +229,29 @@ function parseComparisonImages(raw: unknown): LandingComparisonImages {
   return out;
 }
 
+function parseShowcaseLogos(raw: unknown): LandingShowcaseLogo[] {
+  if (!Array.isArray(raw)) return [];
+  const out: LandingShowcaseLogo[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+    const restaurantId = asString(row.restaurantId);
+    const slug = asString(row.slug);
+    const name = asString(row.name);
+    const logoUrl = asString(row.logoUrl);
+    if (!restaurantId || !slug || !name || !logoUrl) continue;
+    out.push({ restaurantId, slug, name, logoUrl });
+  }
+  return out;
+}
+
 export function parseLandingContent(raw: unknown): LandingContent {
   if (!raw || typeof raw !== "object") {
     return {
       ...DEFAULT_LANDING_CONTENT,
       faq: [...DEFAULT_LANDING_FAQ],
       comparisonImages: {},
+      showcaseLogos: [],
     };
   }
   const row = raw as Record<string, unknown>;
@@ -246,6 +273,7 @@ export function parseLandingContent(raw: unknown): LandingContent {
     faq: parseFaq(row.faq),
     demoPosters: parseDemoPosters(row.demoPosters),
     comparisonImages: parseComparisonImages(row.comparisonImages),
+    showcaseLogos: parseShowcaseLogos(row.showcaseLogos),
   };
 }
 

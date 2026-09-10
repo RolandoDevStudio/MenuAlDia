@@ -11,6 +11,10 @@ import { Button } from "@/components/ui/button";
 import { Emoji } from "@/components/ui-emoji";
 import { UI_EMOJI } from "@/lib/ui-emoji";
 import { formatMexicoCityDate } from "@/lib/dates";
+import {
+  isInCommercialCourtesyPeriod,
+  resolveEffectiveMonthlyPrice,
+} from "@/lib/commercial-offer";
 
 function formatEndDate(iso: string | null | undefined): string {
   if (!iso) return "sin fecha";
@@ -24,15 +28,30 @@ function formatEndDate(iso: string | null | undefined): string {
 export function buildPaymentReminderMessage(
   restaurant: Restaurant,
   prices: PlanPricesMap = FALLBACK_PLAN_PRICES,
+  hasPayments = true,
 ): string {
   const plan = (restaurant.plan_type || "catalog") as PlanType;
   const planLabel = PLAN_LABELS[plan] ?? plan;
-  const price =
-    prices[plan]?.monthly ?? FALLBACK_PLAN_PRICES[plan]?.monthly ?? 0;
+  const price = resolveEffectiveMonthlyPrice(restaurant, prices, plan);
   const end = formatEndDate(restaurant.subscription_end_date);
+  const name = restaurant.owner_name ? ` ${restaurant.owner_name}` : "";
+  const label =
+    restaurant.commercial_offer_label?.trim() || "Menú al Día";
+
+  if (isInCommercialCourtesyPeriod(restaurant, hasPayments)) {
+    return [
+      `¡Hola${name}!`,
+      "",
+      `Recuerda que estás disfrutando de tu periodo gratis de Menú al Día (${label}).`,
+      "",
+      `Tu próximo ciclo inicia el *${end}* por *${formatMxn(price)}* MXN.`,
+      "",
+      "Cuando se acerque esa fecha te compartimos los datos SPEI. ¡Gracias!",
+    ].join("\n");
+  }
 
   return [
-    `Hola${restaurant.owner_name ? ` ${restaurant.owner_name}` : ""},`,
+    `Hola${name},`,
     "",
     `Te escribo de menualdia.app respecto a *${restaurant.name}*.`,
     "",
@@ -69,8 +88,24 @@ export function RemindPaymentButton({
     })();
   }, []);
 
-  function openReminder() {
-    const message = buildPaymentReminderMessage(restaurant, planPrices);
+  async function openReminder() {
+    let hasPayments = true;
+    try {
+      const res = await fetch(
+        `/api/super-admin/payments?restaurant_id=${restaurant.id}`,
+      );
+      if (res.ok) {
+        const json = (await res.json()) as { payments?: unknown[] };
+        hasPayments = (json.payments?.length ?? 0) > 0;
+      }
+    } catch {
+      hasPayments = true;
+    }
+    const message = buildPaymentReminderMessage(
+      restaurant,
+      planPrices,
+      hasPayments,
+    );
     const url = buildWaMeUrl(restaurant.phone_whatsapp || "", message);
     window.open(url, "_blank", "noopener,noreferrer");
   }
@@ -78,17 +113,18 @@ export function RemindPaymentButton({
   return (
     <Button
       type="button"
-      variant="outline"
+      variant="secondary"
       size={size}
-      onClick={openReminder}
-      className={compact ? "min-h-10 w-10 px-0" : undefined}
-      title="Recordar pago por WhatsApp"
-      aria-label="Recordar pago por WhatsApp"
+      className={compact ? "min-h-9 px-2" : undefined}
+      onClick={() => void openReminder()}
+      title="Enviar recordatorio por WhatsApp"
     >
-      {compact ? <Bell className="h-4 w-4" /> : (
+      {compact ? (
+        <Bell className="h-4 w-4" />
+      ) : (
         <>
           <Emoji char={UI_EMOJI.remind} />
-          Recordar Pago
+          Recordatorio
         </>
       )}
     </Button>

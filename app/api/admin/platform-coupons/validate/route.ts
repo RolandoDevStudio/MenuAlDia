@@ -3,6 +3,10 @@ import { createServiceClient } from "@/lib/supabase/admin";
 import { requireTenantSession } from "@/lib/admin-session";
 import { getPlanPrices } from "@/lib/plans";
 import {
+  hasActiveCommercialOffer,
+  resolveEffectiveMonthlyPrice,
+} from "@/lib/commercial-offer";
+import {
   clampDiscount,
   DEFAULT_SPEI_INFO,
   normalizeCouponCode,
@@ -34,9 +38,19 @@ export async function GET() {
     | "daily"
     | "pro";
   const prices = await getPlanPrices();
+  const listAmount = prices[plan]?.monthly ?? 0;
+  const effectiveAmount = resolveEffectiveMonthlyPrice(
+    session.restaurant,
+    prices,
+    plan,
+  );
+  const offerActive = hasActiveCommercialOffer(session.restaurant);
   return NextResponse.json({
     plan,
-    listAmount: prices[plan]?.monthly ?? 0,
+    listAmount,
+    effectiveAmount,
+    offerActive,
+    offerLabel: session.restaurant.commercial_offer_label ?? "",
     spei: await loadSpei(),
   });
 }
@@ -56,6 +70,11 @@ export async function POST(request: Request) {
     | "pro";
   const prices = await getPlanPrices();
   const listAmount = prices[plan]?.monthly ?? 0;
+  const baseAmount = resolveEffectiveMonthlyPrice(
+    session.restaurant,
+    prices,
+    plan,
+  );
 
   let admin;
   try {
@@ -96,7 +115,7 @@ export async function POST(request: Request) {
   const discount = clampDiscount({
     type: coupon.discount_type as CouponDiscountType,
     value: Number(coupon.discount_value),
-    base: listAmount,
+    base: baseAmount,
   });
 
   return NextResponse.json({
@@ -104,7 +123,9 @@ export async function POST(request: Request) {
     code,
     discount,
     listAmount,
-    payAmount: Math.max(0, listAmount - discount),
+    effectiveAmount: baseAmount,
+    offerActive: hasActiveCommercialOffer(session.restaurant),
+    payAmount: Math.max(0, baseAmount - discount),
     plan,
     label: coupon.label || code,
     spei: await loadSpei(),

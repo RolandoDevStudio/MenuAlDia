@@ -9,8 +9,10 @@ import { PlanGate } from "@/components/admin/plan-gate";
 import { AdminMorningBanner } from "@/components/admin/admin-morning-banner";
 import { AdminOpsKpis } from "@/components/admin/admin-ops-kpis";
 import { AdminQuickActions } from "@/components/admin/admin-quick-actions";
+import { FoundingPartnerCard } from "@/components/admin/founding-partner-card";
 import { Button } from "@/components/ui/button";
 import { can } from "@/lib/plans";
+import { getFoundingPartnerPrices } from "@/lib/commercial-offer";
 import { labelsFor } from "@/lib/business-labels";
 import { effectiveAcceptingOrders } from "@/lib/store-hours";
 import type { Dish } from "@/lib/types";
@@ -26,14 +28,22 @@ export default async function AdminDashboardPage() {
   const restaurantId = session.restaurant.id;
   const isOpen = effectiveAcceptingOrders(session.restaurant);
 
-  const [impact, ops] = await Promise.all([
+  const [impact, ops, foundingPrices] = await Promise.all([
     getAdminImpactStats(restaurantId, plan),
     getAdminOpsStats(
       restaurantId,
       plan,
       session.restaurant.subscription_end_date,
     ),
+    getFoundingPartnerPrices(),
   ]);
+
+  const offerCard = (
+    <FoundingPartnerCard
+      restaurant={session.restaurant}
+      foundingPrices={foundingPrices}
+    />
+  );
 
   const banner = (
     <AdminMorningBanner
@@ -52,6 +62,7 @@ export default async function AdminDashboardPage() {
     return (
       <div className="space-y-4">
         {banner}
+        {offerCard}
         <AdminOpsKpis stats={ops} businessType={businessType} />
         <AdminQuickActions plan={plan} dishLabel={labels.dish} />
         <ImpactCard stats={impact} plan={plan} />
@@ -152,8 +163,9 @@ export default async function AdminDashboardPage() {
   );
 
   return (
-    <div className="space-y-4">
-      {banner}
+      <div className="space-y-4">
+        {banner}
+        {offerCard}
 
       {!isOpen ? (
         <div className="rounded-xl border border-stone-300 bg-stone-100 px-3 py-3 text-sm text-stone-800">
