@@ -268,7 +268,11 @@ export function PublicMenuClient({
             setPillsH(h);
           }
         }
-        setMobilePinned(!entry.isIntersecting);
+        // Pin only after scrolling past the bar. `!isIntersecting` is also
+        // true when the sentinel is still below the fold (e.g. daily hero).
+        setMobilePinned(
+          !entry.isIntersecting && entry.boundingClientRect.top < 0,
+        );
       },
       { threshold: 0 },
     );
