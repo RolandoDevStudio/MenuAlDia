@@ -1,4 +1,4 @@
-import { formatMxn } from "./money.ts";
+import { formatMxn } from "./money";
 
 export type MenuSort = "menu" | "name" | "price_asc" | "price_desc";
 
