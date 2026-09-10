@@ -20,6 +20,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, ChevronDown, Pencil, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { can, type PlanType } from "@/lib/plans";
 import { label } from "@/lib/business-labels";
@@ -246,9 +247,10 @@ export function CategoriesManager({
       body: JSON.stringify({ slug: restaurantSlug }),
     });
     if (!res.ok) {
-      setMessage(
-        "Guardado. El menú público puede tardar en actualizarse.",
-      );
+      const msg =
+        "Guardado. El menú público puede tardar en actualizarse.";
+      setMessage(msg);
+      toast.message(msg);
     }
   }
 
@@ -304,11 +306,13 @@ export function CategoriesManager({
     setBusy(false);
     if (insErr) {
       setError(insErr.message);
+      toast.error(insErr.message);
       return;
     }
     setNewName("");
     setNewFixed(true);
     setMessage(`${categoryLabel} creada`);
+    toast.success(`${categoryLabel} creada`);
     await revalidate();
     await load();
   }
@@ -323,10 +327,12 @@ export function CategoriesManager({
       .eq("id", id);
     if (updErr) {
       setError(updErr.message);
+      toast.error(updErr.message);
       return;
     }
     setEditingId(null);
     setMessage("Nombre actualizado");
+    toast.success("Nombre actualizado");
     await revalidate();
     await load();
   }
@@ -341,9 +347,11 @@ export function CategoriesManager({
       .eq("id", cat.id);
     if (delErr) {
       setError(delErr.message);
+      toast.error(delErr.message);
       return;
     }
     setMessage("Categoría eliminada");
+    toast.success("Categoría eliminada");
     await revalidate();
     await load();
   }
@@ -361,8 +369,10 @@ export function CategoriesManager({
     if (updErr) {
       setRows(prev);
       setError(updErr.message);
+      toast.error(updErr.message);
       return;
     }
+    toast.success("Categoría actualizada");
     await revalidate();
   }
 
@@ -394,12 +404,14 @@ export function CategoriesManager({
     const failed = results.find((r) => r.error);
     if (failed?.error) {
       setRows(previous);
-      setError(
+      const msg =
         failed.error.message ||
-          "No se pudo guardar el orden. Intenta de nuevo.",
-      );
+        "No se pudo guardar el orden. Intenta de nuevo.";
+      setError(msg);
+      toast.error(msg);
       return;
     }
+    toast.success("Orden guardado");
     await revalidate();
   }
 

@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import type { BusinessType, Category, Dish, DishAddon, PlanType } from "@/lib/types";
 import { PLAN_LABELS, photoDishLimit } from "@/lib/plans";
@@ -17,6 +18,10 @@ import { Switch } from "@/components/ui/switch";
 import { DishPhotoUpload } from "@/components/admin/dish-photo-upload";
 import { ProductAiPhotoButton } from "@/components/admin/product-ai-photo-button";
 import { useAdminDockSave } from "@/components/admin/admin-dock";
+import {
+  unsavedLeaveMessage,
+  useUnsavedChangesGuard,
+} from "@/components/admin/use-unsaved-changes-guard";
 import {
   UNIT_TYPE_LABELS,
   defaultStepForUnit,
@@ -33,6 +38,26 @@ type Props = {
   currentPhotoCount?: number;
   businessType?: BusinessType | string | null;
 };
+
+type DishDraft = {
+  name: string;
+  description: string;
+  price: string;
+  categoryId: string;
+  isSide: boolean;
+  isActive: boolean;
+  isPopular: boolean;
+  allowPurchase: boolean;
+  allowBooking: boolean;
+  unitType: DishUnitType;
+  stepValue: string;
+  photoUrl: string | null;
+  photoIsAi: boolean;
+};
+
+function draftKey(d: DishDraft) {
+  return JSON.stringify(d);
+}
 
 export function DishForm({
   restaurantId,
@@ -91,6 +116,48 @@ export function DishForm({
   const canAddPhoto = hadPhoto || !atPhotoLimit;
   const photoLimitMessage = `Tu plan ${planLabel} permite hasta ${photoLimit} productos con foto (${currentPhotoCount}/${photoLimit}). Mejora de plan para subir más fotos.`;
 
+  const draft = useMemo(
+    (): DishDraft => ({
+      name,
+      description,
+      price,
+      categoryId,
+      isSide,
+      isActive,
+      isPopular,
+      allowPurchase,
+      allowBooking,
+      unitType,
+      stepValue,
+      photoUrl,
+      photoIsAi,
+    }),
+    [
+      allowBooking,
+      allowPurchase,
+      categoryId,
+      description,
+      isActive,
+      isPopular,
+      isSide,
+      name,
+      photoIsAi,
+      photoUrl,
+      price,
+      stepValue,
+      unitType,
+    ],
+  );
+
+  const [baselineKey, setBaselineKey] = useState(() => draftKey(draft));
+  const dirty = draftKey(draft) !== baselineKey;
+
+  useUnsavedChangesGuard(dirty, unsavedLeaveMessage([dishLabel]));
+
+  const markBaseline = useCallback(() => {
+    setBaselineKey(draftKey(draft));
+  }, [draft]);
+
   const loadAddons = useCallback(async () => {
     if (!dish) return;
     const supabase = createClient();
@@ -110,7 +177,7 @@ export function DishForm({
   useAdminDockSave({
     formId: "dish-form",
     label: "Guardar",
-    disabled: saving || deleting,
+    disabled: saving || deleting || !dirty,
     pending: saving,
   });
 
@@ -129,6 +196,7 @@ export function DishForm({
 
     if (addingNewPhoto && atPhotoLimit) {
       setFormError(photoLimitMessage);
+      toast.error(photoLimitMessage);
       return;
     }
 
@@ -157,6 +225,7 @@ export function DishForm({
 
     if (!allowPurchase && !allowBooking) {
       setFormError("Activa al menos Compra o Agendar.");
+      toast.error("Activa al menos Compra o Agendar.");
       return;
     }
 
@@ -196,10 +265,15 @@ export function DishForm({
     setSaving(false);
     if (dbError) {
       setFormError(dbError.message);
+      toast.error(dbError.message);
       return;
     }
 
     await revalidate();
+    markBaseline();
+    toast.success(
+      dish ? `${dishLabel} guardado` : `${dishLabel} creado`,
+    );
     if (dish) {
       router.refresh();
       setFormError(null);
@@ -225,9 +299,13 @@ export function DishForm({
       .eq("id", dish.id);
     if (error) {
       setFormError(error.message);
+      toast.error(error.message);
       setDeleting(false);
       return;
     }
+    // Clear dirty so navigation is not blocked
+    markBaseline();
+    toast.success(`${dishLabel} archivado`);
     await revalidate();
     router.push("/admin/catalog");
     router.refresh();
@@ -245,33 +323,47 @@ export function DishForm({
     });
     if (error) {
       setFormError(error.message);
+      toast.error(error.message);
       return;
     }
     setAddonName("");
     setAddonPrice("0");
+    toast.success("Adicional agregado");
     await loadAddons();
     await revalidate();
   }
 
   async function archiveAddon(id: string) {
     const supabase = createClient();
-    await supabase
+    const { error } = await supabase
       .from("dish_addons")
       .update({ archived_at: new Date().toISOString(), is_active: false })
       .eq("id", id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Adicional archivado");
     await loadAddons();
     await revalidate();
   }
 
   return (
     <form id="dish-form" onSubmit={onSubmit} className="space-y-4 pb-4">
-      <Link
-        href="/admin/catalog"
-        className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-brand"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Catálogo
-      </Link>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Link
+          href="/admin/catalog"
+          className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-brand"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Catálogo
+        </Link>
+        {dirty ? (
+          <p className="text-xs font-medium text-amber-800">
+            Hay cambios sin guardar
+          </p>
+        ) : null}
+      </div>
       <DishPhotoUpload
         restaurantId={restaurantId}
         value={photoUrl}

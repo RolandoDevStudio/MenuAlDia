@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import type { BusinessType, Category, Dish } from "@/lib/types";
 import { formatMxn } from "@/lib/money";
@@ -123,11 +124,13 @@ export function CatalogDishList({
     setBusy(false);
     if (error) {
       setMessage(error.message);
+      toast.error(error.message);
       return;
     }
     setDishes((prev) => prev.filter((d) => !selectedIds.includes(d.id)));
     setSelected({});
     setMessage("Archivados");
+    toast.success("Archivados");
     await revalidate();
     router.refresh();
   }
