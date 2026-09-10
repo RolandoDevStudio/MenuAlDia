@@ -100,6 +100,16 @@ function isRetryable(err: unknown): boolean {
   );
 }
 
+/** Image generation: only retry hard rate limits (avoid double Vertex billing on 503). */
+function isImageRateLimit(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  const status =
+    typeof err === "object" && err && "status" in err
+      ? Number((err as { status?: number }).status)
+      : NaN;
+  return status === 429 || /429|RESOURCE_EXHAUSTED|Too Many Requests/i.test(msg);
+}
+
 function isPermission(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
   const status =
@@ -109,7 +119,10 @@ function isPermission(err: unknown): boolean {
   return status === 403 || /PERMISSION_DENIED|403|Forbidden/i.test(msg);
 }
 
-async function withBackoff<T>(fn: () => Promise<T>): Promise<T> {
+async function withBackoff<T>(
+  fn: () => Promise<T>,
+  mode: "all" | "rateLimit" = "all",
+): Promise<T> {
   const waits = [2000, 4000, 8000];
   let last: unknown;
   for (let i = 0; i <= waits.length; i++) {
@@ -123,16 +136,20 @@ async function withBackoff<T>(fn: () => Promise<T>): Promise<T> {
           403,
         );
       }
-      if (!isRetryable(err) || i === waits.length) break;
+      const retryable =
+        mode === "rateLimit" ? isImageRateLimit(err) : isRetryable(err);
+      if (!retryable || i === waits.length) break;
       await sleep(waits[i]!);
     }
   }
   const msg = last instanceof Error ? last.message : "Error de Vertex AI";
+  const wasRetryable =
+    mode === "rateLimit" ? isImageRateLimit(last) : isRetryable(last);
   throw new GeminiUnavailableError(
-    isRetryable(last)
+    wasRetryable
       ? "Hay mucha demanda en IA. Espera un momento e intenta de nuevo."
       : msg,
-    isRetryable(last) ? 429 : 502,
+    wasRetryable ? 429 : 502,
   );
 }
 
@@ -260,22 +277,24 @@ export async function generateImagenBytes(opts: {
   const aspectRatio = normalizeImageAspectRatio(opts.aspectRatio);
   const model = IMAGEN_MODEL;
 
-  const res = await withBackoff(() =>
-    ai.models.generateContent({
-      model,
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: opts.prompt }],
+  const res = await withBackoff(
+    () =>
+      ai.models.generateContent({
+        model,
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: opts.prompt }],
+          },
+        ],
+        config: {
+          responseModalities: ["IMAGE"],
+          imageConfig: {
+            aspectRatio,
+          },
         },
-      ],
-      config: {
-        responseModalities: ["IMAGE"],
-        imageConfig: {
-          aspectRatio,
-        },
-      },
-    }),
+      }),
+    "rateLimit",
   );
 
   return extractImageFromResponse(res);
@@ -336,22 +355,24 @@ export async function generateFlyerMultimodal(opts: {
 
   parts.push({ text: opts.prompt });
 
-  const res = await withBackoff(() =>
-    ai.models.generateContent({
-      model,
-      contents: [
-        {
-          role: "user",
-          parts,
+  const res = await withBackoff(
+    () =>
+      ai.models.generateContent({
+        model,
+        contents: [
+          {
+            role: "user",
+            parts,
+          },
+        ],
+        config: {
+          responseModalities: ["IMAGE"],
+          imageConfig: {
+            aspectRatio,
+          },
         },
-      ],
-      config: {
-        responseModalities: ["IMAGE"],
-        imageConfig: {
-          aspectRatio,
-        },
-      },
-    }),
+      }),
+    "rateLimit",
   );
 
   return extractImageFromResponse(res);

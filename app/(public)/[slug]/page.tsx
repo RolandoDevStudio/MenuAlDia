@@ -24,7 +24,6 @@ import { MenuFaqs } from "@/components/public/menu-faqs";
 import { FlyerPromoBanner } from "@/components/public/flyer-promo-banner";
 import { MenuViewBeacon } from "@/components/public/menu-view-beacon";
 import { StoreClosedBanner } from "@/components/public/store-closed-banner";
-import { createPublicClient } from "@/lib/supabase/public";
 import {
   effectiveAcceptingOrders,
   publicClosedMessage,
@@ -165,15 +164,7 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
   const hasCombos = (data.combos?.length ?? 0) > 0;
   const menuEmpty = !hasDaily && !hasCatalog && !hasCombos;
 
-  const publicClient = createPublicClient();
-  const { data: faqRows } = await publicClient
-    .from("restaurant_faqs")
-    .select("id, question, answer")
-    .eq("restaurant_id", data.restaurant.id)
-    .eq("is_active", true)
-    .order("sort_order", { ascending: true })
-    .limit(8);
-  const faqs = faqRows ?? [];
+  const faqs = data.faqs ?? [];
 
   const bgStyle = publicMenuBackgroundStyle(theme);
 

@@ -8,7 +8,9 @@ import {
   countGlobalToday,
   getAiImagePackMeta,
   getDailyGlobalLimit,
+  PLATFORM_SETTINGS_TAG,
 } from "@/lib/ai-quota";
+import { revalidateTag } from "next/cache";
 
 export async function GET() {
   if (!(await isCurrentUserSuperAdmin())) {
@@ -124,6 +126,16 @@ export async function PATCH(request: Request) {
   }
   if (body.ai_image_pack_price_mxn !== undefined) {
     await upsert("ai_image_pack_price_mxn", body.ai_image_pack_price_mxn);
+  }
+
+  const settingsChanged =
+    body.ai_paused !== undefined ||
+    body.ai_daily_global_limit !== undefined ||
+    body.ai_scan_monthly_limit !== undefined ||
+    body.ai_image_pack_size !== undefined ||
+    body.ai_image_pack_price_mxn !== undefined;
+  if (settingsChanged) {
+    revalidateTag(PLATFORM_SETTINGS_TAG, "max");
   }
 
   if (body.tenantId) {

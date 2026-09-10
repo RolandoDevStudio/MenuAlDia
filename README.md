@@ -2,6 +2,8 @@
 
 SaaS multi-tenant para negocios locales: menú digital, menú del día, flyer WhatsApp y pedidos por `wa.me` sin comisiones. Planes: Catálogo ($199), Menú al Día ($349), Pro + CRM ($599).
 
+Mapa del código para agentes (dominios, flujos, tags de caché): [`docs/AGENT_MAP.md`](docs/AGENT_MAP.md).
+
 ## Stack
 
 - Next.js (App Router) + TypeScript + Tailwind CSS

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Mic, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { MenuIntent } from "@/lib/ai-schemas";
+import { looksLikePhrase } from "@/lib/menu-intent";
 
 type ChipKey =
   | "query"
@@ -90,6 +91,10 @@ export function PublicMenuSearch({ slug, onChange }: Props) {
     const q = raw.trim();
     if (q.length < 2) {
       apply({ ...empty });
+      return;
+    }
+    if (!looksLikePhrase(q)) {
+      apply({ ...empty, query: q });
       return;
     }
     setBusy(true);

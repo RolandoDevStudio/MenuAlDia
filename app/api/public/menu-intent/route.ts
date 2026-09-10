@@ -16,6 +16,8 @@ import {
   menuIntentGeminiSchema,
   menuIntentSchema,
 } from "@/lib/ai-schemas";
+import { looksLikePhrase } from "@/lib/menu-intent";
+import { takeRateLimitSlot } from "@/lib/memory-rate-limit";
 
 export const maxDuration = 30;
 
@@ -24,12 +26,24 @@ const bodySchema = z.object({
   slug: z.string().min(1).max(80),
 });
 
-const phraseHints =
-  /\b(somos|somos\s+\d|traemos|presupuesto|pesos|\$|sin\s|para\s+\d|quiero|queremos|algo\s)/i;
+function clientIp(request: Request): string {
+  const fwd = request.headers.get("x-forwarded-for");
+  if (fwd) return fwd.split(",")[0]!.trim() || "unknown";
+  return request.headers.get("x-real-ip")?.trim() || "unknown";
+}
 
-function looksLikePhrase(text: string): boolean {
-  const words = text.trim().split(/\s+/).filter(Boolean);
-  return words.length >= 4 || phraseHints.test(text);
+function localFallback(text: string, message?: string) {
+  return NextResponse.json({
+    intent: {
+      comensales: null,
+      presupuesto_min: null,
+      presupuesto_max: null,
+      etiquetas: [],
+      query: text,
+    },
+    source: message ? "fallback" : "local",
+    ...(message ? { message } : {}),
+  });
 }
 
 export async function POST(request: Request) {
@@ -42,16 +56,24 @@ export async function POST(request: Request) {
 
   const text = body.text.trim();
   if (!looksLikePhrase(text)) {
-    return NextResponse.json({
-      intent: {
-        comensales: null,
-        presupuesto_min: null,
-        presupuesto_max: null,
-        etiquetas: [],
-        query: text,
+    return localFallback(text);
+  }
+
+  if (!takeRateLimitSlot(`menu-intent:${clientIp(request)}`, 10, 60_000)) {
+    return NextResponse.json(
+      {
+        intent: {
+          comensales: null,
+          presupuesto_min: null,
+          presupuesto_max: null,
+          etiquetas: [],
+          query: text,
+        },
+        source: "fallback",
+        message: "Demasiadas búsquedas. Intenta en un momento.",
       },
-      source: "local",
-    });
+      { status: 429 },
+    );
   }
 
   const supabase = await createClient();
@@ -79,17 +101,7 @@ export async function POST(request: Request) {
     aiPaused: restaurant.ai_paused,
   });
   if (!gate.ok) {
-    return NextResponse.json({
-      intent: {
-        comensales: null,
-        presupuesto_min: null,
-        presupuesto_max: null,
-        etiquetas: [],
-        query: text,
-      },
-      source: "fallback",
-      message: gate.message,
-    });
+    return localFallback(text, gate.message);
   }
 
   try {
@@ -107,16 +119,7 @@ export async function POST(request: Request) {
         kind: "intent",
         ok: false,
       });
-      return NextResponse.json({
-        intent: {
-          comensales: null,
-          presupuesto_min: null,
-          presupuesto_max: null,
-          etiquetas: [],
-          query: text,
-        },
-        source: "fallback",
-      });
+      return localFallback(text);
     }
     await setIntentCache(hash, parsed.data);
     await recordUsage({
@@ -132,28 +135,9 @@ export async function POST(request: Request) {
       ok: false,
     });
     if (e instanceof GeminiUnavailableError) {
-      return NextResponse.json({
-        intent: {
-          comensales: null,
-          presupuesto_min: null,
-          presupuesto_max: null,
-          etiquetas: [],
-          query: text,
-        },
-        source: "fallback",
-        message: e.message,
-      });
+      return localFallback(text, e.message);
     }
     console.error("[menu-intent]", e);
-    return NextResponse.json({
-      intent: {
-        comensales: null,
-        presupuesto_min: null,
-        presupuesto_max: null,
-        etiquetas: [],
-        query: text,
-      },
-      source: "fallback",
-    });
+    return localFallback(text);
   }
 }

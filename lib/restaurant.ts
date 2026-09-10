@@ -54,12 +54,13 @@ function normalizeRestaurant(raw: Restaurant): Restaurant {
   return r;
 }
 
-export async function getSessionRestaurant(): Promise<{
+/** Deduped per-request (layout + requireTenantSession share one Auth/members fetch). */
+export const getSessionRestaurant = cache(async (): Promise<{
   restaurant: Restaurant;
   userId: string;
   role: MemberRole;
   supportMode?: boolean;
-} | null> {
+} | null> => {
   const supabase = await createClient();
   const {
     data: { user },
@@ -138,7 +139,7 @@ export async function getSessionRestaurant(): Promise<{
     userId: user.id,
     role: (row.role as MemberRole) || "owner",
   };
-}
+});
 
 export async function isCurrentUserSuperAdmin(): Promise<boolean> {
   const supabase = await createClient();
@@ -214,6 +215,7 @@ async function fetchPublicMenuBySlug(
     { data: dishes },
     { data: selection },
     { data: combosRows },
+    { data: faqRows },
   ] = await Promise.all([
     supabase
       .from("categories")
@@ -245,6 +247,13 @@ async function fetchPublicMenuBySlug(
       .eq("is_active", true)
       .is("archived_at", null)
       .order("sort_order"),
+    supabase
+      .from("restaurant_faqs")
+      .select("id, question, answer")
+      .eq("restaurant_id", r.id)
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true })
+      .limit(8),
   ]);
 
   const dishList = (dishes ?? []) as Dish[];
@@ -325,6 +334,7 @@ async function fetchPublicMenuBySlug(
     dailyMenu: selection,
     dailyDishes,
     dailySides,
+    faqs: (faqRows ?? []) as PublicRestaurantMenu["faqs"],
   };
 }
 

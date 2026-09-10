@@ -377,6 +377,12 @@ export interface CheckoutFormValues {
   cashAmount?: number | null;
 }
 
+export interface PublicFaqSnippet {
+  id: string;
+  question: string;
+  answer: string;
+}
+
 export interface PublicRestaurantMenu {
   restaurant: Restaurant;
   categories: Category[];
@@ -386,6 +392,7 @@ export interface PublicRestaurantMenu {
   dailyMenu: DailyMenuSelection | null;
   dailyDishes: Dish[];
   dailySides: Dish[];
+  faqs: PublicFaqSnippet[];
 }
 
 export interface AdminDailyMenuState {

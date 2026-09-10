@@ -8,10 +8,8 @@ import {
   generateImagenBytes,
 } from "@/lib/gemini";
 import {
-  assertAiAllowed,
   finalizeUsage,
   getDualImageQuotaStatus,
-  getImageQuotaStatus,
   reserveImageUsage,
 } from "@/lib/ai-quota";
 import { IMAGE_KIND_ASPECTS, type AiImagePreset } from "@/lib/ai-schemas";
@@ -209,13 +207,12 @@ export async function GET() {
     plan: session.restaurant.plan_type as PlanType,
     bonus: session.restaurant.ai_image_bonus ?? 0,
   });
-  const status = await getImageQuotaStatus({
-    restaurantId: session.restaurant.id,
-    plan: session.restaurant.plan_type as PlanType,
-    bonus: session.restaurant.ai_image_bonus ?? 0,
-  });
   return NextResponse.json({
-    ...status,
+    used: dual.marketing.used,
+    remaining: dual.marketing.remaining,
+    total: dual.marketing.total,
+    limit: dual.marketing.limit,
+    bonus: dual.bonus,
     product: dual.product,
     marketing: dual.marketing,
     paused: Boolean(session.restaurant.ai_paused),
@@ -235,14 +232,6 @@ export async function POST(request: Request) {
         message: "La IA está pausada para este negocio.",
       },
       { status: 403 },
-    );
-  }
-
-  const gate = await assertAiAllowed({ restaurantId });
-  if (!gate.ok) {
-    return NextResponse.json(
-      { error: gate.error, message: gate.message },
-      { status: gate.status },
     );
   }
 

@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { isCurrentUserSuperAdmin } from "@/lib/restaurant";
+import { LANDING_CONTENT_TAG } from "@/lib/landing-content";
 
 export async function GET() {
   const ok = await isCurrentUserSuperAdmin();
@@ -44,6 +46,9 @@ export async function PATCH(request: Request) {
     });
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    if (body.key === "landing_content") {
+      revalidateTag(LANDING_CONTENT_TAG, "max");
     }
     return NextResponse.json({ ok: true });
   } catch (e) {

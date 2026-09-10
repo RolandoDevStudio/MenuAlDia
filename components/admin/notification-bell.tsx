@@ -41,9 +41,31 @@ export function NotificationBell() {
   }, []);
 
   useEffect(() => {
-    void load();
-    const t = window.setInterval(() => void load(), 60_000);
-    return () => window.clearInterval(t);
+    let intervalId: number | undefined;
+
+    function start() {
+      if (intervalId != null) return;
+      void load();
+      intervalId = window.setInterval(() => void load(), 60_000);
+    }
+
+    function stop() {
+      if (intervalId == null) return;
+      window.clearInterval(intervalId);
+      intervalId = undefined;
+    }
+
+    function onVisibility() {
+      if (document.visibilityState === "visible") start();
+      else stop();
+    }
+
+    onVisibility();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [load]);
 
   useEffect(() => {

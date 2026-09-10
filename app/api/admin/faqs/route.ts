@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireTenantSession } from "@/lib/admin-session";
 import { MAX_ACTIVE_FAQS } from "@/lib/faq-templates";
+import { menuCacheTag } from "@/lib/restaurant";
+
+function revalidatePublicMenu(slug: string) {
+  revalidateTag(menuCacheTag(slug), "max");
+}
 
 export async function GET() {
   const session = await requireTenantSession();
@@ -71,6 +77,7 @@ export async function POST(request: Request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+  revalidatePublicMenu(session.restaurant.slug);
   return NextResponse.json({ faq: data });
 }
 
@@ -116,6 +123,7 @@ export async function PATCH(request: Request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+  revalidatePublicMenu(session.restaurant.slug);
   return NextResponse.json({ faq: data });
 }
 
@@ -134,5 +142,6 @@ export async function DELETE(request: Request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+  revalidatePublicMenu(session.restaurant.slug);
   return NextResponse.json({ ok: true });
 }

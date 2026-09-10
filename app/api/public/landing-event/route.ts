@@ -1,10 +1,17 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { createPublicClient } from "@/lib/supabase/public";
 import { isCurrentUserSuperAdmin } from "@/lib/restaurant";
 import { isLandingEventKey } from "@/lib/landing-events";
 
 function isBotUa(ua: string): boolean {
   return /bot|crawl|spider|slurp|preview|facebookexternalhit/i.test(ua);
+}
+
+/** Supabase SSR session cookies look like sb-<ref>-auth-token. */
+async function hasLikelyAuthSession(): Promise<boolean> {
+  const store = await cookies();
+  return store.getAll().some((c) => /auth-token/i.test(c.name));
 }
 
 export async function POST(request: Request) {
@@ -14,7 +21,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, skipped: "bot" });
     }
 
-    if (await isCurrentUserSuperAdmin()) {
+    if ((await hasLikelyAuthSession()) && (await isCurrentUserSuperAdmin())) {
       return NextResponse.json({ ok: true, skipped: "superadmin" });
     }
 

@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { createServiceClient } from "@/lib/supabase/admin";
 import {
   monthlyAiImagesLimit,
@@ -5,6 +6,8 @@ import {
   type PlanType,
 } from "@/lib/plans";
 import { createHash } from "crypto";
+
+export const PLATFORM_SETTINGS_TAG = "platform-settings";
 
 export type AiUsageKind =
   | "flyer"
@@ -30,7 +33,7 @@ function dayStartIso(d = new Date()): string {
   ).toISOString();
 }
 
-async function getSetting<T>(key: string, fallback: T): Promise<T> {
+async function fetchSettingValue(key: string): Promise<unknown | null> {
   try {
     const admin = createServiceClient();
     const { data } = await admin
@@ -38,11 +41,21 @@ async function getSetting<T>(key: string, fallback: T): Promise<T> {
       .select("value")
       .eq("key", key)
       .maybeSingle();
-    if (data?.value === undefined || data?.value === null) return fallback;
-    return data.value as T;
+    if (data?.value === undefined || data?.value === null) return null;
+    return data.value;
   } catch {
-    return fallback;
+    return null;
   }
+}
+
+async function getSetting<T>(key: string, fallback: T): Promise<T> {
+  const value = await unstable_cache(
+    () => fetchSettingValue(key),
+    ["platform-setting", key],
+    { tags: [PLATFORM_SETTINGS_TAG], revalidate: 45 },
+  )();
+  if (value === undefined || value === null) return fallback;
+  return value as T;
 }
 
 export async function isAiGloballyPaused(): Promise<boolean> {

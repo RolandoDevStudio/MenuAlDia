@@ -1,6 +1,9 @@
+import { unstable_cache } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/public";
 import type { CanonicalDemoId } from "@/lib/canonical-demos";
 import { SALES_WHATSAPP, normalizeWhatsAppPhone } from "@/lib/whatsapp";
+
+export const LANDING_CONTENT_TAG = "landing-content";
 
 export type LandingTestimonial = {
   quote: string;
@@ -246,7 +249,7 @@ export function parseLandingContent(raw: unknown): LandingContent {
   };
 }
 
-export async function getLandingContent(): Promise<LandingContent> {
+async function fetchLandingContent(): Promise<LandingContent> {
   try {
     const supabase = createPublicClient();
     const { data } = await supabase
@@ -262,4 +265,11 @@ export async function getLandingContent(): Promise<LandingContent> {
       comparisonImages: {},
     };
   }
+}
+
+export async function getLandingContent(): Promise<LandingContent> {
+  return unstable_cache(fetchLandingContent, ["landing-content"], {
+    tags: [LANDING_CONTENT_TAG],
+    revalidate: 300,
+  })();
 }
