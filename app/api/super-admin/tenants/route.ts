@@ -154,8 +154,14 @@ export async function PATCH(request: Request) {
     }
     updates.acquisition_source = src;
   }
-  if (typeof body.business_type === "string")
+  if (typeof body.business_type === "string") {
     updates.business_type = body.business_type;
+    const { normalizeBusinessType, supportsDineIn, supportsShippingQuote } =
+      await import("@/lib/business-labels");
+    const giro = normalizeBusinessType(body.business_type);
+    if (!supportsDineIn(giro)) updates.offers_dine_in = false;
+    if (!supportsShippingQuote(giro)) updates.shipping_on_quote = false;
+  }
   if (typeof body.city === "string") updates.city = body.city.trim();
   if (typeof body.state === "string") {
     const code =

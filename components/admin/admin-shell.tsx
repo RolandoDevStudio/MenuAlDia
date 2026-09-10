@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Toaster } from "sonner";
@@ -83,6 +83,25 @@ export function AdminShell({
   const pathname = usePathname();
   const router = useRouter();
   const [moreOpen, setMoreOpen] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
+
+  useLayoutEffect(() => {
+    const header = headerRef.current;
+    if (!header) return;
+    const apply = () => {
+      document.documentElement.style.setProperty(
+        "--admin-header-h",
+        `${Math.round(header.getBoundingClientRect().height)}px`,
+      );
+    };
+    apply();
+    const observer = new ResizeObserver(apply);
+    observer.observe(header);
+    return () => {
+      observer.disconnect();
+      document.documentElement.style.removeProperty("--admin-header-h");
+    };
+  }, []);
 
   const subOk = isSubscriptionActive({
     is_active: isActive,
@@ -216,6 +235,7 @@ export function AdminShell({
             size="sm"
             variant="secondary"
             className="min-h-9"
+            data-unsaved-guard="leave"
             onClick={() => void exitSupport()}
           >
             <Emoji char={UI_EMOJI.exit} />
@@ -223,7 +243,11 @@ export function AdminShell({
           </Button>
         </div>
       ) : null}
-      <header className="sticky top-0 z-20 border-b border-black/5 bg-background/95 px-4 py-3 backdrop-blur print:hidden">
+      <header
+        ref={headerRef}
+        data-admin-header
+        className="sticky top-0 z-20 border-b border-black/5 bg-background/95 px-4 py-3 backdrop-blur print:hidden"
+      >
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <BrandLogo variant="lockup" size="sm" href="/admin" />
@@ -258,6 +282,7 @@ export function AdminShell({
             <Button
               variant="ghost"
               size="icon"
+              data-unsaved-guard="leave"
               onClick={signOut}
               aria-label="Salir"
             >

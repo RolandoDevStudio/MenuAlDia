@@ -9,18 +9,37 @@ import {
   useSyncExternalStore,
 } from "react";
 import Link from "next/link";
-import { Bell, BellOff, Printer } from "lucide-react";
-import type { FulfillmentMode, Order, OrderLogPayload } from "@/lib/types";
+import { Bell, BellOff, ExternalLink, Printer } from "lucide-react";
+import type {
+  BusinessType,
+  FulfillmentMode,
+  Order,
+  OrderLogPayload,
+} from "@/lib/types";
 import { formatMxn } from "@/lib/money";
-import { formatMexicoCityDateTime, mexicoCityTodayYmd, ymdInMexicoCity } from "@/lib/dates";
 import {
-  FULFILLMENT_LABELS,
+  formatMexicoCityDateTime,
+  mexicoCityTodayYmd,
+  ymdInMexicoCity,
+} from "@/lib/dates";
+import {
+  fulfillmentLabelFor,
   ORDER_STATUS_LABELS,
   nextOrderStatus,
   parseFulfillment,
   parseOrderStatus,
 } from "@/lib/fulfillment";
+import {
+  shippingCostLabel,
+  supportsDineIn,
+} from "@/lib/business-labels";
+import {
+  buildShippingQuoteMessage,
+  buildWaMeUrl,
+} from "@/lib/whatsapp";
+import { publicOrderTicketUrl } from "@/lib/site-url";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -48,7 +67,6 @@ function customerName(p: OrderLogPayload) {
   return p.customer_name || p.customerName || "Cliente";
 }
 
-/** Two short beeps via WebAudio, so no audio asset has to ship. */
 function playChime(ctx: AudioContext) {
   const now = ctx.currentTime;
   [0, 0.18].forEach((offset, i) => {
@@ -69,14 +87,17 @@ export function OrdersBoard({
   initialOrders,
   channelCrm = false,
   loyaltyEnabled = false,
+  businessType = "restaurante",
 }: {
   initialOrders: Order[];
   channelCrm?: boolean;
   loyaltyEnabled?: boolean;
+  businessType?: BusinessType | string | null;
 }) {
   const [orders, setOrders] = useState(initialOrders);
   const [filter, setFilter] = useState<Filter>("today");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [shipDraft, setShipDraft] = useState<Record<string, string>>({});
   const chimeOn = useSyncExternalStore(
     chimeStore.subscribe,
     chimeStore.get,
@@ -89,8 +110,9 @@ export function OrdersBoard({
   );
 
   const today = mexicoCityTodayYmd();
+  const allowDineIn = supportsDineIn(businessType);
+  const shipLabel = shippingCostLabel(businessType);
 
-  // Browsers only allow audio after a gesture, so the toggle itself unlocks it.
   function toggleChime() {
     const next = !chimeOn;
     chimeStore.set(next);
@@ -130,7 +152,7 @@ export function OrdersBoard({
       setFreshIds((prev) => [...incoming.map((o) => o.id), ...prev]);
       if (chimeOn && audioRef.current) playChime(audioRef.current);
     } catch {
-      /* offline: retry on next tick */
+      /* offline */
     }
   }, [chimeOn]);
 
@@ -165,8 +187,21 @@ export function OrdersBoard({
       toast.error("No se pudo actualizar el estado");
       return;
     }
+    const json = (await res.json()) as {
+      total?: number;
+      payload?: OrderLogPayload;
+    };
     setOrders((prev) =>
-      prev.map((o) => (o.id === order.id ? { ...o, status: next } : o)),
+      prev.map((o) =>
+        o.id === order.id
+          ? {
+              ...o,
+              status: next,
+              total: json.total ?? o.total,
+              payload: json.payload ?? o.payload,
+            }
+          : o,
+      ),
     );
   }
 
@@ -185,6 +220,56 @@ export function OrdersBoard({
     setOrders((prev) =>
       prev.map((o) => (o.id === order.id ? { ...o, status: "cancelled" } : o)),
     );
+  }
+
+  async function saveShipping(order: Order) {
+    const raw = shipDraft[order.id]?.trim() ?? "";
+    if (raw === "") {
+      toast.message("Vacío = incluido al cerrar el pedido. Escribe un monto para cotizar ahora.");
+      return;
+    }
+    const shipping = Number(raw);
+    if (!Number.isFinite(shipping) || shipping < 0) {
+      toast.error("Monto inválido");
+      return;
+    }
+    setBusyId(order.id);
+    const res = await fetch("/api/admin/orders", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: order.id, shipping }),
+    });
+    setBusyId(null);
+    if (!res.ok) {
+      toast.error("No se pudo guardar el monto");
+      return;
+    }
+    const json = (await res.json()) as {
+      total?: number;
+      payload?: OrderLogPayload;
+    };
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === order.id
+          ? {
+              ...o,
+              total: json.total ?? o.total,
+              payload: json.payload ?? {
+                ...((o.payload as OrderLogPayload) ?? {}),
+                shipping,
+                shipping_pending: false,
+                total: Number(json.total ?? o.total),
+              },
+            }
+          : o,
+      ),
+    );
+    setShipDraft((prev) => {
+      const next = { ...prev };
+      delete next[order.id];
+      return next;
+    });
+    toast.success("Cotización guardada");
   }
 
   async function stampVisit(order: Order) {
@@ -209,9 +294,17 @@ export function OrdersBoard({
   const chips: { id: Filter; label: string }[] = [
     { id: "today", label: "Hoy" },
     { id: "all", label: "Todos" },
-    { id: "pickup", label: "Recoger" },
-    { id: "delivery", label: "Envío" },
-    { id: "dine_in", label: "Comedor" },
+    {
+      id: "pickup",
+      label: fulfillmentLabelFor("pickup", businessType),
+    },
+    {
+      id: "delivery",
+      label: fulfillmentLabelFor("delivery", businessType),
+    },
+    ...(allowDineIn
+      ? [{ id: "dine_in" as const, label: "Comedor" }]
+      : []),
   ];
 
   return (
@@ -260,10 +353,19 @@ export function OrdersBoard({
             const mode = parseFulfillment(payload.fulfillment);
             const status = parseOrderStatus(o.status) ?? "submitted";
             const phone = payload.phone;
+            const pending = payload.shipping_pending === true;
+            const ticketUrl = o.public_token
+              ? publicOrderTicketUrl(o.public_token)
+              : null;
             const canStamp =
               loyaltyEnabled &&
               (mode === "pickup" || mode === "dine_in") &&
               Boolean(o.customer_id);
+            const quoteReady =
+              !pending &&
+              mode === "delivery" &&
+              Number(payload.shipping ?? 0) > 0 &&
+              Boolean(phone);
             return (
               <li
                 key={o.id}
@@ -279,19 +381,30 @@ export function OrdersBoard({
                     ) : null}
                     {customerName(payload)}
                   </p>
-                  <p className="text-sm font-semibold text-brand">
-                    {formatMxn(Number(o.total))}
-                  </p>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-brand">
+                      {formatMxn(Number(o.total))}
+                    </p>
+                    {pending ? (
+                      <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
+                        Total parcial · {shipLabel} por cotizar
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
                 <p className="mt-1 text-xs text-muted">
                   {formatMexicoCityDateTime(o.created_at)}
-                  {mode ? ` · ${FULFILLMENT_LABELS[mode]}` : ""}
+                  {mode
+                    ? ` · ${fulfillmentLabelFor(mode, businessType)}`
+                    : ""}
                   {payload.table_label ? ` · Mesa ${payload.table_label}` : ""}
                 </p>
                 {payload.address ? (
-                  <p className="mt-1 text-xs text-muted">
-                    {payload.address}
-                    {payload.references ? ` · ${payload.references}` : ""}
+                  <p className="mt-1 text-xs text-muted">{payload.address}</p>
+                ) : null}
+                {payload.references ? (
+                  <p className="mt-1 rounded-lg bg-amber-50/80 px-2 py-1 text-xs font-medium text-amber-950">
+                    Referencias: {payload.references}
                   </p>
                 ) : null}
                 <p className="mt-1 line-clamp-2 text-xs text-muted">
@@ -299,6 +412,40 @@ export function OrdersBoard({
                     .map((i) => `${i.quantity}x ${i.name}`)
                     .join(", ")}
                 </p>
+                {pending ? (
+                  <div className="mt-2 flex flex-wrap items-end gap-2">
+                    <div className="min-w-[8rem] flex-1 space-y-1">
+                      <label
+                        className="text-[10px] font-semibold uppercase tracking-wide text-muted"
+                        htmlFor={`ship-${o.id}`}
+                      >
+                        {shipLabel} (MXN)
+                      </label>
+                      <Input
+                        id={`ship-${o.id}`}
+                        inputMode="decimal"
+                        className="min-h-9"
+                        placeholder="Vacío = incluido"
+                        value={shipDraft[o.id] ?? ""}
+                        onChange={(e) =>
+                          setShipDraft((prev) => ({
+                            ...prev,
+                            [o.id]: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="min-h-9"
+                      disabled={busyId === o.id}
+                      onClick={() => void saveShipping(o)}
+                    >
+                      Guardar cotización
+                    </Button>
+                  </div>
+                ) : null}
                 <div className="mt-2 flex flex-wrap gap-2">
                   <Button
                     type="button"
@@ -323,6 +470,42 @@ export function OrdersBoard({
                       Comanda
                     </a>
                   </Button>
+                  {ticketUrl ? (
+                    <Button asChild size="sm" variant="outline">
+                      <a
+                        href={ticketUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="El cliente ve folio, total y estado aquí; se actualiza solo."
+                      >
+                        <ExternalLink
+                          className="mr-1.5 h-3.5 w-3.5"
+                          aria-hidden
+                        />
+                        Comprobante
+                      </a>
+                    </Button>
+                  ) : null}
+                  {quoteReady && ticketUrl ? (
+                    <Button asChild size="sm" variant="outline">
+                      <a
+                        href={buildWaMeUrl(
+                          phone!.length === 10 ? `52${phone}` : phone!,
+                          buildShippingQuoteMessage({
+                            customerName: customerName(payload),
+                            shipping: Number(payload.shipping ?? 0),
+                            total: Number(o.total),
+                            ticketUrl,
+                            costLabel: shipLabel.toLowerCase(),
+                          }),
+                        )}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Enviar cotización por WhatsApp
+                      </a>
+                    </Button>
+                  ) : null}
                   {o.customer_id ? (
                     <Button asChild size="sm" variant="outline">
                       <Link href={`/admin/customers?id=${o.customer_id}`}>

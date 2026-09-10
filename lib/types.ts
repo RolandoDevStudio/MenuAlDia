@@ -34,6 +34,8 @@ export interface Restaurant {
   schedule_text: string;
   shipping_cost: number;
   free_shipping: boolean;
+  /** When true, delivery cost is quoted later (not added at checkout). */
+  shipping_on_quote?: boolean;
   created_at: string;
   plan_type: PlanType;
   is_active: boolean;
@@ -311,6 +313,8 @@ export interface OrderLogPayload {
   table_label?: string | null;
   coupon_code?: string | null;
   discount?: number;
+  /** True until admin sets shipping (quote flow) or status resolves to included. */
+  shipping_pending?: boolean;
   /** @deprecated Prefer fulfillment; address no longer persisted for privacy */
   address?: string;
   maps_url?: string | null;

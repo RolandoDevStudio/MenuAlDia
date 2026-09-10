@@ -71,6 +71,7 @@ export function FlyerCanvas({
   const showShip =
     options.showFreeShipping &&
     offersPublicDelivery(restaurant) &&
+    restaurant.shipping_on_quote !== true &&
     (restaurant.free_shipping || Number(restaurant.shipping_cost) === 0);
   const chalk = theme.id === "urbano_pizarra";
   const hasAiBg = Boolean(backgroundImageUrl);

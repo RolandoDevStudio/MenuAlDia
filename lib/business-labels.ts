@@ -122,3 +122,46 @@ export function shareCtaFor(
 ): string {
   return SHARE_CTA[normalizeBusinessType(businessType)];
 }
+
+/** Dine-in / comedor only makes sense for restaurants. */
+export function supportsDineIn(
+  businessType: BusinessType | string | null | undefined,
+): boolean {
+  return normalizeBusinessType(businessType) === "restaurante";
+}
+
+/**
+ * UI gate for “shipping on quote”. Column exists for all giros;
+ * this iteration only offers the switch for Servicios.
+ */
+export function supportsShippingQuote(
+  businessType: BusinessType | string | null | undefined,
+): boolean {
+  return normalizeBusinessType(businessType) === "servicios";
+}
+
+/** Mode label for delivery: Envío vs A domicilio. */
+export function deliveryModeLabel(
+  businessType: BusinessType | string | null | undefined,
+): string {
+  return normalizeBusinessType(businessType) === "servicios"
+    ? "A domicilio"
+    : "Envío";
+}
+
+/** Cost line: Envío vs Envío / traslado. */
+export function shippingCostLabel(
+  businessType: BusinessType | string | null | undefined,
+): string {
+  return normalizeBusinessType(businessType) === "servicios"
+    ? "Envío / traslado"
+    : "Envío";
+}
+
+export function pickupModeLabel(
+  businessType: BusinessType | string | null | undefined,
+): string {
+  return normalizeBusinessType(businessType) === "servicios"
+    ? "En el local"
+    : "Recoger en el local";
+}

@@ -30,6 +30,7 @@ export function buildOrderMessage(params: {
     | "bank_account_holder"
     | "bank_name"
     | "bank_clabe"
+    | "business_type"
   >;
   items: CartItem[];
   checkout: CheckoutFormValues;
@@ -38,6 +39,9 @@ export function buildOrderMessage(params: {
   discount?: number;
   couponCode?: string | null;
   subtotalBeforeDiscount?: number;
+  shippingPending?: boolean;
+  ticketUrl?: string | null;
+  folio?: number | null;
 }): string {
   const {
     restaurant,
@@ -48,7 +52,13 @@ export function buildOrderMessage(params: {
     discount = 0,
     couponCode,
     subtotalBeforeDiscount,
+    shippingPending = false,
+    ticketUrl,
+    folio,
   } = params;
+  const giro = restaurant.business_type;
+  const shipWord =
+    giro === "servicios" ? "Envío / traslado" : "Envío";
   const lines: string[] = [];
   lines.push(`🍽️ *Pedido — ${restaurant.name}*`);
   lines.push("");
@@ -98,16 +108,28 @@ export function buildOrderMessage(params: {
   lines.push("");
   const mode = checkout.fulfillment as FulfillmentMode;
   if (mode === "pickup") {
-    lines.push("🏪 Modalidad: Recoger en el local");
+    lines.push(
+      giro === "servicios"
+        ? "🏪 Modalidad: En el local"
+        : "🏪 Modalidad: Recoger en el local",
+    );
   } else if (mode === "dine_in") {
     lines.push("🍽️ Modalidad: Comedor");
     if (checkout.tableLabel?.trim()) {
       lines.push(`🪑 Mesa: ${checkout.tableLabel.trim()}`);
     }
+  } else if (shippingPending) {
+    lines.push(
+      `🚚 ${shipWord}: por cotizar (te lo confirmamos)`,
+    );
   } else if (shipping > 0) {
-    lines.push(`🚚 Envío: ${formatMxn(shipping)}`);
+    lines.push(`🚚 ${shipWord}: ${formatMxn(shipping)}`);
   } else {
-    lines.push("🚚 Envío: Gratis");
+    lines.push(
+      giro === "servicios"
+        ? `🚚 ${shipWord}: incluido`
+        : "🚚 Envío: Gratis",
+    );
   }
   if (discount > 0 && couponCode) {
     lines.push(
@@ -119,25 +141,35 @@ export function buildOrderMessage(params: {
     );
   }
   lines.push(`💰 *Total estimado: ${formatMxn(total)}*`);
+  if (folio != null) {
+    lines.push(`#️⃣ Folio: #${folio}`);
+  }
+  if (ticketUrl) {
+    lines.push(`🧾 Comprobante: ${ticketUrl}`);
+  }
   lines.push("");
   lines.push(`👤 ${checkout.customerName}`);
   if (checkout.phone) {
     lines.push(`📱 ${checkout.phone}`);
   }
   if (checkout.fulfillment === "pickup") {
-    lines.push("🏪 Recoger en el local");
+    lines.push(
+      giro === "servicios" ? "🏪 En el local" : "🏪 Recoger en el local",
+    );
   } else if (checkout.fulfillment === "dine_in") {
     lines.push("🍽️ Comedor");
     if (checkout.tableLabel?.trim()) {
       lines.push(`🪑 Mesa: ${checkout.tableLabel.trim()}`);
     }
   } else {
-    lines.push(`📍 ${checkout.address}`);
+    if (checkout.address?.trim()) {
+      lines.push(`📍 ${checkout.address.trim()}`);
+    }
     if (checkout.mapsUrl?.trim()) {
       lines.push(`🗺️ ${checkout.mapsUrl.trim()}`);
     }
-    if (checkout.references) {
-      lines.push(`📝 ${checkout.references}`);
+    if (checkout.references?.trim()) {
+      lines.push(`📝 Referencias: ${checkout.references.trim()}`);
     }
   }
   if (checkout.paymentMethod === "cash") {
@@ -149,6 +181,25 @@ export function buildOrderMessage(params: {
     lines.push(...transferWhatsAppLines(restaurant));
   }
   return lines.join("\n");
+}
+
+export function buildShippingQuoteMessage(params: {
+  customerName: string;
+  shipping: number;
+  total: number;
+  ticketUrl?: string | null;
+  costLabel?: string;
+}): string {
+  const label = params.costLabel ?? "envío/traslado";
+  const lines = [
+    `Hola ${params.customerName}, ya cotizamos tu ${label}.`,
+    `El costo es de ${formatMxn(params.shipping)}.`,
+    `Tu total final es de ${formatMxn(params.total)}.`,
+  ];
+  if (params.ticketUrl) {
+    lines.push(`Puedes confirmar tu pedido aquí: ${params.ticketUrl}`);
+  }
+  return lines.join(" ");
 }
 
 /** Marketing copy for sharing a combo link. */

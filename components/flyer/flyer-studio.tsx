@@ -160,6 +160,7 @@ export function FlyerStudio({
       subtitle: restaurant.slogan ?? "",
       showFreeShipping:
         offersPublicDelivery(restaurant) &&
+        restaurant.shipping_on_quote !== true &&
         (restaurant.free_shipping || Number(restaurant.shipping_cost) === 0),
       showWhatsapp: Boolean(phone),
       showInstagram: false,

@@ -26,12 +26,14 @@ export type PublicOrderSnapshot = {
   items: CartItem[];
   subtotal: number;
   shipping: number;
+  shippingPending: boolean;
   discount: number;
   couponCode: string | null;
   paymentMethod: PaymentMethod;
   restaurantName: string;
   restaurantLogo: string | null;
   restaurantSlug: string;
+  businessType: string;
   transfer: PublicTransferDetails | null;
 };
 
@@ -45,12 +47,14 @@ type RpcRow = {
   items?: unknown;
   subtotal?: number | string;
   shipping?: number | string;
+  shipping_pending?: boolean | string;
   discount?: number | string;
   coupon_code?: string | null;
   payment_method?: string;
   restaurant_name?: string;
   restaurant_logo?: string | null;
   restaurant_slug?: string;
+  business_type?: string;
   show_transfer_details?: boolean;
   bank_account_holder?: string;
   bank_name?: string;
@@ -85,12 +89,15 @@ function mapRpcRow(row: RpcRow): PublicOrderSnapshot | null {
     items: sanitizePublicCartItems(row.items),
     subtotal: asNumber(row.subtotal),
     shipping: asNumber(row.shipping),
+    shippingPending:
+      row.shipping_pending === true || row.shipping_pending === "true",
     discount: asNumber(row.discount),
     couponCode: row.coupon_code ? String(row.coupon_code) : null,
     paymentMethod,
     restaurantName: name,
     restaurantLogo: row.restaurant_logo ? String(row.restaurant_logo) : null,
     restaurantSlug: slug,
+    businessType: String(row.business_type ?? "restaurante"),
     transfer:
       paymentMethod === "transfer" ? publicTransferDetails(restaurant) : null,
   };

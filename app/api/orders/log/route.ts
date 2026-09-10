@@ -22,12 +22,12 @@ export async function POST(request: Request) {
     const supabase = createPublicClient();
     let { data: restaurant } = await supabase
       .from("restaurants")
-      .select("id, plan_type, orders_via_crm")
+      .select("id, plan_type, orders_via_crm, shipping_on_quote")
       .eq("id", body.restaurant_id)
       .maybeSingle();
 
     if (!restaurant) {
-      // Tolerate a schema without migration 034 applied yet.
+      // Tolerate a schema without newer migrations applied yet.
       ({ data: restaurant } = await supabase
         .from("restaurants")
         .select("id, plan_type")
@@ -40,8 +40,7 @@ export async function POST(request: Request) {
     }
 
     const plan = (restaurant as Restaurant).plan_type || "catalog";
-    const viaCrm =
-      can(plan, "crm") && (restaurant as Restaurant).orders_via_crm === true;
+    const hasCrm = can(plan, "crm");
     const raw = body.payload;
 
     const customerName = String(
@@ -74,6 +73,13 @@ export async function POST(request: Request) {
       .trim()
       .toUpperCase();
     const discountAmt = Number(raw.discount ?? 0);
+    const subtotal = Number(raw.subtotal ?? 0);
+
+    const shippingOnQuote =
+      (restaurant as Restaurant).shipping_on_quote === true &&
+      fulfillment === "delivery";
+    const shipping = shippingOnQuote ? 0 : Number(raw.shipping ?? 0);
+    const total = Math.max(0, subtotal - (discountAmt > 0 ? discountAmt : 0)) + shipping;
 
     const normalized: OrderLogPayload = {
       customer_name: customerName,
@@ -83,16 +89,16 @@ export async function POST(request: Request) {
       cash_amount: cashAmount,
       table_label: fulfillment === "dine_in" && tableLabel ? tableLabel : null,
       items: (raw.items as OrderLogPayload["items"]) ?? [],
-      subtotal: Number(raw.subtotal ?? 0),
-      shipping: Number(raw.shipping ?? 0),
-      total: Number(raw.total ?? 0),
+      subtotal,
+      shipping,
+      total,
       coupon_code: couponCode || null,
       discount: discountAmt > 0 ? discountAmt : 0,
+      shipping_pending: shippingOnQuote || undefined,
     };
 
-    // Delivery address is only stored when the business reads orders in the
-    // panel; on the WhatsApp channel it stays in the chat message only.
-    if (viaCrm && fulfillment === "delivery") {
+    // Persist location on CRM orders so the board can quote / fulfill.
+    if (hasCrm && fulfillment === "delivery") {
       const address = String(raw.address ?? "").trim();
       const mapsUrl = String(raw.maps_url ?? raw.mapsUrl ?? "").trim();
       const references = String(raw.references ?? "").trim();

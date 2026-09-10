@@ -32,6 +32,7 @@ function normalizeRestaurant(raw: Restaurant): Restaurant {
   r.offers_delivery = r.offers_delivery ?? true;
   r.offers_pickup = r.offers_pickup ?? true;
   r.offers_dine_in = r.offers_dine_in ?? false;
+  r.shipping_on_quote = r.shipping_on_quote ?? false;
   r.show_transfer_details = r.show_transfer_details ?? false;
   r.bank_account_holder = r.bank_account_holder ?? "";
   r.bank_name = r.bank_name ?? "";
@@ -172,6 +173,10 @@ async function fetchPublicMenuBySlug(
     {
       columns: "orders_via_wa, orders_via_crm",
       pattern: /orders_via_wa|orders_via_crm/,
+    },
+    {
+      columns: "shipping_on_quote",
+      pattern: /shipping_on_quote/,
     },
   ];
 

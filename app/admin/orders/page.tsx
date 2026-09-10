@@ -40,7 +40,9 @@ export default async function OrdersPage() {
           <p className="text-sm text-muted">
             {channelCrm
               ? "Los pedidos llegan aquí. Marca el estado conforme avanzan."
-              : "Intenciones enviadas a WhatsApp. Confirma en el chat y marca el estado aquí."}
+              : "Intenciones enviadas a WhatsApp. Confirma en el chat y marca el estado aquí."}{" "}
+            Cada pedido Pro tiene un comprobante con enlace: el cliente lo usa
+            para ver folio, total y estado.
           </p>
         </div>
         <a
@@ -55,6 +57,7 @@ export default async function OrdersPage() {
         initialOrders={orders}
         channelCrm={channelCrm}
         loyaltyEnabled={session.restaurant.loyalty_enabled === true}
+        businessType={session.restaurant.business_type}
       />
     </div>
   );

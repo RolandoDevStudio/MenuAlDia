@@ -30,11 +30,13 @@ export const checkoutSchema = z
   })
   .superRefine((data, ctx) => {
     if (data.fulfillment === "delivery") {
-      if (!data.address || data.address.trim().length < 5) {
+      const addressOk = (data.address?.trim().length ?? 0) >= 3;
+      const refsOk = (data.references?.trim().length ?? 0) >= 3;
+      if (!addressOk && !refsOk) {
         ctx.addIssue({
           code: "custom",
-          path: ["address"],
-          message: "Escribe la dirección de entrega",
+          path: ["references"],
+          message: "Escribe la dirección o al menos referencias para ubicar",
         });
       }
     }
@@ -69,59 +71,61 @@ export const dishFormSchema = z.object({
     .transform((v) => (!v ? null : v)),
 });
 
-export const restaurantSettingsSchema = z.object({
-  name: z.string().min(2, "Escribe el nombre del restaurante"),
-  slogan: z.string().min(1, "Escribe un eslogan"),
-  phone_whatsapp: z
-    .string()
-    .min(10, "WhatsApp con código de país (ej. 52155…)"),
-  address: z.string().optional().default(""),
-  maps_url: optionalHttpUrl,
-  city: z.string().optional().default(""),
-  state: z
-    .string()
-    .optional()
-    .default("")
-    .transform((v) => normalizeLegacyState(v) || v.trim().toUpperCase())
-    .refine((v) => !v || isMxStateCode(v), "Selecciona un estado válido"),
-  schedule_text: z.string().min(1, "Define el horario").optional().default("Horario por confirmar"),
-  shipping_cost: z.coerce.number().min(0, "El envío no puede ser negativo"),
-  free_shipping: z.boolean(),
-  offers_delivery: z.boolean().default(true),
-  offers_pickup: z.boolean().default(true),
-  offers_dine_in: z.boolean().default(false),
-  orders_via_wa: z.boolean().default(true),
-  orders_via_crm: z.boolean().default(false),
-  show_transfer_details: z.boolean().default(false),
-  bank_account_holder: z.string().optional().default(""),
-  bank_name: z.string().optional().default(""),
-  bank_clabe: z
-    .string()
-    .optional()
-    .default("")
-    .transform((v) => v.replace(/\D/g, "")),
-  logo_url: z
-    .string()
-    .url("URL de logo inválida")
-    .nullable()
-    .optional()
-    .or(z.literal("")),
-  instagram_url: optionalHttpUrl,
-  facebook_url: optionalHttpUrl,
-  tiktok_url: optionalHttpUrl,
-}).refine(
-  (d) => d.offers_pickup || d.offers_delivery || d.offers_dine_in,
-  {
-    message: "Activa al menos un modo: recoger, envío o comedor",
+export const restaurantSettingsSchema = z
+  .object({
+    name: z.string().min(2, "Escribe el nombre del restaurante"),
+    slogan: z.string().min(1, "Escribe un eslogan"),
+    phone_whatsapp: z
+      .string()
+      .min(10, "WhatsApp con código de país (ej. 52155…)"),
+    address: z.string().optional().default(""),
+    maps_url: optionalHttpUrl,
+    city: z.string().optional().default(""),
+    state: z
+      .string()
+      .optional()
+      .default("")
+      .transform((v) => normalizeLegacyState(v) || v.trim().toUpperCase())
+      .refine((v) => !v || isMxStateCode(v), "Selecciona un estado válido"),
+    schedule_text: z
+      .string()
+      .min(1, "Define el horario")
+      .optional()
+      .default("Horario por confirmar"),
+    shipping_cost: z.coerce.number().min(0, "El envío no puede ser negativo"),
+    free_shipping: z.boolean(),
+    shipping_on_quote: z.boolean().default(false),
+    offers_delivery: z.boolean().default(true),
+    offers_pickup: z.boolean().default(true),
+    offers_dine_in: z.boolean().default(false),
+    orders_via_wa: z.boolean().default(true),
+    orders_via_crm: z.boolean().default(false),
+    show_transfer_details: z.boolean().default(false),
+    bank_account_holder: z.string().optional().default(""),
+    bank_name: z.string().optional().default(""),
+    bank_clabe: z
+      .string()
+      .optional()
+      .default("")
+      .transform((v) => v.replace(/\D/g, "")),
+    logo_url: z
+      .string()
+      .url("URL de logo inválida")
+      .nullable()
+      .optional()
+      .or(z.literal("")),
+    instagram_url: optionalHttpUrl,
+    facebook_url: optionalHttpUrl,
+    tiktok_url: optionalHttpUrl,
+  })
+  .refine((d) => d.offers_pickup || d.offers_delivery || d.offers_dine_in, {
+    message: "Activa al menos un modo de pedido",
     path: ["offers_pickup"],
-  },
-).refine(
-  (d) => d.orders_via_wa || d.orders_via_crm,
-  {
+  })
+  .refine((d) => d.orders_via_wa || d.orders_via_crm, {
     message: "Elige al menos un canal para recibir pedidos",
     path: ["orders_via_wa"],
-  },
-);
+  });
 
 export type CheckoutInput = z.infer<typeof checkoutSchema>;
 export type DishFormInput = z.infer<typeof dishFormSchema>;

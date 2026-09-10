@@ -183,7 +183,15 @@ export function AnalyticsDashboard() {
             <Kpi
               label="Pedidos"
               value={String(data.kpis.orders)}
-              hint={`${data.kpis.ordersPickup} rec · ${data.kpis.ordersDelivery} env · ${data.kpis.ordersDineIn} comedor`}
+              hint={[
+                `${data.kpis.ordersPickup} rec`,
+                `${data.kpis.ordersDelivery} env`,
+                data.kpis.ordersDineIn > 0
+                  ? `${data.kpis.ordersDineIn} comedor`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
             />
             <div className="rounded-2xl border border-black/5 bg-surface p-4">
               <p className="text-xs text-muted">Conversión estimada</p>

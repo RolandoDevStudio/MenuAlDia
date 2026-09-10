@@ -1,9 +1,15 @@
 "use client";
 
 import { useEffect } from "react";
-import type { CartItem, FulfillmentMode, OrderStatus } from "@/lib/types";
+import type {
+  BusinessType,
+  CartItem,
+  FulfillmentMode,
+  OrderStatus,
+} from "@/lib/types";
 import { formatMxn } from "@/lib/money";
-import { FULFILLMENT_LABELS } from "@/lib/fulfillment";
+import { fulfillmentLabelFor } from "@/lib/fulfillment";
+import { shippingCostLabel } from "@/lib/business-labels";
 import { formatMexicoCityDateTime } from "@/lib/dates";
 import { formatClabeDisplay } from "@/lib/transfer-details";
 import type { PublicTransferDetails } from "@/lib/transfer-details";
@@ -22,6 +28,7 @@ export type OrderTicketData = {
   items: CartItem[];
   subtotal: number;
   shipping: number;
+  shippingPending?: boolean;
   discount: number;
   couponCode?: string | null;
   total: number;
@@ -29,6 +36,7 @@ export type OrderTicketData = {
   cashAmount?: number | null;
   status: OrderStatus | string;
   transfer?: PublicTransferDetails | null;
+  businessType?: BusinessType | string | null;
 };
 
 const PAID_STATUSES = new Set(["ready", "closed"]);
@@ -75,6 +83,11 @@ export function OrderTicket({
   const isPrint = variant === "print";
   const isPage = variant === "page";
   const status = statusLabel(data.status);
+  const modeLabel = fulfillmentLabelFor(
+    data.fulfillment,
+    data.businessType,
+  );
+  const shipLabel = shippingCostLabel(data.businessType);
 
   return (
     <div
@@ -87,6 +100,16 @@ export function OrderTicket({
             : "rounded-xl border border-dashed border-black/20 bg-background/60 p-4"
       }
     >
+      {isPage ? (
+        <p className="mb-3 text-center text-xs text-muted">
+          Este es tu comprobante. El estado y el total se actualizan solos.
+        </p>
+      ) : null}
+      {isPage && data.shippingPending ? (
+        <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-center text-xs font-medium text-amber-950">
+          {shipLabel} por cotizar — el negocio te confirmará el monto.
+        </p>
+      ) : null}
       <div className={isPrint ? "text-center" : "text-center"}>
         <p
           className={
@@ -120,7 +143,7 @@ export function OrderTicket({
       >
         {isPrint ? (
           <span>
-            {FULFILLMENT_LABELS[data.fulfillment]}
+            {modeLabel}
             {data.tableLabel ? ` · Mesa ${data.tableLabel}` : ""}
           </span>
         ) : (
@@ -138,7 +161,7 @@ export function OrderTicket({
 
       {!isPrint ? (
         <p className="text-center text-xs text-muted">
-          {FULFILLMENT_LABELS[data.fulfillment]}
+          {modeLabel}
           {data.tableLabel ? ` · Mesa ${data.tableLabel}` : ""}
         </p>
       ) : null}
@@ -189,10 +212,20 @@ export function OrderTicket({
             <span>−{formatMxn(data.discount)}</span>
           </div>
         ) : null}
-        {data.shipping > 0 ? (
+        {data.shippingPending ? (
           <div className="flex justify-between">
-            <span className={isPrint ? "" : "text-muted"}>Envío</span>
+            <span className={isPrint ? "" : "text-muted"}>{shipLabel}</span>
+            <span>Por cotizar</span>
+          </div>
+        ) : data.shipping > 0 ? (
+          <div className="flex justify-between">
+            <span className={isPrint ? "" : "text-muted"}>{shipLabel}</span>
             <span>{formatMxn(data.shipping)}</span>
+          </div>
+        ) : data.fulfillment === "delivery" ? (
+          <div className="flex justify-between">
+            <span className={isPrint ? "" : "text-muted"}>{shipLabel}</span>
+            <span>Incluido</span>
           </div>
         ) : null}
         <div

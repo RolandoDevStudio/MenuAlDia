@@ -90,6 +90,7 @@ export function RestaurantHeader({
         : "Sabor casero";
   const showShippingChip =
     showDelivery &&
+    restaurant.shipping_on_quote !== true &&
     (restaurant.free_shipping || Number(restaurant.shipping_cost) === 0);
 
   const chipClass =

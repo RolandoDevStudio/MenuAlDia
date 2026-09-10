@@ -82,6 +82,7 @@ type Props = {
     facebook_url?: string | null;
     free_shipping?: boolean;
     shipping_cost?: number;
+    shipping_on_quote?: boolean;
     offers_delivery?: boolean;
   };
   dishes: Dish[];
@@ -187,6 +188,7 @@ export function FlyerAiPanel({
   const hasQr = Boolean(menuPublicUrl);
   const hasShip =
     offersPublicDelivery(restaurant) &&
+    restaurant.shipping_on_quote !== true &&
     (Boolean(restaurant.free_shipping) ||
       Number(restaurant.shipping_cost) === 0);
 

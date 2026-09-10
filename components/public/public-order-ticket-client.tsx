@@ -105,12 +105,14 @@ export function PublicOrderTicketClient({
           items: order.items,
           subtotal: order.subtotal,
           shipping: order.shipping,
+          shippingPending: order.shippingPending,
           discount: order.discount,
           couponCode: order.couponCode,
           total: order.total,
           paymentMethod: order.paymentMethod,
           status: order.status,
           transfer: order.transfer,
+          businessType: order.businessType,
         }}
       />
 
@@ -129,7 +131,7 @@ export function PublicOrderTicketClient({
           ) : (
             <>
               <Share2 className="h-4 w-4" aria-hidden />
-              Compartir ticket
+              Compartir comprobante
             </>
           )}
         </Button>

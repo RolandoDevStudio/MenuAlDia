@@ -4,6 +4,15 @@ import type { ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+export function scrollSettingsSectionIntoView(id: string) {
+  const node = document.getElementById(id);
+  if (!node) return;
+  const header = document.querySelector<HTMLElement>("[data-admin-header]");
+  const headerH = header?.getBoundingClientRect().height ?? 80;
+  const y = window.scrollY + node.getBoundingClientRect().top - headerH - 8;
+  window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
+}
+
 type Props = {
   id: string;
   title: string;
@@ -14,6 +23,7 @@ type Props = {
   /** Keep children in the DOM when closed (needed for uncontrolled form fields). */
   keepMounted?: boolean;
   nested?: boolean;
+  unsaved?: boolean;
 };
 
 export function SettingsAccordionItem({
@@ -25,6 +35,7 @@ export function SettingsAccordionItem({
   children,
   keepMounted = true,
   nested = false,
+  unsaved = false,
 }: Props) {
   const panelId = `${id}-panel`;
   const body = (
@@ -48,7 +59,7 @@ export function SettingsAccordionItem({
     <section
       id={id}
       className={cn(
-        "scroll-mt-20 overflow-hidden rounded-xl border bg-surface",
+        "scroll-mt-[calc(var(--admin-header-h,5rem)+0.5rem)] overflow-hidden rounded-xl border bg-surface",
         open
           ? nested
             ? "border-brand/20 bg-background"
@@ -69,7 +80,16 @@ export function SettingsAccordionItem({
           onClick={onToggle}
         >
           <span className="min-w-0">
-            <span className="block text-sm font-semibold">{title}</span>
+            <span className="flex items-center gap-1.5">
+              <span className="block text-sm font-semibold">{title}</span>
+              {unsaved ? (
+                <span
+                  className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-600"
+                  title="Cambios sin guardar"
+                  aria-label="Cambios sin guardar"
+                />
+              ) : null}
+            </span>
             {hint ? (
               <span className="mt-0.5 block truncate text-xs font-normal text-muted">
                 {hint}

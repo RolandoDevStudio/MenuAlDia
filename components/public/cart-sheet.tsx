@@ -8,13 +8,16 @@ import { formatMxn } from "@/lib/money";
 import { checkoutSchema } from "@/lib/validations";
 import { buildOrderMessage, buildWaMeUrl } from "@/lib/whatsapp";
 import { isDemoOrEmbedded } from "@/lib/canonical-demos";
-import { normalizeBusinessType } from "@/lib/business-labels";
+import { normalizeBusinessType, shippingCostLabel } from "@/lib/business-labels";
 import {
+  checkoutShippingAmount,
   defaultFulfillment,
   fulfillmentChargesShipping,
-  FULFILLMENT_LABELS,
+  fulfillmentLabelFor,
   restaurantFulfillmentModes,
+  restaurantShippingOnQuote,
 } from "@/lib/fulfillment";
+import { publicOrderTicketUrl } from "@/lib/site-url";
 import {
   bookableCartItems,
   cartHasBookable,
@@ -48,7 +51,8 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   restaurant: Restaurant;
-  shipping: number;
+  /** @deprecated Checkout derives shipping from restaurant flags. */
+  shipping?: number;
 };
 
 function TransferCopyRow({
@@ -115,7 +119,7 @@ function lineTotal(item: {
   return (item.unitPrice + extras) * item.quantity;
 }
 
-export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
+export function CartSheet({ open, onOpenChange, restaurant }: Props) {
   const items = useCartStore((s) => s.items);
   const updateQty = useCartStore((s) => s.updateQty);
   const removeItem = useCartStore((s) => s.removeItem);
@@ -133,10 +137,12 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
   const panelOnly = viaCrm && !viaWa;
   const modes = useMemo(
     () => restaurantFulfillmentModes(restaurant),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- flags + giro
     [
       restaurant.offers_pickup,
       restaurant.offers_delivery,
       restaurant.offers_dine_in,
+      restaurant.business_type,
     ],
   );
   const [fulfillment, setFulfillment] = useState<FulfillmentMode>(() =>
@@ -237,11 +243,13 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
   }, [items.length, open, onOpenChange, step]);
 
   const subtotal = step === "checkout" ? purchaseSubtotal : allSubtotal;
-  const effectiveShipping = fulfillmentChargesShipping(fulfillment)
-    ? shipping
-    : 0;
+  const shippingPending =
+    restaurantShippingOnQuote(restaurant) &&
+    fulfillmentChargesShipping(fulfillment);
+  const effectiveShipping = checkoutShippingAmount(restaurant, fulfillment);
   const discount = couponCode ? couponDiscount : 0;
   const total = Math.max(0, subtotal - discount) + effectiveShipping;
+  const shipLabel = shippingCostLabel(restaurant.business_type);
 
   async function applyCoupon() {
     setCouponHint(null);
@@ -328,16 +336,7 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
       ...parsed.data,
       tableLabel: parsed.data.tableLabel || "",
     };
-    const message = buildOrderMessage({
-      restaurant,
-      items: orderItems,
-      checkout,
-      shipping: effectiveShipping,
-      total: discountedSub + effectiveShipping,
-      discount,
-      couponCode,
-      subtotalBeforeDiscount: purchaseSubtotal,
-    });
+    const orderTotal = discountedSub + effectiveShipping;
 
     try {
       localStorage.setItem(
@@ -352,7 +351,6 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
       /* ignore */
     }
 
-    const orderTotal = discountedSub + effectiveShipping;
     const logRequest = fetch("/api/orders/log", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -374,6 +372,7 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
           total: orderTotal,
           coupon_code: couponCode,
           discount,
+          shipping_pending: shippingPending || undefined,
         },
       }),
     });
@@ -406,6 +405,7 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
         items: orderItems,
         subtotal: purchaseSubtotal,
         shipping: effectiveShipping,
+        shippingPending,
         discount,
         couponCode,
         total: orderTotal,
@@ -413,6 +413,7 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
         cashAmount: parsed.data.cashAmount,
         status: "submitted",
         transfer: transferDetails,
+        businessType: restaurant.business_type,
       });
       clear();
       setStep("success");
@@ -421,9 +422,49 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
       return;
     }
 
-    // WhatsApp must be opened synchronously in the click handler or iOS blocks
-    // the navigation, so the log request stays in flight here.
-    void logRequest;
+    // Pro: wait briefly for publicToken so the WA message can include the ticket.
+    let folio: number | null = null;
+    let ticketUrl: string | null = null;
+    const isPro = can(restaurant.plan_type as PlanType, "crm");
+    if (isPro) {
+      try {
+        const raced = await Promise.race([
+          logRequest.then(async (res) => {
+            const json = (await res.json()) as {
+              folio?: number | null;
+              publicToken?: string | null;
+            };
+            return json;
+          }),
+          new Promise<null>((resolve) =>
+            window.setTimeout(() => resolve(null), 1500),
+          ),
+        ]);
+        if (raced?.publicToken) {
+          ticketUrl = publicOrderTicketUrl(raced.publicToken);
+        }
+        if (raced?.folio != null) folio = raced.folio;
+      } catch {
+        void logRequest;
+      }
+    } else {
+      void logRequest;
+    }
+
+    const message = buildOrderMessage({
+      restaurant,
+      items: orderItems,
+      checkout,
+      shipping: effectiveShipping,
+      total: orderTotal,
+      discount,
+      couponCode,
+      subtotalBeforeDiscount: purchaseSubtotal,
+      shippingPending,
+      ticketUrl,
+      folio,
+    });
+
     const url = buildWaMeUrl(restaurant.phone_whatsapp, message);
     void fetch("/api/public/wa-click", {
       method: "POST",
@@ -432,7 +473,6 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
       keepalive: true,
     }).catch(() => {});
     openWhatsApp(url);
-    // Clear after navigation attempt so a blocked popup doesn't wipe the order
     window.setTimeout(() => {
       clear();
       setSending(false);
@@ -554,17 +594,21 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
                     className="min-h-11"
                     onClick={() => setFulfillment(mode)}
                   >
-                    {FULFILLMENT_LABELS[mode]}
+                    {fulfillmentLabelFor(mode, restaurant.business_type)}
                   </Button>
                 ))}
               </div>
             ) : (
               <p className="rounded-lg bg-brand/5 px-3 py-2 text-sm text-muted">
                 {fulfillment === "pickup"
-                  ? "Este negocio solo ofrece recogida en el local."
+                  ? isServicios
+                    ? "Este negocio solo atiende en el local."
+                    : "Este negocio solo ofrece recogida en el local."
                   : fulfillment === "dine_in"
                     ? "Este negocio solo ofrece pedidos en comedor."
-                    : "Este negocio solo ofrece envío a domicilio."}
+                    : isServicios
+                      ? "Este negocio solo atiende a domicilio."
+                      : "Este negocio solo ofrece envío a domicilio."}
               </p>
             )}
 
@@ -602,13 +646,17 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
                 </div>
               ) : null}
               <div className="flex justify-between text-muted">
-                <span>Envío</span>
+                <span>{shipLabel}</span>
                 <span>
                   {!fulfillmentChargesShipping(fulfillment)
                     ? "—"
-                    : effectiveShipping === 0
-                      ? "Gratis"
-                      : formatMxn(effectiveShipping)}
+                    : shippingPending
+                      ? "Por cotizar"
+                      : effectiveShipping === 0
+                        ? isServicios
+                          ? "Incluido"
+                          : "Gratis"
+                        : formatMxn(effectiveShipping)}
                 </span>
               </div>
               <div className="flex justify-between text-base font-semibold">
@@ -647,7 +695,10 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
                 {ticket.folio != null
                   ? `Guarda tu folio #${ticket.folio}. `
                   : ""}
-                {restaurant.name} ya lo recibió y te contactará por WhatsApp.
+                Guarda o comparte tu comprobante: ahí verás el estado de tu
+                pedido y el total si hay cambios (por ejemplo el envío
+                cotizado). {restaurant.name} ya lo recibió
+                {panelOnly ? "" : " y te contactará por WhatsApp"}.
               </DialogDescription>
             </DialogHeader>
 
@@ -706,7 +757,7 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
                 </Button>
                 <Button variant="outline" className="min-h-11" asChild>
                   <Link href={`/t/${ticketToken}`} target="_blank">
-                    Ver ticket
+                    Ver comprobante
                   </Link>
                 </Button>
               </div>
@@ -735,13 +786,17 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
                 </div>
               ) : null}
               <div className="flex justify-between text-muted">
-                <span>Envío</span>
+                <span>{shipLabel}</span>
                 <span>
                   {!fulfillmentChargesShipping(fulfillment)
                     ? "—"
-                    : effectiveShipping === 0
-                      ? "Gratis"
-                      : formatMxn(effectiveShipping)}
+                    : shippingPending
+                      ? "Por cotizar"
+                      : effectiveShipping === 0
+                        ? isServicios
+                          ? "Incluido"
+                          : "Gratis"
+                        : formatMxn(effectiveShipping)}
                 </span>
               </div>
               <div className="flex justify-between font-semibold">
@@ -774,15 +829,18 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
               {fulfillment === "delivery" ? (
                 <>
                   <div className="space-y-1.5">
-                    <Label htmlFor="address">Dirección de entrega</Label>
+                    <Label htmlFor="address">
+                      Dirección de entrega (opcional)
+                    </Label>
                     <Textarea
                       id="address"
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
+                      placeholder="Calle, número, colonia…"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="mapsUrl">URL de Google Maps</Label>
+                    <Label htmlFor="mapsUrl">URL de Google Maps (opcional)</Label>
                     <Input
                       id="mapsUrl"
                       type="url"
@@ -796,12 +854,22 @@ export function CartSheet({ open, onOpenChange, restaurant, shipping }: Props) {
                     </p>
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="references">Referencias</Label>
+                    <Label htmlFor="references">
+                      Referencias
+                      {!address.trim() && !mapsUrl.trim()
+                        ? " (necesaria si no hay dirección)"
+                        : " (opcional)"}
+                    </Label>
                     <Input
                       id="references"
                       value={references}
                       onChange={(e) => setReferences(e.target.value)}
+                      placeholder="Ej. Casa blanca frente al parque"
                     />
+                    <p className="text-[11px] text-muted">
+                      Escribe dirección o al menos referencias para cotizar o
+                      entregar.
+                    </p>
                   </div>
                 </>
               ) : null}
