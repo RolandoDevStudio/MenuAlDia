@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Restaurant } from "@/lib/types";
@@ -9,8 +9,9 @@ import {
   restaurantSettingsSchema,
 } from "@/lib/validations";
 import { normalizeLegacyState } from "@/lib/mx-locations";
-import { parseThemeConfig, type ThemeConfig } from "@/lib/theme";
+import { PRESET_LABELS, parseThemeConfig, type ThemeConfig } from "@/lib/theme";
 import { ThemeEditor } from "@/components/admin/theme-editor";
+import { SettingsAccordionItem } from "@/components/admin/settings-accordion";
 import { DishPhotoUpload } from "@/components/admin/dish-photo-upload";
 import { MxLocationFields } from "@/components/location/mx-location-fields";
 import { Button } from "@/components/ui/button";
@@ -35,9 +36,50 @@ import {
 import {
   effectiveAcceptingOrders,
   formatScheduleText,
+  hasConfiguredHours,
   type ScheduleHours,
 } from "@/lib/store-hours";
 import { can, type PlanType } from "@/lib/plans";
+
+const SETTINGS_SECTIONS = [
+  "negocio",
+  "horario",
+  "pedidos",
+  "apariencia",
+  "faqs",
+  "ia",
+  "plan",
+] as const;
+
+type SettingsSectionId = (typeof SETTINGS_SECTIONS)[number];
+
+const SETTINGS_NAV: { id: SettingsSectionId; label: string }[] = [
+  { id: "negocio", label: "Negocio" },
+  { id: "horario", label: "Horario" },
+  { id: "pedidos", label: "Pedidos y entrega" },
+  { id: "apariencia", label: "Apariencia" },
+  { id: "faqs", label: "FAQs" },
+  { id: "ia", label: "Uso de IA" },
+  { id: "plan", label: "Plan y suscripción" },
+];
+
+const FIELD_SECTION: Record<string, SettingsSectionId> = {
+  name: "negocio",
+  slogan: "negocio",
+  phone_whatsapp: "negocio",
+  address: "negocio",
+  maps_url: "negocio",
+  city: "negocio",
+  state: "negocio",
+  instagram_url: "negocio",
+  facebook_url: "negocio",
+  tiktok_url: "negocio",
+  shipping_cost: "pedidos",
+};
+
+function isSettingsSection(value: string): value is SettingsSectionId {
+  return (SETTINGS_SECTIONS as readonly string[]).includes(value);
+}
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -65,6 +107,12 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [openSection, setOpenSection] = useState<SettingsSectionId | null>(
+    "negocio",
+  );
+  const prevOpenSection = useRef<SettingsSectionId | null | undefined>(
+    undefined,
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -110,6 +158,44 @@ export default function SettingsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    const applyHash = () => {
+      const hash = window.location.hash.replace(/^#/, "");
+      if (isSettingsSection(hash)) setOpenSection(hash);
+    };
+    applyHash();
+    window.addEventListener("hashchange", applyHash);
+    return () => window.removeEventListener("hashchange", applyHash);
+  }, []);
+
+  useEffect(() => {
+    const desired = openSection ? `#${openSection}` : "";
+    if (window.location.hash === desired) return;
+    const url = `${window.location.pathname}${window.location.search}${desired}`;
+    window.history.replaceState(null, "", url);
+  }, [openSection]);
+
+  useEffect(() => {
+    const prev = prevOpenSection.current;
+    prevOpenSection.current = openSection;
+    if (prev === undefined) return;
+    if (!openSection || openSection === prev) return;
+    const node = document.getElementById(openSection);
+    if (!node) return;
+    const frame = window.requestAnimationFrame(() => {
+      node.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [openSection]);
+
+  function selectSection(id: SettingsSectionId) {
+    setOpenSection(id);
+  }
+
+  function toggleSection(id: SettingsSectionId) {
+    setOpenSection((cur) => (cur === id ? null : id));
+  }
 
   useAdminDockSave(
     !loading && restaurant && theme
@@ -178,11 +264,15 @@ export default function SettingsPage() {
       setFieldErrors(errors);
       const firstKey = Object.keys(errors)[0];
       if (firstKey) {
-        document.getElementById(firstKey)?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-        document.getElementById(firstKey)?.focus();
+        const section = FIELD_SECTION[firstKey];
+        if (section) selectSection(section);
+        window.setTimeout(() => {
+          document.getElementById(firstKey)?.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+          document.getElementById(firstKey)?.focus();
+        }, 50);
       }
       setSaving(false);
       return;
@@ -234,6 +324,14 @@ export default function SettingsPage() {
     router.refresh();
   }
 
+  const orderHint = [
+    offersPickup ? "Recoger" : null,
+    offersDelivery ? "Envío" : null,
+    offersDineIn ? "Comedor" : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
     <div className="space-y-4">
       <div>
@@ -252,53 +350,74 @@ export default function SettingsPage() {
           </a>{" "}
           · Plan {PLAN_LABELS[restaurant.plan_type || "catalog"]}
         </p>
+        <p className="mt-1 text-xs text-muted">
+          Abre una sección a la vez. Los cambios de negocio, horario, pedidos y
+          apariencia se guardan juntos.
+        </p>
       </div>
 
       <div className="md:grid md:grid-cols-[11rem_minmax(0,1fr)] md:gap-6 lg:grid-cols-[13rem_minmax(0,1fr)]">
         <nav className="mb-2 hidden md:sticky md:top-16 md:block md:self-start">
           <ul className="space-y-1 text-sm">
-            {(
-              [
-                ["#negocio", "Negocio"],
-                ["#horario", "Horario"],
-                ["#apariencia", "Apariencia"],
-                ["#faqs", "FAQs"],
-                ["#plan", "Plan y suscripción"],
-              ] as const
-            ).map(([href, lab]) => (
-              <li key={href}>
+            {SETTINGS_NAV.map((item) => (
+              <li key={item.id}>
                 <a
-                  href={href}
-                  className="block rounded-lg px-2 py-2 text-muted hover:bg-black/[0.04] hover:text-foreground"
+                  href={`#${item.id}`}
+                  aria-current={openSection === item.id ? "true" : undefined}
+                  className={`block rounded-lg px-2 py-2 ${
+                    openSection === item.id
+                      ? "bg-brand/10 font-medium text-brand-dark"
+                      : "text-muted hover:bg-black/4 hover:text-foreground"
+                  }`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    selectSection(item.id);
+                  }}
                 >
-                  {lab}
+                  {item.label}
                 </a>
               </li>
             ))}
           </ul>
         </nav>
 
-        <div className="min-w-0 space-y-3">
-          <details open className="rounded-xl border border-black/5 bg-surface">
-            <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold marker:content-none [&::-webkit-details-marker]:hidden">
-              Negocio
-            </summary>
-            <div className="space-y-4 border-t border-black/5 px-4 pb-4 pt-3" id="negocio">
-              <DailyMenuVisibilitySwitch
-                restaurantId={restaurant.id}
-                publicSlug={restaurant.slug}
-                planType={restaurant.plan_type || "catalog"}
-                businessType={restaurant.business_type}
-              />
-              {normalizeBusinessType(restaurant.business_type) === "servicios" ? (
-                <div className="rounded-xl border border-black/5 bg-background/60 px-3 py-3 text-sm">
-                  <p className="font-semibold">Citas por WhatsApp</p>
-                  <p className="mt-1 text-xs text-muted">
-                    Las solicitudes de cita del menú público llegan a tu WhatsApp.
-                  </p>
-                </div>
-              ) : null}
-              <form id="settings-form" onSubmit={onSubmit} className="space-y-4">
+        <div className="min-w-0 space-y-2">
+          {error ? (
+            <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {error}
+            </p>
+          ) : null}
+          {message ? (
+            <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-accent">
+              {message}
+            </p>
+          ) : null}
+
+          <form id="settings-form" onSubmit={onSubmit} className="space-y-2">
+            <SettingsAccordionItem
+              id="negocio"
+              title="Negocio"
+              hint={restaurant.name}
+              open={openSection === "negocio"}
+              onToggle={() => toggleSection("negocio")}
+            >
+              <div className="space-y-4">
+                <DailyMenuVisibilitySwitch
+                  restaurantId={restaurant.id}
+                  publicSlug={restaurant.slug}
+                  planType={restaurant.plan_type || "catalog"}
+                  businessType={restaurant.business_type}
+                />
+                {normalizeBusinessType(restaurant.business_type) ===
+                "servicios" ? (
+                  <div className="rounded-xl border border-black/5 bg-background/60 px-3 py-3 text-sm">
+                    <p className="font-semibold">Citas por WhatsApp</p>
+                    <p className="mt-1 text-xs text-muted">
+                      Las solicitudes de cita del menú público llegan a tu
+                      WhatsApp.
+                    </p>
+                  </div>
+                ) : null}
                 <DishPhotoUpload
                   restaurantId={restaurant.id}
                   value={logoUrl}
@@ -312,11 +431,15 @@ export default function SettingsPage() {
                   [
                     ["name", "Nombre", restaurant.name],
                     ["slogan", "Eslogan", restaurant.slogan],
-                    ["phone_whatsapp", "WhatsApp (521…)", restaurant.phone_whatsapp],
+                    [
+                      "phone_whatsapp",
+                      "WhatsApp (521…)",
+                      restaurant.phone_whatsapp,
+                    ],
                   ] as const
-                ).map(([id, label, value]) => (
+                ).map(([id, fieldLabel, value]) => (
                   <div key={id} className="space-y-1.5">
-                    <Label htmlFor={id}>{label}</Label>
+                    <Label htmlFor={id}>{fieldLabel}</Label>
                     <Input
                       id={id}
                       name={id}
@@ -328,15 +451,6 @@ export default function SettingsPage() {
                     ) : null}
                   </div>
                 ))}
-
-                <StoreHoursEditor
-                  value={scheduleHours}
-                  onChange={setScheduleHours}
-                  scheduleAuto={scheduleAuto}
-                  onScheduleAutoChange={setScheduleAuto}
-                  closedMessage={closedMessage}
-                  onClosedMessageChange={setClosedMessage}
-                />
 
                 <MxLocationFields
                   state={stateCode}
@@ -376,9 +490,9 @@ export default function SettingsPage() {
                       ["facebook_url", "Facebook", restaurant.facebook_url],
                       ["tiktok_url", "TikTok", restaurant.tiktok_url],
                     ] as const
-                  ).map(([id, label, value]) => (
+                  ).map(([id, fieldLabel, value]) => (
                     <div key={id} className="space-y-1.5">
-                      <Label htmlFor={id}>{label}</Label>
+                      <Label htmlFor={id}>{fieldLabel}</Label>
                       <Input
                         id={id}
                         name={id}
@@ -390,6 +504,68 @@ export default function SettingsPage() {
                   ))}
                 </div>
 
+                <div className="space-y-2 rounded-xl border border-black/5 bg-background/60 p-4">
+                  <p className="text-sm font-semibold">Legal</p>
+                  {restaurant.terms_version_accepted &&
+                  restaurant.terms_accepted_at ? (
+                    <p className="text-sm text-muted">
+                      Términos: Aceptados v{restaurant.terms_version_accepted}.
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted">Términos: Pendiente.</p>
+                  )}
+                  <p className="text-sm">
+                    <a
+                      href="/terminos"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-semibold text-brand underline-offset-2 hover:underline"
+                    >
+                      Ver Términos
+                    </a>
+                    {" · "}
+                    <a
+                      href="/privacidad"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-semibold text-brand underline-offset-2 hover:underline"
+                    >
+                      Ver Privacidad
+                    </a>
+                  </p>
+                </div>
+              </div>
+            </SettingsAccordionItem>
+
+            <SettingsAccordionItem
+              id="horario"
+              title="Horario"
+              hint={
+                hasConfiguredHours(scheduleHours)
+                  ? formatScheduleText(scheduleHours)
+                  : "Sin horario configurado"
+              }
+              open={openSection === "horario"}
+              onToggle={() => toggleSection("horario")}
+            >
+              <StoreHoursEditor
+                value={scheduleHours}
+                onChange={setScheduleHours}
+                scheduleAuto={scheduleAuto}
+                onScheduleAutoChange={setScheduleAuto}
+                closedMessage={closedMessage}
+                onClosedMessageChange={setClosedMessage}
+              />
+            </SettingsAccordionItem>
+
+            <SettingsAccordionItem
+              id="pedidos"
+              title="Pedidos y entrega"
+              hint={orderHint || "Elige al menos un modo"}
+              open={openSection === "pedidos"}
+              onToggle={() => toggleSection("pedidos")}
+            >
+              <div className="space-y-4">
                 <div className="space-y-2 rounded-xl border border-black/5 bg-background/60 p-3">
                   <p className="text-sm font-semibold">Modos de pedido</p>
                   <p className="text-xs text-muted">
@@ -497,9 +673,7 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="space-y-2 rounded-xl border border-black/5 bg-background/60 p-3">
-                  <p className="text-sm font-semibold">
-                    Datos para transferir
-                  </p>
+                  <p className="text-sm font-semibold">Datos para transferir</p>
                   <p className="text-xs text-muted">
                     Si los activas, el cliente los ve al elegir transferencia y
                     van en el WhatsApp. No son los de tu suscripción a Menú al
@@ -555,49 +729,17 @@ export default function SettingsPage() {
                     </div>
                   ) : null}
                 </div>
+              </div>
+            </SettingsAccordionItem>
 
-                <div className="space-y-2 rounded-xl border border-black/5 bg-background/60 p-4">
-                  <h2 className="text-sm font-semibold">Legal</h2>
-                  {restaurant.terms_version_accepted &&
-                  restaurant.terms_accepted_at ? (
-                    <p className="text-sm text-muted">
-                      Términos: Aceptados v{restaurant.terms_version_accepted}.
-                    </p>
-                  ) : (
-                    <p className="text-sm text-muted">Términos: Pendiente.</p>
-                  )}
-                  <p className="text-sm">
-                    <a
-                      href="/terminos"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-semibold text-brand underline-offset-2 hover:underline"
-                    >
-                      Ver Términos
-                    </a>
-                    {" · "}
-                    <a
-                      href="/privacidad"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-semibold text-brand underline-offset-2 hover:underline"
-                    >
-                      Ver Privacidad
-                    </a>
-                  </p>
-                </div>
-
-                {error ? <p className="text-sm text-red-600">{error}</p> : null}
-                {message ? <p className="text-sm text-accent">{message}</p> : null}
-              </form>
-            </div>
-          </details>
-
-          <details className="rounded-xl border border-black/5 bg-surface" id="apariencia">
-            <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold marker:content-none [&::-webkit-details-marker]:hidden">
-              Apariencia
-            </summary>
-            <div className="border-t border-black/5 px-4 pb-4 pt-3">
+            <SettingsAccordionItem
+              id="apariencia"
+              title="Apariencia"
+              hint={PRESET_LABELS[theme.preset] ?? theme.preset}
+              open={openSection === "apariencia"}
+              onToggle={() => toggleSection("apariencia")}
+              keepMounted={false}
+            >
               <ThemeEditor
                 value={theme}
                 onChange={setTheme}
@@ -605,32 +747,40 @@ export default function SettingsPage() {
                 logoUrl={logoUrl}
                 businessType={restaurant.business_type}
               />
-            </div>
-          </details>
+            </SettingsAccordionItem>
+          </form>
 
-          <details className="rounded-xl border border-black/5 bg-surface" id="faqs">
-            <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold marker:content-none [&::-webkit-details-marker]:hidden">
-              Preguntas frecuentes
-            </summary>
-            <div className="border-t border-black/5 px-4 pb-4 pt-3">
-              <AdminFaqsPanel businessType={restaurant.business_type} />
-            </div>
-          </details>
+          <SettingsAccordionItem
+            id="faqs"
+            title="Preguntas frecuentes"
+            hint="Se muestran al final del menú"
+            open={openSection === "faqs"}
+            onToggle={() => toggleSection("faqs")}
+            keepMounted={false}
+          >
+            <AdminFaqsPanel businessType={restaurant.business_type} />
+          </SettingsAccordionItem>
 
-          <details className="rounded-xl border border-black/5 bg-surface" id="ia">
-            <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold marker:content-none [&::-webkit-details-marker]:hidden">
-              Uso de IA
-            </summary>
-            <div className="border-t border-black/5 px-4 pb-4 pt-3">
-              <AiUsagePanel />
-            </div>
-          </details>
+          <SettingsAccordionItem
+            id="ia"
+            title="Uso de IA"
+            hint="Cupos y packs extra"
+            open={openSection === "ia"}
+            onToggle={() => toggleSection("ia")}
+            keepMounted={false}
+          >
+            <AiUsagePanel />
+          </SettingsAccordionItem>
 
-          <details className="rounded-xl border border-black/5 bg-surface" id="plan">
-            <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold marker:content-none [&::-webkit-details-marker]:hidden">
-              Plan y suscripción
-            </summary>
-            <div className="space-y-4 border-t border-black/5 px-4 pb-4 pt-3">
+          <SettingsAccordionItem
+            id="plan"
+            title="Plan y suscripción"
+            hint={PLAN_LABELS[restaurant.plan_type || "catalog"]}
+            open={openSection === "plan"}
+            onToggle={() => toggleSection("plan")}
+            keepMounted={false}
+          >
+            <div className="space-y-4">
               <PlanRequestPanel
                 currentPlan={restaurant.plan_type || "catalog"}
                 subscriptionEndDate={restaurant.subscription_end_date}
@@ -642,7 +792,7 @@ export default function SettingsPage() {
                 planType={(restaurant.plan_type as PlanType) || "catalog"}
               />
             </div>
-          </details>
+          </SettingsAccordionItem>
         </div>
       </div>
     </div>

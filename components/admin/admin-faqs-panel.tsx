@@ -95,14 +95,11 @@ export function AdminFaqsPanel({
   const activeCount = faqs.filter((f) => f.is_active).length;
 
   return (
-    <div id="faqs" className="space-y-3 rounded-xl border border-black/5 bg-surface p-4">
-      <div>
-        <h2 className="text-sm font-semibold">Preguntas frecuentes</h2>
-        <p className="text-xs text-muted">
-          Se muestran al final de tu menú público. Máx. {MAX_ACTIVE_FAQS}{" "}
-          activas ({activeCount}/{MAX_ACTIVE_FAQS}).
-        </p>
-      </div>
+    <div className="space-y-3">
+      <p className="text-xs text-muted">
+        Se muestran al final de tu menú público. Máx. {MAX_ACTIVE_FAQS}{" "}
+        activas ({activeCount}/{MAX_ACTIVE_FAQS}).
+      </p>
 
       {templates.length > 0 ? (
         <div className="space-y-1">

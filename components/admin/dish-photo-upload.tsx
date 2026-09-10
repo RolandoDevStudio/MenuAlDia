@@ -25,6 +25,8 @@ type Props = {
   limitMessage?: string | null;
   /** Size hint + downloadable proportion guide */
   guide?: ImageGuideId;
+  chooseLabel?: string;
+  changeLabel?: string;
 };
 
 export function DishPhotoUpload({
@@ -37,6 +39,8 @@ export function DishPhotoUpload({
   canAddPhoto = true,
   limitMessage = null,
   guide,
+  chooseLabel = "Elegir foto",
+  changeLabel = "Cambiar foto",
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -129,8 +133,8 @@ export function DishPhotoUpload({
         {uploading
           ? "Comprimiendo y subiendo…"
           : hasPhoto
-            ? "Cambiar foto"
-            : "Elegir foto"}
+            ? changeLabel
+            : chooseLabel}
       </Button>
       {guide ? (
         <Button

@@ -412,7 +412,10 @@ export function AiImageGenerator({
 
   async function uploadPreview(): Promise<string | null> {
     if (!previewFile) return null;
-    const compressed = await compressImage(previewFile, "banner");
+    const compressed = await compressImage(
+      previewFile,
+      imageKind === "flyer" ? "og" : "banner",
+    );
     const supabase = createClient();
     const path = `${restaurantId}/ai/${imageKind}/${crypto.randomUUID()}.webp`;
     const { error } = await supabase.storage
