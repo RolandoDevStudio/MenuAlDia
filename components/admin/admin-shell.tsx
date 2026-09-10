@@ -168,25 +168,24 @@ export function AdminShell({
   // Cap at 4 primary + Más
   const primarySlots = primary.slice(0, 4);
 
+  const onPrimarySlot = primarySlots.some((slot) =>
+    slot.match ? slot.match(pathname) : pathname.startsWith(slot.href),
+  );
   const moreActive =
     moreOpen ||
-    [
-      "/admin/combos",
-      "/admin/orders",
-      "/admin/customers",
-      "/admin/difusion",
-      "/admin/flyer",
-      "/admin/history",
-      "/admin/promociones",
-      "/admin/analytics",
-      "/admin/settings",
-    ].some((h) => {
-      // Don't highlight Más if that route is already a primary slot
-      if (primarySlots.some((p) => p.href === h && pathname.startsWith(h))) {
-        return false;
-      }
-      return pathname.startsWith(h);
-    });
+    (!onPrimarySlot &&
+      [
+        "/admin/combos",
+        "/admin/orders",
+        "/admin/customers",
+        "/admin/difusion",
+        "/admin/flyer",
+        "/admin/flyers",
+        "/admin/history",
+        "/admin/promociones",
+        "/admin/analytics",
+        "/admin/settings",
+      ].some((href) => pathname === href || pathname.startsWith(`${href}/`)));
 
   async function signOut() {
     const supabase = createClient();
@@ -332,8 +331,9 @@ export function AdminShell({
               <Link
                 key={href}
                 href={href}
+                onClick={() => setMoreOpen(false)}
                 className={cn(
-                  "flex min-h-11 min-w-[3.5rem] flex-col items-center justify-center gap-0.5 rounded-lg px-1.5 py-1 text-[10px] font-medium",
+                  "flex min-h-11 min-w-14 flex-col items-center justify-center gap-0.5 rounded-lg px-1.5 py-1 text-[10px] font-medium",
                   active ? "text-brand" : "text-muted",
                 )}
               >
@@ -344,6 +344,7 @@ export function AdminShell({
           })}
           <MoreNavButton
             active={moreActive}
+            expanded={moreOpen}
             onClick={() => setMoreOpen((v) => !v)}
           />
         </div>
