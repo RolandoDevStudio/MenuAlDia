@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BarChart3,
+  Bot,
   History,
   ImageIcon,
   Images,
@@ -30,7 +31,7 @@ type MoreItem = {
   href: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  feature?: "daily_menu" | "flyer" | "combos" | "crm" | "analytics";
+  feature?: "daily_menu" | "flyer" | "combos" | "crm" | "analytics" | "whatsapp_bot";
   group: MoreGroup;
 };
 
@@ -133,6 +134,13 @@ export function AdminMoreMenu({
       href: "/admin/settings",
       label: "Ajustes",
       icon: Settings,
+      group: "system",
+    },
+    {
+      href: "/admin/settings/whatsapp",
+      label: "WhatsApp bot",
+      icon: Bot,
+      feature: "whatsapp_bot",
       group: "system",
     },
   ];

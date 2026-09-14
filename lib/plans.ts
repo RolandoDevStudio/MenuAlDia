@@ -23,7 +23,9 @@ export type PlanFeature =
   | "combos"
   | "crm"
   | "analytics"
-  | "csv_export";
+  | "csv_export"
+  /** WhatsApp Cloud API bot (PULL + chat orders). Pro only. */
+  | "whatsapp_bot";
 
 export const PLAN_PRICES_MXN: Record<PlanType, number> = {
   catalog: FALLBACK_PLAN_PRICES.catalog.monthly,
@@ -67,6 +69,7 @@ const FEATURES: Record<PlanType, readonly PlanFeature[]> = {
     "crm",
     "analytics",
     "csv_export",
+    "whatsapp_bot",
   ],
 };
 

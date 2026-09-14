@@ -204,6 +204,7 @@ export function AdminShell({
         "/admin/promociones",
         "/admin/analytics",
         "/admin/settings",
+        "/admin/settings/whatsapp",
       ].some((href) => pathname === href || pathname.startsWith(`${href}/`)));
 
   async function signOut() {

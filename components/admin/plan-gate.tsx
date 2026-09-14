@@ -17,7 +17,10 @@ export function PlanGate({
   if (can(plan, feature)) return <>{children}</>;
 
   const next =
-    feature === "crm" || feature === "analytics" || feature === "csv_export"
+    feature === "crm" ||
+    feature === "analytics" ||
+    feature === "csv_export" ||
+    feature === "whatsapp_bot"
       ? "Pro + CRM"
       : "Menú al Día";
 
