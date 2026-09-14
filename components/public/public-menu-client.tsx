@@ -96,8 +96,7 @@ export function PublicMenuClient({
   const [citaDishId, setCitaDishId] = useState<string | null>(null);
   const [citaComboSlug, setCitaComboSlug] = useState<string | null>(null);
   const [pillsH, setPillsH] = useState(60);
-  const [pinOnMobile, setPinOnMobile] = useState(false);
-  const [mobilePinned, setMobilePinned] = useState(false);
+  const [barPinned, setBarPinned] = useState(false);
   const [searchFilters, setSearchFilters] =
     useState<MenuSearchFilters>(emptyMenuFilters);
 
@@ -108,6 +107,7 @@ export function PublicMenuClient({
   const spyLockedUntil = useRef(0);
   const pillsHRef = useRef(60);
   const scrollingRef = useRef(false);
+  const centeredCatRef = useRef<string | null>(null);
 
   const isServicios =
     normalizeBusinessType(restaurant.business_type) === "servicios";
@@ -244,41 +244,41 @@ export function PublicMenuClient({
   }
 
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 767px)");
-    const sync = () => setPinOnMobile(mq.matches);
-    sync();
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
-  }, []);
-
-  useEffect(() => {
-    if (!pinOnMobile) {
-      setMobilePinned(false);
-      return;
-    }
     const sentinel = pillsSentinelRef.current;
     if (!sentinel) return;
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        const el = pillsRef.current;
-        if (el) {
-          const h = el.offsetHeight;
-          if (Math.abs(h - pillsHRef.current) >= 1) {
-            pillsHRef.current = h;
-            setPillsH(h);
-          }
+
+    const updatePin = () => {
+      const el = pillsRef.current;
+      if (el) {
+        const h = el.offsetHeight;
+        if (Math.abs(h - pillsHRef.current) >= 1) {
+          pillsHRef.current = h;
+          setPillsH(h);
         }
-        // Pin only after scrolling past the bar. `!isIntersecting` is also
-        // true when the sentinel is still below the fold (e.g. daily hero).
-        setMobilePinned(
-          !entry.isIntersecting && entry.boundingClientRect.top < 0,
-        );
-      },
-      { threshold: 0 },
-    );
+      }
+      // Pin only after scrolling past the bar. A sentinel still below the
+      // fold (daily hero) must not pin — `top < 0` is the actual "past".
+      const next = sentinel.getBoundingClientRect().top < 0;
+      setBarPinned((prev) => (prev === next ? prev : next));
+    };
+
+    updatePin();
+    const scrollOpts: AddEventListenerOptions = { passive: true };
+    window.addEventListener("scroll", updatePin, scrollOpts);
+    document.addEventListener("scroll", updatePin, scrollOpts);
+    window.addEventListener("resize", updatePin);
+    const vv = window.visualViewport;
+    vv?.addEventListener("resize", updatePin);
+    const io = new IntersectionObserver(() => updatePin(), { threshold: 0 });
     io.observe(sentinel);
-    return () => io.disconnect();
-  }, [pinOnMobile]);
+    return () => {
+      window.removeEventListener("scroll", updatePin);
+      document.removeEventListener("scroll", updatePin);
+      window.removeEventListener("resize", updatePin);
+      vv?.removeEventListener("resize", updatePin);
+      io.disconnect();
+    };
+  }, []);
 
   useEffect(() => {
     const el = pillsRef.current;
@@ -324,6 +324,10 @@ export function PublicMenuClient({
       }
       if (current) {
         setActiveCat((prev) => (prev === current ? prev : current));
+        if (centeredCatRef.current !== current) {
+          centeredCatRef.current = current;
+          centerPill(current, "auto");
+        }
       }
     };
 
@@ -338,8 +342,10 @@ export function PublicMenuClient({
 
     update();
     window.addEventListener("scroll", onScroll, { passive: true });
+    document.addEventListener("scroll", onScroll, { passive: true });
     return () => {
       window.removeEventListener("scroll", onScroll);
+      document.removeEventListener("scroll", onScroll);
       window.clearTimeout(endTimer);
       if (raf) cancelAnimationFrame(raf);
     };
@@ -348,6 +354,7 @@ export function PublicMenuClient({
   function jumpToCategory(id: string) {
     setActiveCat(id);
     spyLockedUntil.current = Date.now() + 700;
+    centeredCatRef.current = id;
     centerPill(id, "smooth");
     const el = document.getElementById(`cat-${id}`);
     el?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -495,18 +502,14 @@ export function PublicMenuClient({
         aria-hidden
         className="pointer-events-none h-px w-full -mb-px"
       />
-      {pinOnMobile && mobilePinned ? (
+      {barPinned ? (
         <div style={{ height: pillsH }} aria-hidden />
       ) : null}
       <div
         ref={pillsRef}
         className={cn(
           "z-30 w-full bg-background",
-          pinOnMobile
-            ? mobilePinned
-              ? "fixed inset-x-0 top-0"
-              : "relative"
-            : "sticky top-0",
+          barPinned ? "fixed inset-x-0 top-0" : "relative",
         )}
         style={{ overflowAnchor: "none" }}
       >

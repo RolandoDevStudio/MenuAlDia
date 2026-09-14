@@ -48,7 +48,7 @@ export function CatalogScanReview({
   return (
     <div className="max-h-[32rem] space-y-3 overflow-y-auto">
       {draft.map((cat, ci) => (
-        <div key={`${cat.nombre}-${ci}`} className="space-y-2">
+        <div key={`cat-${ci}`} className="space-y-2">
           <Input
             value={cat.nombre}
             onChange={(e) => {
@@ -64,7 +64,7 @@ export function CatalogScanReview({
             const hasRaw = Boolean(p.raw_description?.trim());
             return (
               <div
-                key={`${p.nombre}-${pi}`}
+                key={`prod-${ci}-${pi}`}
                 className="space-y-2 rounded-xl border border-black/5 p-3"
               >
                 <div className="grid gap-2 sm:grid-cols-[1fr_5.5rem_auto]">
