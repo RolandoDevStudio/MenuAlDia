@@ -239,6 +239,45 @@ export default function TerminosPage() {
             alergias o transacciones comerciales entre el Usuario y sus
             consumidores.
           </p>
+          <p>
+            Menú al Día es una <strong>plataforma tecnológica intermediaria</strong>{" "}
+            (en la línea de marketplaces de software): facilita menú digital,
+            pedidos y automatizaciones (incluido el asistente de WhatsApp Cloud
+            API cuando el Usuario lo activa).{" "}
+            <strong>No es restaurante, repartidor ni procesador de pagos</strong>{" "}
+            del negocio. La relación de consumo principal es entre el cliente
+            final y el Usuario. WhatsApp muestra la marca y el número del
+            negocio (WABA propio del Usuario).
+          </p>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="text-lg font-semibold text-brand-dark">
+            8A. Asistente WhatsApp Cloud API (Plan Pro y Add-On)
+          </h2>
+          <ul className="list-disc space-y-2 pl-5">
+            <li>
+              El asistente permanece <strong>apagado por defecto</strong>. El
+              Usuario debe leer la guía y confirmarla antes de activarlo o
+              conectar su número vía Meta.
+            </li>
+            <li>
+              Meta / WhatsApp puede cobrar conversaciones (en particular
+              Marketing) en la tarjeta o medio de pago del negocio. Menú al Día
+              muestra solo <strong>estimados de uso</strong>; no emite la
+              factura de Meta.
+            </li>
+            <li>
+              El Usuario es responsable de obtener opt-in para difusión, de
+              respetar BAJA/opt-out, y de revisar/aprobar comprobantes SPEI. La
+              etiqueta Vision (Add-On) es asistencia;{" "}
+              <strong>no aprueba pagos automáticamente</strong>.
+            </li>
+            <li>
+              Menú al Día no garantiza calidad de comida, tiempos de entrega,
+              fondos SPEI ni el resultado del servicio del negocio.
+            </li>
+          </ul>
         </section>
 
         <section className="space-y-3">
@@ -357,9 +396,18 @@ export default function TerminosPage() {
             del servicio al Administrador.
           </p>
           <p>
+            Cuando el Usuario activa el asistente de WhatsApp Cloud API, Menú al
+            Día procesa de forma técnica (como Encargado) identificadores de
+            mensaje, estado de sesión efímero, opt-in/opt-out y, en su caso,
+            comprobantes de pago cargados al pedido, con retención limitada
+            (TTL). El negocio sigue siendo Responsable frente a sus clientes en
+            ese canal; la conversación ocurre en el WABA del Usuario.
+          </p>
+          <p>
             El Usuario se compromete a obtener, cuando corresponda, el
             consentimiento o autorización verbal/escrita de sus clientes finales
-            antes de registrar sus datos o fotografías en la Plataforma.
+            antes de registrar sus datos o fotografías en la Plataforma, y antes
+            de enviar mensajes promocionales por WhatsApp.
           </p>
         </section>
 

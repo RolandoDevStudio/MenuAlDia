@@ -76,6 +76,61 @@ export async function sendWaImageByLink(opts: {
   });
 }
 
+/** Max 3 quick-reply buttons (Meta limit). */
+export async function sendWaButtons(opts: {
+  phoneNumberId: string;
+  accessToken: string;
+  toE164: string;
+  body: string;
+  buttons: { id: string; title: string }[];
+}): Promise<WaSendResult> {
+  const buttons = opts.buttons.slice(0, 3).map((b) => ({
+    type: "reply",
+    reply: { id: b.id.slice(0, 256), title: b.title.slice(0, 20) },
+  }));
+  return graphPost(opts.phoneNumberId, opts.accessToken, {
+    to: opts.toE164.replace(/\D/g, ""),
+    type: "interactive",
+    interactive: {
+      type: "button",
+      body: { text: opts.body.slice(0, 1024) },
+      action: { buttons },
+    },
+  });
+}
+
+/** Marketing / utility template (requires Meta APPROVED template). */
+export async function sendWaTemplate(opts: {
+  phoneNumberId: string;
+  accessToken: string;
+  toE164: string;
+  templateName: string;
+  languageCode?: string;
+  bodyParameters?: string[];
+}): Promise<WaSendResult> {
+  const components =
+    opts.bodyParameters && opts.bodyParameters.length > 0
+      ? [
+          {
+            type: "body",
+            parameters: opts.bodyParameters.map((text) => ({
+              type: "text",
+              text: text.slice(0, 1024),
+            })),
+          },
+        ]
+      : undefined;
+  return graphPost(opts.phoneNumberId, opts.accessToken, {
+    to: opts.toE164.replace(/\D/g, ""),
+    type: "template",
+    template: {
+      name: opts.templateName,
+      language: { code: opts.languageCode || "es_MX" },
+      ...(components ? { components } : {}),
+    },
+  });
+}
+
 /** Resolve temporary media URL then download (max 8s). */
 export async function downloadWhatsAppMedia(
   mediaId: string,
@@ -83,10 +138,7 @@ export async function downloadWhatsAppMedia(
   signal?: AbortSignal,
 ): Promise<{ buffer: Buffer; mimeType: string } | null> {
   const timeout = AbortSignal.timeout(8000);
-  const combined =
-    signal != null
-      ? AbortSignal.any([signal, timeout])
-      : timeout;
+  const combined = timeout;
 
   const metaRes = await fetch(`${GRAPH_BASE}/${mediaId}`, {
     headers: { Authorization: `Bearer ${accessToken}` },

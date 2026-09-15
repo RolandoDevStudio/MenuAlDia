@@ -27,7 +27,7 @@ export default async function WhatsappBotSettingsPage() {
   const { data: account } = await supabase
     .from("restaurant_whatsapp_accounts")
     .select(
-      "status, display_phone, whatsapp_bot_enabled, pull_menu_enabled, chat_orders_enabled, state_notifications_enabled, bot_menu_scope, guide_ack_at, guide_version, whatsapp_ai_marketing_addon, addon_trial_ends_at, templates_status",
+      "status, display_phone, whatsapp_bot_enabled, pull_menu_enabled, chat_orders_enabled, state_notifications_enabled, upselling_enabled, abandoned_cart_nudge, vip_broadcast_enabled, bot_menu_scope, guide_ack_at, guide_version, whatsapp_ai_marketing_addon, addon_trial_ends_at, templates_status, message_templates_config",
     )
     .eq("restaurant_id", session.restaurant.id)
     .maybeSingle();

@@ -190,6 +190,7 @@ export function OrdersBoard({
     const json = (await res.json()) as {
       total?: number;
       payload?: OrderLogPayload;
+      waWarning?: string | null;
     };
     setOrders((prev) =>
       prev.map((o) =>
@@ -202,6 +203,37 @@ export function OrdersBoard({
             }
           : o,
       ),
+    );
+    if (json.waWarning) {
+      toast.message(json.waWarning);
+    }
+  }
+
+  async function setPaymentStatus(
+    order: Order,
+    payment_status: "approved" | "rejected",
+  ) {
+    setBusyId(order.id);
+    const res = await fetch("/api/admin/orders", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: order.id, payment_status }),
+    });
+    setBusyId(null);
+    if (!res.ok) {
+      toast.error("No se pudo actualizar el pago");
+      return;
+    }
+    const json = (await res.json()) as { payload?: OrderLogPayload };
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === order.id
+          ? { ...o, payload: json.payload ?? o.payload }
+          : o,
+      ),
+    );
+    toast.success(
+      payment_status === "approved" ? "Pago aprobado" : "Pago rechazado",
     );
   }
 
@@ -217,9 +249,13 @@ export function OrdersBoard({
       toast.error("No se pudo cancelar");
       return;
     }
+    const json = (await res.json()) as { waWarning?: string | null };
     setOrders((prev) =>
       prev.map((o) => (o.id === order.id ? { ...o, status: "cancelled" } : o)),
     );
+    if (json.waWarning) {
+      toast.message(json.waWarning);
+    }
   }
 
   async function saveShipping(order: Order) {
@@ -407,6 +443,54 @@ export function OrdersBoard({
                     Referencias: {payload.references}
                   </p>
                 ) : null}
+                {payload.source === "whatsapp_bot" ? (
+                  <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-800">
+                    Origen WhatsApp bot
+                    {payload.order_kind === "appointment" ? " · Cita" : ""}
+                  </p>
+                ) : null}
+                {payload.payment_proof_error ? (
+                  <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-950">
+                    No se pudo descargar la captura del comprobante. Solicítala
+                    manualmente al cliente.
+                    {phone ? (
+                      <>
+                        {" "}
+                        <a
+                          className="font-semibold underline"
+                          href={`https://wa.me/52${phone}?text=${encodeURIComponent("Hola, ¿me puedes reenviar la foto de tu comprobante SPEI?")}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Pedir por WhatsApp
+                        </a>
+                      </>
+                    ) : null}
+                  </p>
+                ) : null}
+                {payload.payment_proof_path ? (
+                  <p className="mt-1 text-xs">
+                    <a
+                      className="font-medium text-brand underline"
+                      href={`/api/admin/orders/payment-proof?orderId=${o.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Ver comprobante SPEI
+                    </a>
+                    {payload.payment_status
+                      ? ` · ${payload.payment_status === "approved" ? "Aprobado" : payload.payment_status === "rejected" ? "Rechazado" : "Pendiente"}`
+                      : ""}
+                    {payload.spei_match === true
+                      ? " · Vision ✓ monto coherente"
+                      : payload.spei_match === false
+                        ? " · Vision ⚠ revisar"
+                        : ""}
+                    {payload.spei_vision_notes
+                      ? ` · ${payload.spei_vision_notes}`
+                      : ""}
+                  </p>
+                ) : null}
                 <p className="mt-1 line-clamp-2 text-xs text-muted">
                   {(payload.items ?? [])
                     .map((i) => `${i.quantity}x ${i.name}`)
@@ -505,6 +589,29 @@ export function OrdersBoard({
                         Enviar cotización por WhatsApp
                       </a>
                     </Button>
+                  ) : null}
+                  {payload.payment_proof_path &&
+                  payload.payment_status === "pending" ? (
+                    <>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        disabled={busyId === o.id}
+                        onClick={() => void setPaymentStatus(o, "approved")}
+                      >
+                        Aprobar pago
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={busyId === o.id}
+                        onClick={() => void setPaymentStatus(o, "rejected")}
+                      >
+                        Rechazar pago
+                      </Button>
+                    </>
                   ) : null}
                   {o.customer_id ? (
                     <Button asChild size="sm" variant="outline">

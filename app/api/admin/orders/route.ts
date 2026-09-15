@@ -4,6 +4,7 @@ import { requireTenantSession } from "@/lib/admin-session";
 import { can } from "@/lib/plans";
 import { parseOrderStatus } from "@/lib/fulfillment";
 import type { OrderLogPayload } from "@/lib/types";
+import { notifyOrderStatusViaWhatsApp } from "@/lib/whatsapp-bot/notify-status";
 
 /** Orders created after `?after=<iso>`, used by the board to poll for new ones. */
 export async function GET(request: Request) {
@@ -42,6 +43,7 @@ export async function PATCH(request: Request) {
     id?: string;
     status?: string;
     shipping?: number | null;
+    payment_status?: "pending" | "approved" | "rejected";
   };
   if (!body.id) {
     return NextResponse.json({ error: "invalid" }, { status: 400 });
@@ -65,6 +67,7 @@ export async function PATCH(request: Request) {
 
   const updates: Record<string, unknown> = {};
   let nextStatus = existing.status as string;
+  let statusChanged = false;
 
   if (body.status !== undefined) {
     const status = parseOrderStatus(body.status);
@@ -73,6 +76,22 @@ export async function PATCH(request: Request) {
     }
     nextStatus = status;
     updates.status = status;
+    statusChanged = status !== existing.status;
+  }
+
+  if (body.payment_status !== undefined) {
+    if (
+      body.payment_status !== "pending" &&
+      body.payment_status !== "approved" &&
+      body.payment_status !== "rejected"
+    ) {
+      return NextResponse.json(
+        { error: "invalid payment_status" },
+        { status: 400 },
+      );
+    }
+    payload.payment_status = body.payment_status;
+    updates.payload = payload;
   }
 
   if (body.shipping !== undefined && body.shipping !== null) {
@@ -114,10 +133,23 @@ export async function PATCH(request: Request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  let waWarning: string | undefined;
+  if (statusChanged) {
+    const notify = await notifyOrderStatusViaWhatsApp({
+      restaurantId: session.restaurant.id,
+      orderId: body.id,
+      status: nextStatus,
+      payload: (updates.payload as OrderLogPayload) ?? payload,
+    });
+    waWarning = notify.warning;
+  }
+
   return NextResponse.json({
     ok: true,
     status: nextStatus,
     total: updates.total ?? existing.total,
     payload: updates.payload ?? payload,
+    waWarning: waWarning ?? null,
   });
 }

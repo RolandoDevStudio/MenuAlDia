@@ -26,6 +26,7 @@ import {
   ACQUISITION_LABELS,
   ACQUISITION_SOURCES,
 } from "@/lib/super-admin-crm";
+import { WhatsappAddonSaPanel } from "@/components/super-admin/whatsapp-addon-sa-panel";
 import {
   Dialog,
   DialogContent,
@@ -907,6 +908,12 @@ export function TenantEditModal({
                 </table>
               )}
             </div>
+          </div>
+        ) : null}
+
+        {tab === "datos" && restaurant ? (
+          <div className="mt-4">
+            <WhatsappAddonSaPanel restaurantId={restaurant.id} />
           </div>
         ) : null}
 

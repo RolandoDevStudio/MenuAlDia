@@ -9,7 +9,9 @@ export type NotificationType =
   | "sa_payment_receipt"
   | "sa_new_tenant"
   | "sa_invoice_request"
-  | "sa_plan_request";
+  | "sa_plan_request"
+  | "wa_bot_paused"
+  | "payment_proof_error";
 
 export type AppNotification = {
   id: string;

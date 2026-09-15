@@ -8,6 +8,7 @@ import { can } from "@/lib/plans";
 import { mexicoCityTodayYmd } from "@/lib/dates";
 import { daysUntil } from "@/lib/subscription-lifecycle";
 import { purgeExpiredCustomerPhotos } from "@/lib/crm-photos-ttl";
+import { purgeWhatsappTtlData } from "@/lib/whatsapp-bot/ttl-purge";
 
 function authorized(request: Request) {
   const secret = process.env.CRON_SECRET?.trim();
@@ -33,6 +34,7 @@ export async function POST(request: Request) {
   let subReminders = 0;
   let skipped = 0;
   let purgedPhotos = 0;
+  let waTtl: Awaited<ReturnType<typeof purgeWhatsappTtlData>> | null = null;
 
   const { data: restaurants } = await admin
     .from("restaurants")
@@ -116,6 +118,12 @@ export async function POST(request: Request) {
     );
   }
 
+  try {
+    waTtl = await purgeWhatsappTtlData(admin);
+  } catch (e) {
+    console.warn("[wa-ttl]", e instanceof Error ? e.message : e);
+  }
+
   return NextResponse.json({
     ok: true,
     at: nowIso,
@@ -123,6 +131,7 @@ export async function POST(request: Request) {
     subReminders,
     skipped,
     purgedPhotos,
+    waTtl,
   });
 }
 

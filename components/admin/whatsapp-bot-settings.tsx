@@ -1,13 +1,19 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Info } from "lucide-react";
+import { Info, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { WhatsappBotGuideDialog } from "@/components/admin/whatsapp-bot-guide-dialog";
+import { WhatsappUsageMetrics } from "@/components/admin/whatsapp-usage-metrics";
 import { WHATSAPP_BOT_GUIDE_VERSION } from "@/lib/whatsapp-bot-guide";
+import {
+  addonStatusLabel,
+  isWhatsappAiMarketingAddonActive,
+} from "@/lib/whatsapp-bot/addon";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 
 export type WhatsappAccountInitial = {
   status?: string | null;
@@ -16,12 +22,21 @@ export type WhatsappAccountInitial = {
   pull_menu_enabled?: boolean | null;
   chat_orders_enabled?: boolean | null;
   state_notifications_enabled?: boolean | null;
+  upselling_enabled?: boolean | null;
+  abandoned_cart_nudge?: boolean | null;
+  vip_broadcast_enabled?: boolean | null;
   bot_menu_scope?: string | null;
   guide_ack_at?: string | null;
   guide_version?: string | null;
   whatsapp_ai_marketing_addon?: boolean | null;
   addon_trial_ends_at?: string | null;
   templates_status?: Record<string, string> | null;
+  message_templates_config?: {
+    menu_pull?: { body?: string };
+    abandoned_cart?: { body?: string };
+    order_confirm?: { body?: string };
+    menu_del_dia?: { name?: string; language?: string; body?: string };
+  } | null;
 } | null;
 
 type Props = {
@@ -47,6 +62,15 @@ export function WhatsappBotSettings({ restaurantId, initial }: Props) {
   const [stateNotifs, setStateNotifs] = useState(
     Boolean(initial?.state_notifications_enabled),
   );
+  const [upselling, setUpselling] = useState(
+    Boolean(initial?.upselling_enabled),
+  );
+  const [abandonedNudge, setAbandonedNudge] = useState(
+    Boolean(initial?.abandoned_cart_nudge),
+  );
+  const [vipBroadcast, setVipBroadcast] = useState(
+    Boolean(initial?.vip_broadcast_enabled),
+  );
   const [menuScope, setMenuScope] = useState(
     initial?.bot_menu_scope === "all_active" ? "all_active" : "specials_only",
   );
@@ -55,6 +79,26 @@ export function WhatsappBotSettings({ restaurantId, initial }: Props) {
   const [guideVersion, setGuideVersion] = useState(
     initial?.guide_version || null,
   );
+  const [addonFlag] = useState(Boolean(initial?.whatsapp_ai_marketing_addon));
+  const [trialEnds] = useState(initial?.addon_trial_ends_at || null);
+  const [templatesStatus, setTemplatesStatus] = useState(
+    initial?.templates_status ?? {},
+  );
+  const [abandonedBody, setAbandonedBody] = useState(
+    initial?.message_templates_config?.abandoned_cart?.body || "",
+  );
+  const [menuPullBody, setMenuPullBody] = useState(
+    initial?.message_templates_config?.menu_pull?.body || "",
+  );
+  const [aiBusy, setAiBusy] = useState(false);
+  const [vipBusy, setVipBusy] = useState(false);
+
+  const addonAccount = {
+    whatsapp_ai_marketing_addon: addonFlag,
+    addon_trial_ends_at: trialEnds,
+  };
+  const addonActive = isWhatsappAiMarketingAddonActive(addonAccount);
+  const addonLabel = addonStatusLabel(addonAccount);
 
   const guideAckOk = useMemo(
     () =>
@@ -88,6 +132,103 @@ export function WhatsappBotSettings({ restaurantId, initial }: Props) {
       return true;
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function saveTemplates() {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/admin/whatsapp/templates", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          restaurant_id: restaurantId,
+          message_templates_config: {
+            menu_pull: { body: menuPullBody },
+            abandoned_cart: { body: abandonedBody },
+          },
+          templates_status: templatesStatus,
+        }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        toast.error(json.error || "No se pudo guardar plantillas");
+        return;
+      }
+      toast.success("Textos guardados");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function generateAi(scene: "menu_pull" | "abandoned_cart") {
+    if (!addonActive) {
+      toast.error("Requiere Add-On IA & Marketing");
+      return;
+    }
+    setAiBusy(true);
+    try {
+      const res = await fetch("/api/admin/whatsapp/ai-template", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          restaurant_id: restaurantId,
+          scene,
+          tone: "amigable",
+        }),
+      });
+      const json = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        message?: string;
+        body?: string;
+      };
+      if (!res.ok) {
+        toast.error(json.message || json.error || "IA no disponible");
+        return;
+      }
+      if (scene === "menu_pull" && json.body) setMenuPullBody(json.body);
+      if (scene === "abandoned_cart" && json.body) setAbandonedBody(json.body);
+      toast.success("Borrador IA listo — revisa y guarda");
+    } finally {
+      setAiBusy(false);
+    }
+  }
+
+  async function runVip(dryRun: boolean) {
+    if (!addonActive) {
+      toast.error("Requiere Add-On IA & Marketing");
+      return;
+    }
+    setVipBusy(true);
+    try {
+      const res = await fetch("/api/admin/whatsapp/vip-broadcast", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          restaurant_id: restaurantId,
+          dry_run: dryRun,
+          limit: 40,
+        }),
+      });
+      const json = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        would_send?: number;
+        sent?: number;
+        failed?: number;
+      };
+      if (!res.ok) {
+        toast.error(json.error || "No se pudo difundir");
+        return;
+      }
+      if (dryRun) {
+        toast.message(`Simulación: se enviarían ${json.would_send ?? 0} mensajes`);
+      } else {
+        toast.success(
+          `Enviados ${json.sent ?? 0}${json.failed ? ` · fallidos ${json.failed}` : ""}`,
+        );
+      }
+    } finally {
+      setVipBusy(false);
     }
   }
 
@@ -177,7 +318,7 @@ export function WhatsappBotSettings({ restaurantId, initial }: Props) {
           <div>
             <Label htmlFor="wa_orders">Tomar pedidos por chat</Label>
             <p className="text-xs text-muted">
-              Próximas fases: checkout en WhatsApp → tablero Pedidos.
+              Checkout en WhatsApp → tablero Pedidos.
             </p>
           </div>
           <Switch
@@ -210,6 +351,25 @@ export function WhatsappBotSettings({ restaurantId, initial }: Props) {
           />
         </div>
 
+        <div className="flex min-h-12 items-center justify-between gap-3">
+          <div>
+            <Label htmlFor="wa_upsell">Sugerir complemento (upsell)</Label>
+            <p className="text-xs text-muted">
+              Pro: un extra opcional en el chat (sin imagen). Apagado por
+              defecto.
+            </p>
+          </div>
+          <Switch
+            id="wa_upsell"
+            checked={upselling}
+            disabled={busy || !botEnabled}
+            onCheckedChange={(v) => {
+              setUpselling(v);
+              void patch({ upselling_enabled: v });
+            }}
+          />
+        </div>
+
         <div className="space-y-1.5">
           <Label htmlFor="wa_menu_scope">Alcance del menú en PULL</Label>
           <select
@@ -232,6 +392,172 @@ export function WhatsappBotSettings({ restaurantId, initial }: Props) {
             <option value="all_active">Catálogo activo (link)</option>
           </select>
         </div>
+      </div>
+
+      <WhatsappUsageMetrics restaurantId={restaurantId} />
+
+      <div className="space-y-3 rounded-2xl border border-black/5 bg-surface p-4">
+        <div>
+          <p className="font-semibold">Add-On IA & Marketing</p>
+          <p className="mt-1 text-xs text-muted">
+            Estado:{" "}
+            <span className="font-medium text-foreground">
+              {addonLabel === "active"
+                ? "activo"
+                : addonLabel === "trial"
+                  ? `trial hasta ${trialEnds ? new Date(trialEnds).toLocaleDateString("es-MX") : "—"}`
+                  : addonLabel === "expired"
+                    ? "trial expirado"
+                    : "no contratado"}
+            </span>
+            . Vision SPEI, nudge de carrito y difusión VIP.
+          </p>
+        </div>
+
+        <div className="flex min-h-12 items-center justify-between gap-3">
+          <div>
+            <Label htmlFor="wa_nudge">Nudge carrito abandonado (15 min)</Label>
+            <p className="text-xs text-muted">
+              1 mensaje máx. dentro de la ventana de servicio. Requiere add-on.
+            </p>
+          </div>
+          <Switch
+            id="wa_nudge"
+            checked={abandonedNudge}
+            disabled={busy || !botEnabled || !addonActive}
+            onCheckedChange={(v) => {
+              setAbandonedNudge(v);
+              void patch({ abandoned_cart_nudge: v });
+            }}
+          />
+        </div>
+
+        <div className="flex min-h-12 items-center justify-between gap-3">
+          <div>
+            <Label htmlFor="wa_vip">Difusión VIP (Marketing)</Label>
+            <p className="text-xs text-muted">
+              Solo opt-in. Meta puede cobrar en tu tarjeta. Plantilla
+              menu_del_dia APPROVED.
+            </p>
+          </div>
+          <Switch
+            id="wa_vip"
+            checked={vipBroadcast}
+            disabled={busy || !botEnabled || !addonActive}
+            onCheckedChange={(v) => {
+              setVipBroadcast(v);
+              void patch({ vip_broadcast_enabled: v });
+            }}
+          />
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={vipBusy || !addonActive || !vipBroadcast}
+            onClick={() => void runVip(true)}
+          >
+            Simular VIP
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            disabled={vipBusy || !addonActive || !vipBroadcast}
+            onClick={() => void runVip(false)}
+          >
+            Enviar VIP (opt-in)
+          </Button>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="tpl_menu_status">Estado plantilla menu_del_dia</Label>
+          <select
+            id="tpl_menu_status"
+            className="flex h-11 w-full rounded-xl border border-black/10 bg-background px-3 text-sm"
+            value={templatesStatus.menu_del_dia || "PENDING"}
+            disabled={busy}
+            onChange={(e) =>
+              setTemplatesStatus((prev) => ({
+                ...prev,
+                menu_del_dia: e.target.value,
+              }))
+            }
+          >
+            <option value="PENDING">PENDING</option>
+            <option value="APPROVED">APPROVED</option>
+            <option value="REJECTED">REJECTED</option>
+            <option value="PAUSED">PAUSED</option>
+          </select>
+          <p className="text-[11px] text-muted">
+            Márcalo APPROVED cuando Meta lo apruebe (manual por ahora).
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-3 rounded-2xl border border-black/5 bg-surface p-4">
+        <p className="font-semibold">Editor de mensajes</p>
+        <p className="text-xs text-muted">
+          Textos locales (sesión 24h). La asistencia IA requiere el add-on.
+        </p>
+
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <Label htmlFor="menu_pull_body">MENU / saludo (opcional)</Label>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="gap-1"
+              disabled={aiBusy || !addonActive}
+              onClick={() => void generateAi("menu_pull")}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              IA
+            </Button>
+          </div>
+          <Textarea
+            id="menu_pull_body"
+            rows={3}
+            value={menuPullBody}
+            onChange={(e) => setMenuPullBody(e.target.value)}
+            placeholder="Vacío = mensaje automático del bot"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <Label htmlFor="abandoned_body">Nudge carrito</Label>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="gap-1"
+              disabled={aiBusy || !addonActive}
+              onClick={() => void generateAi("abandoned_cart")}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              IA
+            </Button>
+          </div>
+          <Textarea
+            id="abandoned_body"
+            rows={3}
+            value={abandonedBody}
+            onChange={(e) => setAbandonedBody(e.target.value)}
+            placeholder="¡Hola! ¿Seguimos con tu pedido?..."
+          />
+        </div>
+
+        <Button
+          type="button"
+          size="sm"
+          disabled={busy}
+          onClick={() => void saveTemplates()}
+        >
+          Guardar textos
+        </Button>
       </div>
 
       <div className="rounded-2xl border border-dashed border-black/10 bg-background/50 p-4 text-sm text-muted">

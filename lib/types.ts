@@ -333,6 +333,17 @@ export interface OrderLogPayload {
   customerName?: string;
   mapsUrl?: string;
   paymentMethod?: PaymentMethod;
+  /** WhatsApp bot / SPEI proof */
+  source?: "web" | "whatsapp_bot";
+  payment_status?: "pending" | "approved" | "rejected";
+  payment_proof_path?: string | null;
+  payment_proof_url?: string | null;
+  payment_proof_error?: boolean;
+  spei_match?: boolean | null;
+  /** Assistive Vision notes (add-on); never auto-approves */
+  spei_vision_notes?: string;
+  wa_id?: string;
+  order_kind?: "order" | "appointment";
 }
 
 /** Cart → WhatsApp. Address lives only in the message, not in OrderLogPayload. */

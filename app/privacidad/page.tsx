@@ -41,18 +41,13 @@ export default async function PrivacidadPage({
 
         <aside className="rounded-2xl border border-black/10 bg-surface px-4 py-3">
           <p className="text-sm font-semibold text-brand-dark">
-            Qué hay de nuevo en v1.1
+            Qué hay de nuevo en v1.2
           </p>
           <p className="mt-1 text-sm text-muted">
-            Aclaramos el uso de cookies y almacenamiento local en el Sitio Web y
-            en los menús públicos (carrito, sesión y medición anónima).{" "}
-            <a
-              href="#cookies"
-              className="font-semibold text-brand underline-offset-2 hover:underline"
-            >
-              Ver sección 6
-            </a>
-            .
+            Aclaramos el rol de Menú al Día como Encargado técnico cuando un
+            negocio activa el asistente de WhatsApp Cloud API (metadatos de
+            mensaje, opt-in y comprobantes con retención limitada; sin inbox
+            completo).
           </p>
         </aside>
 
@@ -126,9 +121,18 @@ export default async function PrivacidadPage({
             para que el establecimiento dé seguimiento a su pedido y, si usted
             lo acepta al enviar, promociones ocasionales. La dirección de
             entrega viaja únicamente en el mensaje de WhatsApp al negocio;{" "}
-            <strong>no la almacenamos</strong> en nuestros servidores. El
+            <strong>no la almacenamos</strong> en nuestros servidores (salvo que
+            el negocio use el canal CRM/Pro y la registre en su operación). El
             restaurante es responsable del tratamiento de esos datos de
             contacto en su operación diaria.
+          </p>
+          <p>
+            Si el negocio activa el asistente de WhatsApp Cloud API, podemos
+            procesar como Encargado técnico: identificadores de mensaje (wamid),
+            estado de diálogo temporal, preferencia de opt-in/opt-out y
+            comprobantes SPEI asociados al pedido, con plazos de retención
+            cortos. No conservamos un inbox completo de la conversación. El
+            Responsable de esos datos frente a usted suele ser el negocio.
           </p>
           <p>
             Menú al Día <strong>NO</strong> recaba ni solicita bajo ninguna
@@ -368,7 +372,7 @@ export default async function PrivacidadPage({
         </section>
 
         <p className="border-t border-black/10 pt-6 text-muted">
-          Versión {CURRENT_PRIVACY_VERSION} · Última actualización: Agosto de
+          Versión {CURRENT_PRIVACY_VERSION} · Última actualización: Septiembre de
           2026.
         </p>
       </article>

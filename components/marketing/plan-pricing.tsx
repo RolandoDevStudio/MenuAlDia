@@ -45,6 +45,7 @@ export const PLAN_CARD_FEATURES: Record<PlanType, string[]> = {
     photoLimitLabel("pro"),
     "Todo lo de Menú al Día",
     "Más fotos menú + marketing IA (25/mes c/u)",
+    "Asistente WhatsApp (responde MENU y toma pedidos)",
     "Historial de clientes y pedidos",
     "Métricas básicas de venta",
   ],
@@ -91,16 +92,17 @@ const PLAN_DETAILS: Record<PlanType, PlanDetail> = {
     forWho:
       "Para negocios que ya venden por WhatsApp y quieren conocer, recuperar y fidelizar clientes.",
     benefit:
-      "No solo recibes pedidos: sabes quién te compra y puedes volver a contactarlos para que regresen.",
+      "Incluye asistente WhatsApp para responder y tomar pedidos; sabes quién te compra y puedes volver a contactarlos.",
     includes: [
       photoLimitLabel("pro"),
       "Todo lo incluido en Menú al Día",
+      "Asistente WhatsApp Cloud (PULL MENU, pedidos/citas por chat, notifs de estado) — apagado por defecto",
       "Más fotos de menú/combos con IA (25/mes)",
       "Más generaciones de flyer/imagen con IA (25/mes)",
       "Historial de clientes y pedidos",
       "Métricas básicas de venta / actividad",
       "Exportar CSV de tu información",
-      "Base para seguimiento, recurrencia y campañas",
+      "Add-On opcional IA & Marketing: Vision SPEI, VIP, nudge e editor IA (trial 14 días)",
     ],
   },
 };
@@ -158,6 +160,18 @@ const COMPARE_ROWS: {
     catalog: false,
     daily: false,
     pro: true,
+  },
+  {
+    feature: "Asistente WhatsApp (bot Cloud)",
+    catalog: false,
+    daily: false,
+    pro: true,
+  },
+  {
+    feature: "Add-On IA & Marketing (Vision/VIP)",
+    catalog: false,
+    daily: false,
+    pro: "Opcional",
   },
 ];
 

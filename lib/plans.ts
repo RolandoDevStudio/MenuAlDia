@@ -27,6 +27,19 @@ export type PlanFeature =
   /** WhatsApp Cloud API bot (PULL + chat orders). Pro only. */
   | "whatsapp_bot";
 
+/** Optional paid module on top of Pro (tenant flag / trial, not a plan row). */
+export const WHATSAPP_AI_MARKETING_ADDON = {
+  key: "whatsapp_ai_marketing_addon" as const,
+  label: "IA & Marketing (WhatsApp)",
+  trialDays: 14,
+  includes: [
+    "Auditoría asistida de comprobantes SPEI (Vision)",
+    "Difusión VIP con plantillas Marketing",
+    "Nudge de carrito abandonado (15 min)",
+    "Editor de mensajes asistido por IA",
+  ] as const,
+};
+
 export const PLAN_PRICES_MXN: Record<PlanType, number> = {
   catalog: FALLBACK_PLAN_PRICES.catalog.monthly,
   daily: FALLBACK_PLAN_PRICES.daily.monthly,
