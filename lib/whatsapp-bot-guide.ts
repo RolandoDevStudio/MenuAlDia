@@ -1,5 +1,5 @@
 /** Bump when guide copy changes materially (forces re-ack). */
-export const WHATSAPP_BOT_GUIDE_VERSION = "2026-09-v1";
+export const WHATSAPP_BOT_GUIDE_VERSION = "2026-09-v2";
 
 export type WhatsappBotGuideSection = {
   title: string;
@@ -15,14 +15,22 @@ export const WHATSAPP_BOT_GUIDE_SECTIONS: WhatsappBotGuideSection[] = [
   {
     title: "¿Qué necesitas para empezar?",
     bullets: [
-      "Una cuenta personal de Facebook para el flujo de conexión rápida (Meta Embedded Signup).",
-      "Un número de teléfono (el de tu negocio o una línea nueva).",
+      "Una cuenta personal de Facebook para el botón «Conectar con Meta» (Embedded Signup).",
+      "Un número de teléfono (el de tu negocio o una línea nueva Express).",
       "Acceso a SMS o llamadas en ese número para el código de verificación.",
       "Una tarjeta en Meta Business para validar la cuenta del negocio. Responder a clientes que te escriben primero (menú/pedidos) suele usar conversaciones de servicio de Meta (hay cupo gratuito mensual por número). La difusión masiva (módulo IA & Marketing) sí puede generar cargos de Marketing en tu tarjeta de Meta.",
     ],
   },
   {
-    title: "Dos formas de conectar tu WhatsApp",
+    title: "Cómo conectar en Menú al Día",
+    bullets: [
+      "En Ajustes → WhatsApp bot pulsa «Conectar con Meta» y completa la ventana de Facebook (negocio, número y términos).",
+      "Cuando veas el estado «conectado», lee esta guía, márcala como leída y activa el asistente.",
+      "Prueba escribiendo MENU o hola al número conectado desde otro WhatsApp.",
+    ],
+  },
+  {
+    title: "Dos formas de elegir tu número",
     bullets: [
       "Opción A — Número actual: ideal si tus clientes ya lo conocen. Antes debes desvincular WhatsApp del celular (haz respaldo de chats) para que Meta Cloud API tome el número.",
       "Opción B — Línea Express de pedidos (recomendada): un chip/eSIM solo para pedidos. Dejas tu WhatsApp personal intacto y rediriges a clientes al número Express.",

@@ -36,7 +36,7 @@ API: `app/api/admin/*`, `app/api/public/*`, `app/api/super-admin/*`, más `api/o
 | Dominio | Entrar por |
 |---------|------------|
 | Restaurant / menú público + caché | `lib/restaurant.ts` |
-| WhatsApp Cloud bot (Pro) | `app/api/whatsapp/webhook`, `lib/whatsapp-bot/*`, `app/admin/settings/whatsapp`, migraciones `043`–`044`; Add-On Vision/VIP/nudge; métricas `/api/admin/whatsapp/metrics`; TTL en cron `admin-reminders` |
+| WhatsApp Cloud bot (Pro) | `app/api/whatsapp/webhook`, `lib/whatsapp-bot/*`, `app/admin/settings/whatsapp`, `app/api/admin/whatsapp/connect` (Embedded Signup), migraciones `043`–`045`; Add-On Vision/VIP/nudge; métricas `/api/admin/whatsapp/metrics`; TTL en cron `admin-reminders` |
 | Cupos y settings IA | `lib/ai-quota.ts`, `lib/gemini.ts`, `app/api/admin/ai/*`, `app/api/super-admin/ai/` |
 | Planes / features | `lib/plans.ts` |
 | Pedidos WA / mensaje | `lib/whatsapp.ts`, `components/public/cart-sheet.tsx`, `app/api/orders/log/` |

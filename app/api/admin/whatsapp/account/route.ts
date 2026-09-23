@@ -39,7 +39,7 @@ export async function PATCH(req: Request) {
   const supabase = await createClient();
   const { data: existing } = await supabase
     .from("restaurant_whatsapp_accounts")
-    .select("restaurant_id, guide_ack_at, guide_version")
+    .select("restaurant_id, guide_ack_at, guide_version, status")
     .eq("restaurant_id", session.restaurant.id)
     .maybeSingle();
 
@@ -81,6 +81,13 @@ export async function PATCH(req: Request) {
   ) {
     return NextResponse.json(
       { error: "Debes aceptar la guía antes de activar el asistente" },
+      { status: 400 },
+    );
+  }
+
+  if (d.whatsapp_bot_enabled === true && existing?.status !== "connected") {
+    return NextResponse.json(
+      { error: "Conecta tu número con Meta antes de activar el asistente" },
       { status: 400 },
     );
   }

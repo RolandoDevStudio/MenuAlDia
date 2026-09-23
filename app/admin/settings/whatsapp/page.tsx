@@ -1,8 +1,10 @@
 import { requireTenantSession } from "@/lib/admin-session";
 import { PlanGate } from "@/components/admin/plan-gate";
 import { WhatsappBotSettings } from "@/components/admin/whatsapp-bot-settings";
+import { encryptionConfigured } from "@/lib/crypto-secret";
 import { can } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
+import { WHATSAPP_GRAPH_VERSION } from "@/lib/whatsapp-cloud";
 
 export default async function WhatsappBotSettingsPage() {
   const session = await requireTenantSession();
@@ -32,6 +34,15 @@ export default async function WhatsappBotSettingsPage() {
     .eq("restaurant_id", session.restaurant.id)
     .maybeSingle();
 
+  const metaAppId = process.env.META_APP_ID?.trim() || "";
+  const metaConfigId = process.env.META_EMBEDDED_SIGNUP_CONFIG_ID?.trim() || "";
+  const metaReady = Boolean(
+    metaAppId &&
+      metaConfigId &&
+      process.env.META_APP_SECRET?.trim() &&
+      encryptionConfigured(),
+  );
+
   return (
     <div className="mx-auto max-w-lg space-y-4 px-4 py-6">
       <div>
@@ -46,6 +57,12 @@ export default async function WhatsappBotSettingsPage() {
       <WhatsappBotSettings
         restaurantId={session.restaurant.id}
         initial={account}
+        meta={{
+          ready: metaReady,
+          appId: metaAppId,
+          configId: metaConfigId,
+          graphVersion: WHATSAPP_GRAPH_VERSION,
+        }}
       />
     </div>
   );

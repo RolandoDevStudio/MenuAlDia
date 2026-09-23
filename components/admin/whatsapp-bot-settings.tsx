@@ -1,10 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Info, Sparkles } from "lucide-react";
+import { Info, Link2, Sparkles, Unlink } from "lucide-react";
 import { toast } from "sonner";
 import { WhatsappBotGuideDialog } from "@/components/admin/whatsapp-bot-guide-dialog";
 import { WhatsappUsageMetrics } from "@/components/admin/whatsapp-usage-metrics";
+import {
+  EMBEDDED_SIGNUP_HELP_STEPS,
+  launchEmbeddedSignup,
+} from "@/lib/meta-embedded-signup";
 import { WHATSAPP_BOT_GUIDE_VERSION } from "@/lib/whatsapp-bot-guide";
 import {
   addonStatusLabel,
@@ -39,12 +43,24 @@ export type WhatsappAccountInitial = {
   } | null;
 } | null;
 
+export type WhatsappMetaClientConfig = {
+  ready: boolean;
+  appId: string;
+  configId: string;
+  graphVersion: string;
+};
+
 type Props = {
   restaurantId: string;
   initial: WhatsappAccountInitial;
+  meta: WhatsappMetaClientConfig;
 };
 
-export function WhatsappBotSettings({ restaurantId, initial }: Props) {
+export function WhatsappBotSettings({
+  restaurantId,
+  initial,
+  meta,
+}: Props) {
   const [guideOpen, setGuideOpen] = useState(false);
   const [guideRequireAck, setGuideRequireAck] = useState(false);
   const [pendingAction, setPendingAction] = useState<"enable" | null>(null);
@@ -92,6 +108,11 @@ export function WhatsappBotSettings({ restaurantId, initial }: Props) {
   );
   const [aiBusy, setAiBusy] = useState(false);
   const [vipBusy, setVipBusy] = useState(false);
+  const [connectBusy, setConnectBusy] = useState(false);
+  const [displayPhone, setDisplayPhone] = useState(
+    initial?.display_phone || null,
+  );
+  const [helpOpen, setHelpOpen] = useState(status !== "connected");
 
   const addonAccount = {
     whatsapp_ai_marketing_addon: addonFlag,
@@ -232,10 +253,96 @@ export function WhatsappBotSettings({ restaurantId, initial }: Props) {
     }
   }
 
+  async function connectWithMeta() {
+    if (!meta.ready) {
+      toast.error("La conexión Meta aún no está configurada en el servidor");
+      return;
+    }
+    setConnectBusy(true);
+    try {
+      toast.message("Sigue los pasos en la ventana de Meta…", {
+        duration: 8000,
+      });
+      const sessionInfo = await launchEmbeddedSignup({
+        appId: meta.appId,
+        configId: meta.configId,
+        graphVersion: meta.graphVersion,
+      });
+      const res = await fetch("/api/admin/whatsapp/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          restaurant_id: restaurantId,
+          code: sessionInfo.code,
+          waba_id: sessionInfo.wabaId,
+          phone_number_id: sessionInfo.phoneNumberId,
+        }),
+      });
+      const json = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        account?: WhatsappAccountInitial;
+      };
+      if (!res.ok) {
+        toast.error(json.error || "No se pudo conectar con Meta");
+        return;
+      }
+      if (json.account?.status) setStatus(json.account.status);
+      if (json.account?.display_phone !== undefined) {
+        setDisplayPhone(json.account.display_phone ?? null);
+      }
+      setHelpOpen(false);
+      toast.success(
+        "Número conectado. Lee la guía y activa el asistente cuando quieras.",
+      );
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "No se completó el registro Meta",
+      );
+    } finally {
+      setConnectBusy(false);
+    }
+  }
+
+  async function disconnectMeta() {
+    if (
+      !window.confirm(
+        "¿Desconectar WhatsApp Cloud API? El asistente dejará de recibir mensajes hasta que vuelvas a conectar. Los interruptores del bot no se apagan solos.",
+      )
+    ) {
+      return;
+    }
+    setConnectBusy(true);
+    try {
+      const res = await fetch(
+        `/api/admin/whatsapp/connect?restaurant_id=${encodeURIComponent(restaurantId)}`,
+        { method: "DELETE" },
+      );
+      const json = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        account?: WhatsappAccountInitial;
+      };
+      if (!res.ok) {
+        toast.error(json.error || "No se pudo desconectar");
+        return;
+      }
+      setStatus(json.account?.status || "disconnected");
+      setDisplayPhone(null);
+      setHelpOpen(true);
+      toast.success("WhatsApp desconectado de Menú al Día");
+    } finally {
+      setConnectBusy(false);
+    }
+  }
+
   function requestEnableBot(next: boolean) {
     if (!next) {
       setBotEnabled(false);
       void patch({ whatsapp_bot_enabled: false });
+      return;
+    }
+    if (status !== "connected") {
+      toast.error("Primero conecta tu número con Meta");
+      setHelpOpen(true);
       return;
     }
     if (!guideAckOk) {
@@ -255,13 +362,12 @@ export function WhatsappBotSettings({ restaurantId, initial }: Props) {
         <div className="min-w-0 flex-1">
           <p className="font-semibold">Asistente de WhatsApp</p>
           <p className="mt-1 text-xs text-muted">
-            Antes de conectar, lee la guía (número, Meta y costos). Estado:{" "}
+            Orden sugerido: conectar número con Meta → leer la guía → activar
+            el asistente. Estado:{" "}
             <span className="font-medium text-foreground">
               {status === "connected" ? "conectado" : "sin conectar"}
             </span>
-            {initial?.display_phone
-              ? ` · ${initial.display_phone}`
-              : null}
+            {displayPhone ? ` · ${displayPhone}` : null}
           </p>
         </div>
         <Button
@@ -280,6 +386,123 @@ export function WhatsappBotSettings({ restaurantId, initial }: Props) {
       </div>
 
       <div className="space-y-3 rounded-2xl border border-black/5 bg-surface p-4">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold">1. Conectar número (Meta)</p>
+            <p className="mt-1 text-xs text-muted">
+              Vincula WhatsApp Cloud API con tu cuenta de Facebook. Sin este
+              paso el asistente no puede recibir ni enviar mensajes.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="gap-1.5 shrink-0"
+            onClick={() => setHelpOpen((o) => !o)}
+          >
+            <Info className="h-4 w-4" />
+            {helpOpen ? "Ocultar ayuda" : "¿Cómo conectar?"}
+          </Button>
+        </div>
+
+        {helpOpen ? (
+          <ol className="space-y-2.5 rounded-xl border border-black/5 bg-background/60 p-3 text-sm">
+            {EMBEDDED_SIGNUP_HELP_STEPS.map((step, i) => (
+              <li key={step.title} className="flex gap-2.5">
+                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-dark/10 text-xs font-semibold text-brand-dark">
+                  {i + 1}
+                </span>
+                <div>
+                  <p className="font-medium text-foreground">{step.title}</p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-muted">
+                    {step.body}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        ) : null}
+
+        {!meta.ready ? (
+          <p className="text-sm text-muted">
+            La conexión con Meta aún no está habilitada en este entorno. Cuando
+            el equipo de Menú al Día termine la configuración verás el botón
+            aquí. Mientras tanto puedes leer la guía y preparar tu número.
+          </p>
+        ) : status === "connected" ? (
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="flex-1 text-sm">
+                <span className="font-medium text-accent">Conectado</span>
+                {displayPhone ? (
+                  <span className="text-muted"> · {displayPhone}</span>
+                ) : null}
+              </p>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="gap-1.5"
+                disabled={connectBusy || busy}
+                onClick={() => void disconnectMeta()}
+              >
+                <Unlink className="h-4 w-4" />
+                Desconectar
+              </Button>
+            </div>
+            <p className="rounded-xl border border-black/5 bg-background/60 px-3 py-2 text-xs leading-relaxed text-muted">
+              Ese número ya no se atiende con la app WhatsApp normal. Para
+              escribir a mano usa{" "}
+              <span className="font-medium text-foreground">
+                Meta Business Suite
+              </span>{" "}
+              (móvil o web). Los pedidos del bot siguen en el tablero{" "}
+              <span className="font-medium text-foreground">Pedidos</span> de
+              Menú al Día.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <Button
+              type="button"
+              size="sm"
+              className="gap-1.5"
+              disabled={connectBusy || busy}
+              onClick={() => void connectWithMeta()}
+            >
+              <Link2 className="h-4 w-4" />
+              {connectBusy ? "Esperando Meta…" : "Conectar con Meta"}
+            </Button>
+            <p className="text-xs text-muted">
+              Permite ventanas emergentes de Facebook. El código de Meta caduca
+              en segundos: no cierres esta pestaña hasta ver “conectado”.
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-3 rounded-2xl border border-black/5 bg-surface p-4">
+        <p className="text-sm font-semibold">2. Activar y configurar el asistente</p>
+        {status !== "connected" ? (
+          <p className="text-xs text-muted">
+            Conecta tu número arriba antes de activar. Los interruptores se
+            habilitan cuando Meta esté vinculado.
+          </p>
+        ) : !guideAckOk ? (
+          <p className="text-xs text-muted">
+            Conectado. Abre «¿Qué necesito saber?», lee la guía y actívala al
+            encender el asistente.
+          </p>
+        ) : (
+          <p className="text-xs text-accent">
+            Guía aceptada ({WHATSAPP_BOT_GUIDE_VERSION}
+            {guideAckAt
+              ? ` · ${new Date(guideAckAt).toLocaleString("es-MX")}`
+              : ""}
+            ).
+          </p>
+        )}
         <div className="flex min-h-12 items-center justify-between gap-3">
           <div>
             <Label htmlFor="wa_bot_enabled">Activar asistente</Label>
@@ -291,7 +514,7 @@ export function WhatsappBotSettings({ restaurantId, initial }: Props) {
           <Switch
             id="wa_bot_enabled"
             checked={botEnabled}
-            disabled={busy}
+            disabled={busy || status !== "connected"}
             onCheckedChange={(v) => requestEnableBot(v)}
           />
         </div>
@@ -558,27 +781,6 @@ export function WhatsappBotSettings({ restaurantId, initial }: Props) {
         >
           Guardar textos
         </Button>
-      </div>
-
-      <div className="rounded-2xl border border-dashed border-black/10 bg-background/50 p-4 text-sm text-muted">
-        <p className="font-medium text-foreground">Conectar número (Meta)</p>
-        <p className="mt-1">
-          Embedded Signup se habilita cuando configures{" "}
-          <code className="text-xs">META_APP_ID</code> / config en el servidor.
-          Mientras tanto puedes guardar toggles y el webhook ya responde verify
-          + mensajes si el número está vinculado en base de datos.
-        </p>
-        {guideAckOk ? (
-          <p className="mt-2 text-xs text-accent">
-            Guía aceptada ({WHATSAPP_BOT_GUIDE_VERSION}
-            {guideAckAt
-              ? ` · ${new Date(guideAckAt).toLocaleString("es-MX")}`
-              : ""}
-            ).
-          </p>
-        ) : (
-          <p className="mt-2 text-xs">Aún no has confirmado la guía.</p>
-        )}
       </div>
 
       <WhatsappBotGuideDialog
