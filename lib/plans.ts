@@ -35,7 +35,6 @@ export const WHATSAPP_AI_MARKETING_ADDON = {
   includes: [
     "Auditoría asistida de comprobantes SPEI (Vision)",
     "Difusión VIP con plantillas Marketing",
-    "Nudge de carrito abandonado (15 min)",
     "Editor de mensajes asistido por IA",
   ] as const,
 };

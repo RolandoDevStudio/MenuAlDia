@@ -4,6 +4,7 @@ import { requireTenantSession } from "@/lib/admin-session";
 import { can } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
 import { WHATSAPP_BOT_GUIDE_VERSION } from "@/lib/whatsapp-bot-guide";
+import { ABANDONED_CART_NUDGE_ENABLED } from "@/lib/whatsapp-bot/addon";
 
 export const runtime = "nodejs";
 
@@ -58,8 +59,11 @@ export async function PATCH(req: Request) {
     patch.state_notifications_enabled = d.state_notifications_enabled;
   if (d.upselling_enabled !== undefined)
     patch.upselling_enabled = d.upselling_enabled;
-  if (d.abandoned_cart_nudge !== undefined)
+  if (!ABANDONED_CART_NUDGE_ENABLED) {
+    patch.abandoned_cart_nudge = false;
+  } else if (d.abandoned_cart_nudge !== undefined) {
     patch.abandoned_cart_nudge = d.abandoned_cart_nudge;
+  }
   if (d.vip_broadcast_enabled !== undefined)
     patch.vip_broadcast_enabled = d.vip_broadcast_enabled;
   if (d.bot_menu_scope !== undefined) patch.bot_menu_scope = d.bot_menu_scope;

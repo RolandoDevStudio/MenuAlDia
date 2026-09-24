@@ -11,6 +11,7 @@ import {
 } from "@/lib/meta-embedded-signup";
 import { WHATSAPP_BOT_GUIDE_VERSION } from "@/lib/whatsapp-bot-guide";
 import {
+  ABANDONED_CART_NUDGE_ENABLED,
   addonStatusLabel,
   isWhatsappAiMarketingAddonActive,
 } from "@/lib/whatsapp-bot/addon";
@@ -166,7 +167,9 @@ export function WhatsappBotSettings({
           restaurant_id: restaurantId,
           message_templates_config: {
             menu_pull: { body: menuPullBody },
-            abandoned_cart: { body: abandonedBody },
+            ...(ABANDONED_CART_NUDGE_ENABLED
+              ? { abandoned_cart: { body: abandonedBody } }
+              : {}),
           },
           templates_status: templatesStatus,
         }),
@@ -633,27 +636,30 @@ export function WhatsappBotSettings({
                     ? "trial expirado"
                     : "no contratado"}
             </span>
-            . Vision SPEI, nudge de carrito y difusión VIP.
+            . Vision SPEI y difusión VIP.
           </p>
         </div>
 
-        <div className="flex min-h-12 items-center justify-between gap-3">
-          <div>
-            <Label htmlFor="wa_nudge">Nudge carrito abandonado (15 min)</Label>
-            <p className="text-xs text-muted">
-              1 mensaje máx. dentro de la ventana de servicio. Requiere add-on.
-            </p>
+        {ABANDONED_CART_NUDGE_ENABLED ? (
+          <div className="flex min-h-12 items-center justify-between gap-3">
+            <div>
+              <Label htmlFor="wa_nudge">Nudge carrito abandonado (15 min)</Label>
+              <p className="text-xs text-muted">
+                1 mensaje máx. dentro de la ventana de servicio. Requiere
+                add-on.
+              </p>
+            </div>
+            <Switch
+              id="wa_nudge"
+              checked={abandonedNudge}
+              disabled={busy || !botEnabled || !addonActive}
+              onCheckedChange={(v) => {
+                setAbandonedNudge(v);
+                void patch({ abandoned_cart_nudge: v });
+              }}
+            />
           </div>
-          <Switch
-            id="wa_nudge"
-            checked={abandonedNudge}
-            disabled={busy || !botEnabled || !addonActive}
-            onCheckedChange={(v) => {
-              setAbandonedNudge(v);
-              void patch({ abandoned_cart_nudge: v });
-            }}
-          />
-        </div>
+        ) : null}
 
         <div className="flex min-h-12 items-center justify-between gap-3">
           <div>
@@ -749,29 +755,31 @@ export function WhatsappBotSettings({
           />
         </div>
 
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between gap-2">
-            <Label htmlFor="abandoned_body">Nudge carrito</Label>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              className="gap-1"
-              disabled={aiBusy || !addonActive}
-              onClick={() => void generateAi("abandoned_cart")}
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              IA
-            </Button>
+        {ABANDONED_CART_NUDGE_ENABLED ? (
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="abandoned_body">Nudge carrito</Label>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="gap-1"
+                disabled={aiBusy || !addonActive}
+                onClick={() => void generateAi("abandoned_cart")}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                IA
+              </Button>
+            </div>
+            <Textarea
+              id="abandoned_body"
+              rows={3}
+              value={abandonedBody}
+              onChange={(e) => setAbandonedBody(e.target.value)}
+              placeholder="¡Hola! ¿Seguimos con tu pedido?..."
+            />
           </div>
-          <Textarea
-            id="abandoned_body"
-            rows={3}
-            value={abandonedBody}
-            onChange={(e) => setAbandonedBody(e.target.value)}
-            placeholder="¡Hola! ¿Seguimos con tu pedido?..."
-          />
-        </div>
+        ) : null}
 
         <Button
           type="button"

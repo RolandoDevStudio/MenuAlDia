@@ -2,6 +2,12 @@
 
 import { WHATSAPP_AI_MARKETING_ADDON } from "@/lib/plans";
 
+/**
+ * Abandoned-cart nudge needs a ~10m scheduler (Vercel Pro cron or external).
+ * Keep route + DB; flip to true when ops can run `/api/cron/wa-abandoned-cart`.
+ */
+export const ABANDONED_CART_NUDGE_ENABLED: boolean = false;
+
 export type AddonAccountFields = {
   whatsapp_ai_marketing_addon?: boolean | null;
   addon_trial_ends_at?: string | null;

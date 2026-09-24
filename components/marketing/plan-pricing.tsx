@@ -102,7 +102,7 @@ const PLAN_DETAILS: Record<PlanType, PlanDetail> = {
       "Historial de clientes y pedidos",
       "Métricas básicas de venta / actividad",
       "Exportar CSV de tu información",
-      "Add-On opcional IA & Marketing: Vision SPEI, VIP, nudge e editor IA (trial 14 días)",
+      "Add-On opcional IA & Marketing: Vision SPEI, VIP y editor IA (trial 14 días)",
     ],
   },
 };

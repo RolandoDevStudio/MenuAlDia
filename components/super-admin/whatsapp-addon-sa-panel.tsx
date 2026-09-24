@@ -59,7 +59,7 @@ export function WhatsappAddonSaPanel({ restaurantId }: { restaurantId: string })
         WhatsApp — {WHATSAPP_AI_MARKETING_ADDON.label}
       </p>
       <p className="text-[11px] text-muted">
-        Vision SPEI, nudge 15 min, VIP y editor IA. Trial{" "}
+        Vision SPEI, VIP y editor IA. Trial{" "}
         {WHATSAPP_ADDON_TRIAL_DAYS} días o flag permanente.
       </p>
       <div className="flex min-h-10 items-center justify-between gap-3">

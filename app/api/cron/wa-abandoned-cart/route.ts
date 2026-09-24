@@ -1,7 +1,10 @@
 import { createServiceClient } from "@/lib/supabase/admin";
 import { decryptSecret } from "@/lib/crypto-secret";
 import { mx10ToWaE164, waIdToMx10 } from "@/lib/phone";
-import { isWhatsappAiMarketingAddonActive } from "@/lib/whatsapp-bot/addon";
+import {
+  ABANDONED_CART_NUDGE_ENABLED,
+  isWhatsappAiMarketingAddonActive,
+} from "@/lib/whatsapp-bot/addon";
 import type { WaSessionState } from "@/lib/whatsapp-bot/session";
 import { sendWaText } from "@/lib/whatsapp-cloud";
 
@@ -25,6 +28,14 @@ function authorized(request: Request) {
 export async function POST(request: Request) {
   if (!authorized(request)) {
     return new Response("Unauthorized", { status: 401 });
+  }
+  if (!ABANDONED_CART_NUDGE_ENABLED) {
+    return Response.json({
+      ok: true,
+      disabled: true,
+      sent: 0,
+      skipped: 0,
+    });
   }
 
   const admin = createServiceClient();
